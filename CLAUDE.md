@@ -1,0 +1,148 @@
+# AI Guard
+
+> Mac AI 开发资源守护工具 — 监控 + 告警 + 安全干预
+> **当前阶段：开发为 macOS 菜单栏原生 App**
+
+## 项目简介
+
+解决使用 Claude Code / Codex / Cursor 等 AI 编程 Agent 时，Mac 内存/Swap/磁盘被快速耗尽的问题。
+
+**核心功能：**
+1. 实时监控内存、Swap、磁盘压力
+2. 分级告警（macOS 原生通知）
+3. 可视化仪表盘（浏览器 Web UI）
+4. 安全进程干预（暂停/恢复/终止，不强制 kill）
+5. 菜单栏托盘驻留（rumps），开机自启，无需开终端
+
+## 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 后端 | Python 3.10+, FastAPI, uvicorn, psutil |
+| 前端 | 单文件 HTML + Vanilla JS + Chart.js (CDN) |
+| 菜单栏 App | rumps 0.4.0（macOS 菜单栏托盘） |
+| 打包 | py2app 0.28（生成独立 .app，可分发） |
+| 持久化 | SQLite 单文件（告警历史，存 `~/.aigard/`） |
+| 配置 | config.toml |
+
+## 目录结构
+
+```
+AI Guard/
+├── main.py              # FastAPI 服务 + 后台监控线程（含 start_server()）
+├── app_menubar.py       # 菜单栏 App 入口（rumps，开发/运行时入口）
+├── monitor.py           # 系统指标采集（psutil）
+├── alerter.py           # 分级告警（osascript macOS 通知）
+├── killer.py            # 安全进程干预（SIGSTOP → 确认 → SIGTERM）
+├── advisor.py           # 进程安全评分
+├── alert_history.py     # SQLite 告警历史持久化（~/.aigard/alert_history.db）
+├── config.toml          # 用户配置：阈值、监控关键字
+├── setup.py             # py2app 打包配置
+├── build.sh             # 一键打包脚本
+├── requirements.txt     # 运行时依赖（含 rumps）
+├── requirements-dev.txt # 开发依赖（py2app）
+├── assets/
+│   ├── icon.png         # App 图标源文件（1024×1024）
+│   └── icon.icns        # macOS 图标格式
+├── scripts/
+│   ├── install_autostart.sh    # 安装开机自启（launchd）
+│   ├── uninstall_autostart.sh  # 卸载开机自启
+│   └── com.aigard.menubar.plist # LaunchAgent plist 模板
+├── web/
+│   └── index.html       # 实时仪表盘
+├── docs/
+│   └── plans/
+│       └── 2026-05-19-mac-menubar-app.md  # 当前实现计划
+└── SCORING.md           # 进程安全评分规则说明
+```
+
+## 快速启动
+
+```bash
+cd "01_PROJECTS/AI Guard"
+pip install -r requirements.txt
+
+# 方式一：纯后端脚本模式（浏览器打开 http://localhost:8765）
+python main.py
+
+# 方式二：菜单栏 App 开发模式（推荐）
+python app_menubar.py
+
+# 打包成可分发 .app
+bash build.sh
+open "dist/AI Guard.app"
+
+# 安装开机自启
+bash scripts/install_autostart.sh
+```
+
+## 菜单栏 App 架构
+
+```
+AI Guard.app（菜单栏托盘）
+├── rumps 主线程           ← 事件循环，处理菜单点击
+├── FastAPI 后台线程       ← 原 main.py 逻辑，localhost:8765
+└── Web UI（浏览器）       ← 点击「打开监控面板」触发
+```
+
+菜单项：
+- 📊 打开监控面板
+- 状态：内存 XX% · Swap XX%（每2秒刷新）
+- ⚡ 自动终止：开/关
+- ⚙️ 偏好设置（打开 config.toml）
+- 退出 AI Guard
+
+## 配置说明
+
+编辑 `config.toml` 可调整：
+- `[alert]` — 告警阈值（内存/Swap/磁盘）
+- `[processes].watch_keywords` — 被监控的进程关键字
+- `[server].port` — 端口号（默认 8765）
+
+## API 接口
+
+| Method | Path | 说明 |
+|--------|------|------|
+| GET | `/` | 仪表盘页面 |
+| GET | `/api/metrics` | 当前系统指标快照 |
+| GET | `/api/stream` | SSE 实时推流（每1秒） |
+| GET | `/api/processes` | AI 进程列表（含安全评估） |
+| GET | `/api/alerts/history` | 告警历史（SQLite，最近20条） |
+| POST | `/api/processes/{pid}/pause` | 暂停进程（SIGSTOP） |
+| POST | `/api/processes/{pid}/resume` | 恢复进程（SIGCONT） |
+| POST | `/api/processes/{pid}/kill` | 终止进程（SIGTERM） |
+| POST | `/api/processes/batch/kill` | 批量终止 |
+| POST | `/api/processes/batch/pause` | 批量暂停 |
+| POST | `/api/processes/batch/kill-safe` | 一键终止所有安全进程 |
+| POST | `/api/autokill/toggle` | 切换自动终止开关 |
+
+## 干预设计原则
+
+- **不直接 SIGKILL**，避免工作中断
+- 先 `SIGSTOP` 暂停 → 用户在界面确认 → 再 `SIGTERM` 优雅退出
+- 可随时 `SIGCONT` 恢复，零损失继续工作
+
+## 数据持久化策略
+
+- **实时指标**：内存环形缓冲区（150点≈2.5分钟），不持久化，重启重新采集
+- **告警历史**：SQLite 单文件，存 `~/.aigard/alert_history.db`，只记录 warn/crit 事件
+- **不需要**：PostgreSQL、Redis、迁移框架等重型方案
+
+## 当前开发状态
+
+**计划文档**：`docs/plans/2026-05-19-mac-menubar-app.md`
+
+| Task | 内容 | 状态 |
+|------|------|------|
+| Task 1 | 环境准备 + 依赖安装 | ✅ 已完成 |
+| Task 2 | 重构 main.py start_server() | ✅ 已完成 |
+| Task 3 | 创建 app_menubar.py | ✅ 已完成 |
+| Task 4 | 修复菜单状态刷新逻辑 | ✅ 已完成 |
+| Task 5 | 创建 App 图标 | ✅ 已完成 |
+| Task 6 | py2app 打包配置 | ✅ 已完成 |
+| Task 7 | 完整打包（standalone）| ✅ 已完成 |
+| Task 8 | 开机自启（launchd）| ✅ 已完成 |
+| Task 9 | SQLite 告警历史（可选）| ✅ 已完成 |
+| Task 10 | 更新文档 | ✅ 已完成 |
+
+**完成时间：** 2026-05-19

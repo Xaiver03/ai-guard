@@ -1,0 +1,40 @@
+[server]
+host = "127.0.0.1"
+port = 8765
+open_browser = true
+
+[monitor]
+interval_sec = 1
+history_points = 150
+
+[alert]
+mem_warn = 80
+mem_crit = 90
+swap_warn = 50
+swap_crit = 80
+disk_free_warn_gb = 20
+disk_free_crit_gb = 10
+cooldown_sec = 60
+
+[auto_kill]
+enabled = false
+mem_trigger_pct = 85
+swap_trigger_pct = 75
+target_mem_pct = 70
+cooldown_sec = 120
+
+[processes]
+watch_keywords = [
+    "claude",
+    "codex",
+    "copilot",
+    "cursor",
+    "node",
+    "python",
+    "pylance",
+    "pyright",
+]
+safe_keywords = [
+    "python3",
+    "launchd",
+]
