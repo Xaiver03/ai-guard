@@ -74,12 +74,12 @@ class Alerter:
 
         if level == "crit" and self._can_notify("crit"):
             self._notify(
-                "⚠️ AI Guard — 危险",
+                "AI Guard — 危险",
                 "，".join(reasons) + "，建议立即暂停 AI Agent"
             )
         elif level == "warn" and self._can_notify("warn"):
             self._notify(
-                "🟡 AI Guard — 警告",
+                "AI Guard — 警告",
                 "，".join(reasons) + "，请注意资源压力"
             )
 

@@ -145,10 +145,10 @@ def advise(proc_info: dict) -> ProcessAdvice:
         reasons.append(danger_reason)
         if cpu > 5:
             reasons.append(f"CPU 占用 {cpu:.1f}%，正在执行任务")
-            return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
+            return ProcessAdvice(pid, "danger", "[不建议操作]", reasons, "leave")
         else:
             reasons.append("CPU 当前较低，可暂停后观察，但仍需谨慎")
-            return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
+            return ProcessAdvice(pid, "danger", "[不建议操作]", reasons, "leave")
 
     # ── 规则 C1：CPU 正在忙 ───────────────────────────────────
     if cpu > CPU_CAUTION_PCT:
@@ -202,12 +202,12 @@ def advise(proc_info: dict) -> ProcessAdvice:
 
     # ── 生成标签 ─────────────────────────────────────────────
     if risk == "safe":
-        label = "✅ 可安全终止"
+        label = "[可安全终止]"
     elif risk == "caution":
-        label = "⚠️ 谨慎（建议先暂停）"
+        label = "[谨慎 - 建议先暂停]"
         action = "pause"
     else:
-        label = "❌ 不建议操作"
+        label = "[不建议操作]"
         action = "leave"
 
     return ProcessAdvice(pid, risk, label, reasons, action)
