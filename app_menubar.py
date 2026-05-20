@@ -133,9 +133,10 @@ class AIGuardApp(rumps.App):
         subprocess.run(["open", "-t", str(config_path)], check=False)
 
     def _toggle_autokill(self, _):
-        with _main_mod._lock:
-            _main_mod._autokill_enabled = not _main_mod._autokill_enabled
-            state = _main_mod._autokill_enabled
+        threads = _main_mod.threads
+        with threads.lock:
+            threads.autokill_enabled = not threads.autokill_enabled
+            state = threads.autokill_enabled
         self._autokill_item.title = f"自动终止: {'开' if state else '关'}"
 
     def _quit(self, _):
@@ -165,7 +166,7 @@ class AIGuardApp(rumps.App):
         self._status_item.title = f"状态: 内存 {mem:.0f}% / Swap {swap:.0f}%"
 
         # 同步自动终止开关
-        state = _main_mod._autokill_enabled
+        state = _main_mod.threads.autokill_enabled
         self._autokill_item.title = f"自动终止: {'开' if state else '关'}"
 
 
