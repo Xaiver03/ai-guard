@@ -4,7 +4,7 @@ port = 8765
 open_browser = true
 
 [monitor]
-interval_sec = 1
+interval_sec = 2
 history_points = 150
 
 [alert]

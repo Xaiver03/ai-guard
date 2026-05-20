@@ -26,6 +26,8 @@ os.environ["AIGARD_NO_BROWSER"] = "1"
 # 确保能 import 到同级的 main.py
 sys.path.insert(0, str(Path(__file__).parent))
 
+# py2app 打包后，aigard 包在 Contents/Resources/lib/python3.9/ 下
+# 需要确保能正确导入
 import main as _main_mod
 
 

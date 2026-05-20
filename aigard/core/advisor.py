@@ -31,8 +31,8 @@ class ProcessAdvice:
 # 注意：这里必须包含终端窗口本身，因为 claude/codex 运行在终端里，
 # 一旦终端被关，整个 AI 会话和工作目录上下文全部丢失。
 _DANGER_PATTERNS = [
-    # AI Agent 本体
-    ("claude",              "Claude Code 进程，终止会中断 AI 任务并丢失工作上下文"),
+    # AI Agent 本体（会话窗口主进程）
+    ("claude",              "Claude Code 会话窗口，终止会中断 AI 任务并丢失工作上下文"),
     ("codex",               "Codex Agent 进程，终止会中断任务"),
     # 终端宿主（AI Agent 运行在其中）
     ("terminal",            "系统终端窗口，关闭会终止其中所有正在运行的 AI/命令"),
@@ -53,6 +53,19 @@ _DANGER_PATTERNS = [
     # 容器
     ("docker",              "Docker 守护进程，终止会停止所有容器"),
     ("containerd",          "容器运行时，终止会影响所有容器"),
+]
+
+# MCP 进程特征（Claude Code 的子进程，可以按正常规则评分）
+# 注意：必须在 DANGER 检查之前判断，避免误杀会话窗口
+_MCP_PATTERNS = [
+    "mcp-server",
+    "mcp_server",
+    "/mcp/",
+    "/.claude/mcp",
+    "open-websearch",
+    "search-baidu",
+    "search-bing",
+    "search-bilibili",
 ]
 
 # 构建/编译/测试工具：可安全终止，重新运行即可
@@ -139,16 +152,22 @@ def advise(proc_info: dict) -> ProcessAdvice:
     risk = "safe"
     action = "kill"
 
-    # ── 规则 D：高危进程（立即返回，不被后续规则覆盖）──────────
-    danger_reason = _match_any(haystack, _DANGER_PATTERNS)
-    if danger_reason:
-        reasons.append(danger_reason)
-        if cpu > 5:
-            reasons.append(f"CPU 占用 {cpu:.1f}%，正在执行任务")
-            return ProcessAdvice(pid, "danger", "[不建议操作]", reasons, "leave")
-        else:
-            reasons.append("CPU 当前较低，可暂停后观察，但仍需谨慎")
-            return ProcessAdvice(pid, "danger", "[不建议操作]", reasons, "leave")
+    # ── 规则 MCP：MCP 子进程优先按正常规则评分（不受 danger 保护）──
+    is_mcp = _match_any(haystack, _MCP_PATTERNS)
+    if is_mcp:
+        reasons.append("Claude Code MCP 子进程，可按正常规则评分")
+        # 跳过 danger 检查，继续后续规则
+    else:
+        # ── 规则 D：高危进程（立即返回，不被后续规则覆盖）──────────
+        danger_reason = _match_any(haystack, _DANGER_PATTERNS)
+        if danger_reason:
+            reasons.append(danger_reason)
+            if cpu > 5:
+                reasons.append(f"CPU 占用 {cpu:.1f}%，正在执行任务")
+                return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
+            else:
+                reasons.append("CPU 当前较低，可暂停后观察，但仍需谨慎")
+                return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
 
     # ── 规则 C1：CPU 正在忙 ───────────────────────────────────
     if cpu > CPU_CAUTION_PCT:
@@ -202,12 +221,12 @@ def advise(proc_info: dict) -> ProcessAdvice:
 
     # ── 生成标签 ─────────────────────────────────────────────
     if risk == "safe":
-        label = "[可安全终止]"
+        label = "✅ 可安全终止"
     elif risk == "caution":
-        label = "[谨慎 - 建议先暂停]"
+        label = "⚠️ 谨慎（建议先暂停）"
         action = "pause"
     else:
-        label = "[不建议操作]"
+        label = "❌ 不建议操作"
         action = "leave"
 
     return ProcessAdvice(pid, risk, label, reasons, action)

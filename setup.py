@@ -10,9 +10,9 @@ from setuptools import setup
 APP = ["app_menubar.py"]
 
 DATA_FILES = [
-    ("web",    ["web/index.html"]),
-    ("",       ["config.toml"]),
-    ("assets", ["assets/icon.icns"]),
+    ("aigard/ui",    ["aigard/ui/index.html"]),
+    ("",             ["config.toml"]),
+    ("assets",       ["assets/icon.icns"]),
 ]
 
 OPTIONS = {
@@ -35,6 +35,9 @@ OPTIONS = {
             "AI Guard 在本地端口 8765 启动监控服务，仅供本机使用，不访问外部网络。",
     },
     "packages": [
+        "aigard",
+        "aigard.core",
+        "aigard.api",
         "fastapi",
         "uvicorn",
         "uvicorn.protocols",

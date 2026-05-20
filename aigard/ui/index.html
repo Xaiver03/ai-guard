@@ -170,12 +170,7 @@
     <!-- 主题切换按钮 -->
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
     <!-- 设置按钮 -->
-    <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="设置">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="8" cy="8" r="2.5"/>
-        <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4"/>
-      </svg>
-    </button>
+    <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="设置"></button>
     <button id="autokill-toggle" onclick="toggleAutoKill()" title="点击开启/关闭超阈值自动终止 Safe 进程"></button>
     <span id="status-badge"></span>
     <span id="last-update">—</span>
@@ -270,6 +265,17 @@
       <div class="log-empty">暂无自动终止记录</div>
     </div>
   </div>
+
+  <!-- 启动拦截黑名单 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">启动拦截黑名单</div>
+      <button class="btn btn-muted" style="font-size:11px;padding:3px 8px" onclick="clearBlacklist()">清空</button>
+    </div>
+    <div id="blacklist-container" style="font-size:12px;color:var(--muted);padding:8px 0">
+      <div style="text-align:center;padding:12px">暂无黑名单进程</div>
+    </div>
+  </div>
 </main>
 
 <div id="toast"></div>
@@ -307,6 +313,18 @@
     </section>
 
     <section class="settings-group">
+      <div class="settings-group-title">定时终止</div>
+      <div class="settings-row">
+        <label>启用定时终止</label>
+        <input type="checkbox" id="scheduled-kill-enabled" style="width:auto;height:16px">
+      </div>
+      <div class="settings-row"><label>终止间隔</label><input type="number" min="1" max="120" id="scheduled-kill-interval"><span class="unit">分钟</span></div>
+      <div style="font-size:11px;color:var(--muted);padding:8px 0;line-height:1.5">
+        每隔指定时间自动终止最多 3 个 safe 进程（不管内存是否超标）
+      </div>
+    </section>
+
+    <section class="settings-group">
       <div class="settings-group-title">进程评分规则</div>
       <div class="settings-row"><label>CPU 活跃判定（大于则 caution）</label><input type="number" min="1" max="100" data-key="scoring.cpu_caution_pct"><span class="unit">%</span></div>
       <div class="settings-row"><label>空转判定最短时长</label><input type="number" min="0.5" max="24" step="0.5" data-key="scoring.idle_min_hours"><span class="unit">小时</span></div>
@@ -333,6 +351,10 @@ const ICONS = {
   cross:  `<line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke-width="2"/>`,
   dot:    `<circle cx="8" cy="8" r="5" fill="currentColor" stroke="none"/>`,
   star:   `<polygon points="8,2 9.8,6.3 14.5,6.6 11,9.8 12.2,14.5 8,11.8 3.8,14.5 5,9.8 1.5,6.6 6.2,6.3" stroke-width="1.2"/>`,
+  moon:   `<path d="M12 12.5A5.5 5.5 0 0 1 6.5 4a5.5 5.5 0 1 0 7 7.5c-.5.1-1 .05-1.5 0z" fill="currentColor" stroke="none"/>`,
+  sun:    `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
+  gear:   `<circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4"/>`,
+  block:  `<circle cx="8" cy="8" r="6.5"/><line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/>`,
 };
 function icon(name, cls='') {
   const paths = ICONS[name] || '';
@@ -346,18 +368,34 @@ function icon(name, cls='') {
 let _lastProcs = [];
 let _selectedPids = new Set();
 let _autokillTriggerPct = 85;
+let _blockedProcesses = new Set();  // 黑名单进程名
 
-// ── 页面初始化：填充带图标的按钮文字 ──
-(function initButtons() {
-  document.getElementById('btn-select-safe').innerHTML =
-    `全选 ${icon('check','icon-green')} 安全`;
-  document.getElementById('btn-kill-all-safe').innerHTML =
-    `${icon('bolt')} 一键终止所有 ${icon('check','icon-green')} 安全进程`;
-  // 初始状态下自动终止按钮
-  setAutoKillUI(false, 85);
-  // 初始状态徽章
-  setStatus('normal');
-})();
+// ── 主题 ──────────────────────────────────────────────────
+function _applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const isDark = theme === 'dark';
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.innerHTML = isDark ? icon('moon') : icon('sun');
+  // 更新 Chart.js 图表颜色（图表初始化后才生效）
+  const gridColor   = isDark ? '#2a2d3e' : '#e5e7eb';
+  const tickColor   = isDark ? '#8892a4' : '#6b7280';
+  const legendColor = isDark ? '#8892a4' : '#6b7280';
+  if (typeof chartMem !== 'undefined' && chartMem) {
+    [chartMem, chartCpu].forEach(chart => {
+      chart.options.scales.y.grid.color = gridColor;
+      chart.options.scales.y.ticks.color = tickColor;
+      chart.options.plugins.legend.labels.color = legendColor;
+      chart.update('none');
+    });
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('aigard-theme', next);
+  _applyTheme(next);
+}
 
 // ── 颜色 ──
 function barColor(pct) {
@@ -449,9 +487,13 @@ function updateMetrics(m) {
 // ── 更新进程表 ──
 function updateProcesses(procs) {
   _lastProcs = procs || [];
+  renderTable(_lastProcs);
+}
+
+function renderTable(procs) {
   const tbody = document.getElementById('proc-tbody');
 
-  if (!_lastProcs.length) {
+  if (!procs.length) {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="9">暂无匹配的 AI / 开发工具进程</td></tr>';
     updateBatchButtons();
     return;
@@ -459,7 +501,7 @@ function updateProcesses(procs) {
 
   const prevSelected = new Set(_selectedPids);
 
-  tbody.innerHTML = _lastProcs.map(p => {
+  tbody.innerHTML = procs.map(p => {
     const isStopped  = p.status === 'stopped';
     const statusCls  = isStopped ? 'status-stopped' : 'status-running';
     const statusTxt  = isStopped ? '已暂停' : p.status;
@@ -475,8 +517,16 @@ function updateProcesses(procs) {
     if (risk === 'caution') { riskIcon = icon('warn','icon-yellow');  riskText = '谨慎（建议先暂停）'; }
     if (risk === 'danger')  { riskIcon = icon('cross','icon-red');    riskText = '不建议操作'; }
 
+    const procName = p.name.toLowerCase();
+    const isBlocked = _blockedProcesses.has(procName);
+
     let actions = '';
-    if (isStopped) {
+    if (isBlocked) {
+      // 黑名单进程：只显示"允许启动"按钮
+      actions = `<div class="btn-gap">
+        <button class="btn-sm btn-resume" onclick="unblockProcess('${procName}')">${icon('check','icon-green')} 允许启动</button>
+      </div>`;
+    } else if (isStopped) {
       actions = `<div class="btn-gap">
         <button class="btn-sm btn-resume" onclick="doAction(${p.pid},'resume')">恢复</button>
         <button class="btn-sm btn-kill"   onclick="doAction(${p.pid},'kill')">终止</button>
@@ -489,11 +539,13 @@ function updateProcesses(procs) {
       actions = `<div class="btn-gap">
         <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">${icon('star','icon-yellow')} 暂停</button>
         <button class="btn-sm btn-kill"  onclick="doAction(${p.pid},'kill')">终止</button>
+        <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
       </div>`;
     } else {
       actions = `<div class="btn-gap">
         <button class="btn-sm btn-kill"  style="font-weight:700" onclick="doAction(${p.pid},'kill')">${icon('star','icon-yellow')} 终止</button>
         <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">暂停</button>
+        <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
       </div>`;
     }
 
@@ -615,6 +667,48 @@ async function doAction(pid, action) {
   } catch (e) { showToast('cross', e.message, true); }
 }
 
+// ── 黑名单操作 ──
+async function blockProcess(procName) {
+  if (!confirm(`确认禁止「${procName}」重启？\n\n该进程启动后将被自动终止，直到手动允许启动。`)) return;
+  try {
+    const res = await fetch('/api/processes/block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: procName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '操作失败');
+    _blockedProcesses.add(procName);
+    updateBlacklist();
+    showToast('block', `已禁止「${procName}」重启`);
+    renderTable(_lastProcs);  // 刷新表格显示
+  } catch (e) { showToast('cross', e.message, true); }
+}
+
+async function unblockProcess(procName) {
+  try {
+    const res = await fetch('/api/processes/unblock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: procName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '操作失败');
+    _blockedProcesses.delete(procName);
+    updateBlacklist();
+    showToast('check', `已允许「${procName}」启动`);
+    renderTable(_lastProcs);  // 刷新表格显示
+  } catch (e) { showToast('cross', e.message, true); }
+}
+
+async function loadBlockedProcesses() {
+  try {
+    const data = await fetch('/api/processes/blocked').then(r => r.json());
+    _blockedProcesses = new Set(data.blocked || []);
+    updateBlacklist();
+  } catch (_) {}
+}
+
 // ── 自动终止日志 ──
 function updateAutoKillLog(log) {
   const el = document.getElementById('auto-kill-log');
@@ -630,6 +724,46 @@ function updateAutoKillLog(log) {
       <span>${entry.reason}</span>
     </div>`;
   }).join('');
+}
+
+// ── 黑名单显示 ──
+function updateBlacklist() {
+  const container = document.getElementById('blacklist-container');
+  if (!container) return;
+  if (_blockedProcesses.size === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:12px">暂无黑名单进程</div>';
+    return;
+  }
+  const items = Array.from(_blockedProcesses).map(name =>
+    `<div style="display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-weight:500;color:var(--text)">${name}</span>
+      <button class="btn-sm" style="background:rgba(34,197,94,.15);color:var(--green)" onclick="unblockProcess('${name}')">${icon('check','icon-green')} 允许启动</button>
+    </div>`
+  ).join('');
+  container.innerHTML = items;
+}
+
+async function clearBlacklist() {
+  if (_blockedProcesses.size === 0) {
+    showToast('warn', '黑名单已为空');
+    return;
+  }
+  if (!confirm(`确定清空黑名单？当前有 ${_blockedProcesses.size} 个进程被拦截`)) return;
+  try {
+    const promises = Array.from(_blockedProcesses).map(name =>
+      fetch('/api/processes/unblock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      })
+    );
+    await Promise.all(promises);
+    _blockedProcesses.clear();
+    updateBlacklist();
+    showToast('check', '黑名单已清空');
+  } catch (e) {
+    showToast('cross', '清空失败: ' + e.message, true);
+  }
 }
 
 // ── 自动终止开关 ──
@@ -674,7 +808,7 @@ function showToast(iconName, msg, isErr = false) {
   const el = document.getElementById('toast');
   const cls = isErr ? 'icon-red' : (iconName === 'bolt' ? 'icon-yellow' : 'icon-green');
   el.innerHTML = icon(iconName, cls) + `<span>${msg}</span>`;
-  el.style.borderColor = isErr ? '#ef4444' : '#22c55e';
+  el.style.borderColor = isErr ? 'var(--red)' : 'var(--green)';
   el.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
@@ -707,6 +841,11 @@ async function openSettings() {
         el.value = data[group][key];
       }
     });
+    // 加载定时终止配置
+    const schedData = await fetch('/api/scheduled-kill/status').then(r => r.json());
+    document.getElementById('scheduled-kill-enabled').checked = schedData.enabled || false;
+    document.getElementById('scheduled-kill-interval').value = schedData.interval_minutes || 10;
+
     document.getElementById('settings-overlay').classList.add('open');
     document.getElementById('settings-drawer').classList.add('open');
   } catch (e) { showToast('cross', '加载设置失败: ' + e.message, true); }
@@ -731,6 +870,16 @@ async function saveSettings() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error((await res.json()).detail || '保存失败');
+
+    // 保存定时终止配置
+    const schedEnabled = document.getElementById('scheduled-kill-enabled').checked;
+    const schedInterval = parseInt(document.getElementById('scheduled-kill-interval').value);
+    await fetch('/api/scheduled-kill/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: schedEnabled, interval_minutes: schedInterval }),
+    });
+
     // 刷新自动终止按钮阈值显示
     const s = await fetch('/api/autokill/status').then(r => r.json());
     _autokillTriggerPct = s.mem_trigger_pct || 85;
@@ -740,7 +889,33 @@ async function saveSettings() {
   } catch (e) { showToast('cross', e.message, true); }
 }
 
+// ── 页面初始化：填充带图标的按钮文字 ──
+(function initButtons() {
+  document.getElementById('btn-select-safe').innerHTML =
+    `全选 ${icon('check','icon-green')} 安全`;
+  document.getElementById('btn-kill-all-safe').innerHTML =
+    `${icon('bolt')} 一键终止所有 ${icon('check','icon-green')} 安全进程`;
+  // 初始化主题按钮图标
+  const savedTheme = localStorage.getItem('aigard-theme') || 'dark';
+  const themeBtn = document.getElementById('theme-btn');
+  if (themeBtn) themeBtn.innerHTML = savedTheme === 'dark' ? icon('moon') : icon('sun');
+  // 初始化设置按钮图标
+  const settingsBtn = document.getElementById('settings-btn');
+  if (settingsBtn) settingsBtn.innerHTML = icon('gear');
+  // 初始状态下自动终止按钮
+  setAutoKillUI(false, 85);
+  // 初始状态徽章
+  setStatus('normal');
+})();
+
+// 从 localStorage 恢复主题（图表已初始化，可安全更新颜色）
+(function restoreTheme() {
+  const saved = localStorage.getItem('aigard-theme') || 'dark';
+  _applyTheme(saved);
+})();
+
 loadAutoKillStatus();
+loadBlockedProcesses();
 connect();
 </script>
 </body>
