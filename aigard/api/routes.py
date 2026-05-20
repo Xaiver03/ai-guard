@@ -126,9 +126,24 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             }
 
         # 开发模式 vs py2app 打包后的路径
+        # py2app 打包后 base_dir 指向 Resources/，config.toml 也在 Resources/
         dev_path = base_dir / "config.toml"
         pkg_path = base_dir.parent / "config.toml"
-        config_path = dev_path if dev_path.exists() else pkg_path
+        # 如果 base_dir 是 zip 内路径（py2app 将代码打包进 zip），需要找到 Resources/
+        if not dev_path.exists() and not pkg_path.exists():
+            import sys
+            exe = Path(sys.executable)
+            if "Contents/MacOS" in str(exe):
+                resources = exe.parent.parent / "Resources"
+                res_path = resources / "config.toml"
+                if res_path.exists():
+                    config_path = res_path
+                else:
+                    config_path = dev_path  # fallback
+            else:
+                config_path = dev_path
+        else:
+            config_path = dev_path if dev_path.exists() else pkg_path
         with open(config_path, "wb") as f:
             tomli_w.dump(merged, f)
 
