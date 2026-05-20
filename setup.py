@@ -23,8 +23,8 @@ OPTIONS = {
         "CFBundleName":               "AI Guard",
         "CFBundleDisplayName":        "AI Guard",
         "CFBundleIdentifier":         "com.aigard.menubar",
-        "CFBundleVersion":            "1.1.1",
-        "CFBundleShortVersionString": "1.1.1",
+        "CFBundleVersion":            "1.1.2",
+        "CFBundleShortVersionString": "1.1.2",
         # 只在菜单栏显示，不出现在 Dock
         "LSUIElement":                True,
         "NSHighResolutionCapable":    True,
