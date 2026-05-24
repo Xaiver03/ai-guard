@@ -75,7 +75,7 @@ class AIGuardApp(rumps.App):
     def __init__(self):
         super().__init__(
             name="AI Guard",
-            title=None,        # 不显示文字，纯图标
+            title="AI Guard",  # 显示应用名称
             icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
             template=True,     # 模板图片：系统自动处理深色/浅色
             quit_button=None,
@@ -99,12 +99,14 @@ class AIGuardApp(rumps.App):
 
         self.menu = [
             rumps.MenuItem("打开监控面板", callback=self._open_panel),
+            rumps.MenuItem("Claude 使用统计", callback=self._open_usage),
             rumps.separator,
             self._status_item,
             rumps.separator,
             rumps.MenuItem("一键终止安全进程", callback=self._kill_safe),
             self._autokill_item,
             rumps.separator,
+            rumps.MenuItem("检查更新", callback=self._check_update),
             rumps.MenuItem("偏好设置", callback=self._open_config),
             rumps.separator,
             rumps.MenuItem("退出 AI Guard", callback=self._quit),
@@ -124,6 +126,9 @@ class AIGuardApp(rumps.App):
 
     def _open_panel(self, _):
         webbrowser.open(self._url)
+
+    def _open_usage(self, _):
+        webbrowser.open(f"{self._url}/usage.html")
 
     def _open_config(self, _):
         import subprocess
@@ -168,6 +173,34 @@ class AIGuardApp(rumps.App):
         msg = "当内存压力过高时，将自动终止安全进程" if state else "不再自动终止进程"
         rumps.notification("AI Guard", f"自动终止{status}", msg)
 
+    def _check_update(self, _):
+        """检查更新"""
+        import requests
+        try:
+            resp = requests.get(f"{self._url}/api/update/check", timeout=10)
+            if resp.status_code != 200:
+                rumps.notification("AI Guard", "检查更新失败", "无法连接到服务器")
+                return
+
+            data = resp.json()
+            if data.get('has_update'):
+                latest = data['latest_version']
+                current = data['current_version']
+                msg = f"发现新版本 v{latest}（当前 v{current}）"
+
+                # 显示通知
+                rumps.notification("AI Guard", "发现新版本", msg)
+
+                # 打开下载页面
+                if data.get('html_url'):
+                    webbrowser.open(data['html_url'])
+            else:
+                current = data['current_version']
+                rumps.notification("AI Guard", "已是最新版本", f"当前版本 v{current}")
+
+        except Exception as e:
+            rumps.notification("AI Guard", "检查更新失败", str(e))
+
     def _quit(self, _):
         rumps.quit_application()
 
@@ -191,10 +224,31 @@ class AIGuardApp(rumps.App):
                 self.icon = icon_path
             self._last_level = level
 
-        # 状态行 - 显示 CPU、内存、Swap、磁盘
+        # 菜单栏标题 - 多行显示（rumps 支持 \n）
         cpu = latest.get("cpu_percent", 0)
         disk = latest.get("disk_percent", 0)
-        self._status_item.title = f"CPU {cpu:.0f}% · 内存 {mem:.0f}% · Swap {swap:.0f}% · 磁盘 {disk:.0f}%"
+
+        # 菜单栏只显示图标，不显示文字（避免占用太多宽度）
+        # 数据统计信息放在下拉菜单的状态行中
+        self.title = None  # 只显示图标
+
+        # 状态行 - 详细信息（在下拉菜单中显示）
+        usage = _main_mod.threads.get_today_usage()
+        usage_str = ""
+        if usage and usage.get('total_tokens', 0) > 0:
+            tokens = usage['total_tokens']
+            cost = usage.get('total_cost', 0)
+            if tokens >= 1_000_000:
+                token_str = f"{tokens / 1_000_000:.1f}M"
+            elif tokens >= 1000:
+                token_str = f"{tokens / 1000:.0f}K"
+            else:
+                token_str = str(tokens)
+            usage_str = f" | Token {token_str} ${cost:.2f}"
+
+        self._status_item.title = (
+            f"CPU {cpu:.0f}% / Mem {mem:.0f}% / Swap {swap:.0f}% / Disk {disk:.0f}%{usage_str}"
+        )
 
         # 同步自动终止开关
         state = _main_mod.threads.autokill_enabled

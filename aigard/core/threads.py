@@ -44,6 +44,7 @@ class BackgroundThreads:
             threading.Thread(target=self._auto_kill_loop, daemon=True),
             threading.Thread(target=self._block_loop, daemon=True),
             threading.Thread(target=self._scheduled_kill_loop, daemon=True),
+            threading.Thread(target=self._usage_refresh_loop, daemon=True),
         ]
         for t in self._threads:
             t.start()
@@ -200,3 +201,158 @@ class BackgroundThreads:
 
             if killed_count:
                 print(f"[scheduled-kill] 定时终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
+
+    def _usage_refresh_loop(self):
+        """Usage 轮询线程：每 5 分钟增量更新当天的 Claude 使用数据
+
+        内存策略：
+        - 不使用 load_all_usage()（全量加载 175MB+）
+        - 只扫描今天修改过的 JSONL 文件
+        - 只解析这些文件中的今日数据
+        - 峰值内存约 20-30MB，立即回收
+        """
+        import gc
+        import json
+        from pathlib import Path
+        from datetime import datetime
+        from aigard.core.usage import (
+            PricingManager, UsageCalculator, UsageAggregator, UsageCache
+        )
+        from aigard.core.usage.models import UsageEntry
+
+        REFRESH_INTERVAL = 300  # 5 分钟
+
+        # 等待服务启动
+        time.sleep(10)
+
+        while True:
+            try:
+                cache = UsageCache()
+                today_str = datetime.now().strftime('%Y-%m-%d')
+                today_start = f"{today_str}T00:00:00"
+
+                # 首次：如果缓存完全为空，触发 API 端的全量加载
+                if not cache.has_data():
+                    print("[usage] 缓存为空，将在首次 API 请求时加载")
+                    # 不在后台线程做全量加载，让 API 层的 _ensure_cache() 处理
+                    time.sleep(REFRESH_INTERVAL)
+                    continue
+
+                # 增量更新：只扫描今天修改过的 JSONL
+                claude_dir = Path.home() / ".claude" / "projects"
+                today_entries = []
+
+                if claude_dir.exists():
+                    today_ts = datetime.now().replace(hour=0, minute=0, second=0).timestamp()
+
+                    for project_dir in claude_dir.iterdir():
+                        if not project_dir.is_dir():
+                            continue
+                        project_name = project_dir.name
+
+                        for jsonl_file in project_dir.glob("*.jsonl"):
+                            # 只处理今天修改过的文件
+                            if jsonl_file.stat().st_mtime < today_ts:
+                                continue
+
+                            try:
+                                with open(jsonl_file, 'r', encoding='utf-8') as f:
+                                    for line in f:
+                                        line = line.strip()
+                                        if not line:
+                                            continue
+                                        try:
+                                            data = json.loads(line)
+                                            if data.get('type') != 'assistant':
+                                                continue
+                                            ts_str = data.get('timestamp', '')
+                                            if not ts_str or not ts_str.startswith(today_str):
+                                                continue
+                                            msg = data.get('message', {})
+                                            usage = msg.get('usage')
+                                            if not usage:
+                                                continue
+
+                                            entry = UsageEntry(
+                                                timestamp=datetime.strptime(ts_str[:19], '%Y-%m-%dT%H:%M:%S'),
+                                                model=msg.get('model', 'unknown'),
+                                                input_tokens=usage.get('input_tokens', 0),
+                                                output_tokens=usage.get('output_tokens', 0),
+                                                cache_creation_tokens=usage.get('cache_creation_input_tokens', 0),
+                                                cache_read_tokens=usage.get('cache_read_input_tokens', 0),
+                                                cost=0.0,
+                                                project=project_name,
+                                                session_id=jsonl_file.stem
+                                            )
+                                            today_entries.append(entry)
+                                        except (json.JSONDecodeError, ValueError, KeyError):
+                                            continue
+                            except Exception:
+                                continue
+
+                if today_entries:
+                    pricing = PricingManager()
+                    calc = UsageCalculator(pricing)
+                    agg = UsageAggregator(calc)
+
+                    daily = agg.aggregate_by_day(today_entries)
+                    hourly = agg.aggregate_by_hour(today_entries)
+
+                    daily_data = [self._summary_to_dict(s, 'daily') for s in daily]
+                    hourly_data = [self._summary_to_dict(s, 'hourly') for s in hourly]
+
+                    cache.save_daily(daily_data)
+                    cache.save_hourly(hourly_data)
+                    cache.set_last_update_time(datetime.now().isoformat())
+
+                # 更新菜单栏今日统计
+                today_summary = cache.get_summary(
+                    start_date=today_str,
+                    end_date=today_str
+                )
+                with self.lock:
+                    self._today_usage = today_summary
+
+                # 释放
+                del today_entries
+                gc.collect()
+
+            except Exception as e:
+                print(f"[usage] 更新失败: {e}")
+
+            time.sleep(REFRESH_INTERVAL)
+
+    def _summary_to_dict(self, summary, kind):
+        """将 DailySummary/HourlySummary 转为字典"""
+        base = {
+            'input_tokens': summary.input_tokens,
+            'output_tokens': summary.output_tokens,
+            'cache_creation_tokens': summary.cache_creation_tokens,
+            'cache_read_tokens': summary.cache_read_tokens,
+            'total_tokens': summary.total_tokens,
+            'total_cost': summary.total_cost,
+            'models_used': summary.models_used,
+        }
+        if kind == 'daily':
+            base['date'] = summary.date
+            base['model_breakdowns'] = [
+                {
+                    'model_name': mb.model_name,
+                    'input_tokens': mb.input_tokens,
+                    'output_tokens': mb.output_tokens,
+                    'cache_creation_tokens': mb.cache_creation_tokens,
+                    'cache_read_tokens': mb.cache_read_tokens,
+                    'total_tokens': mb.total_tokens,
+                    'cost': mb.cost,
+                    'request_count': mb.request_count,
+                }
+                for mb in summary.model_breakdowns
+            ]
+        else:
+            base['hour'] = summary.hour
+        return base
+
+    def get_today_usage(self):
+        """获取今日使用统计（供菜单栏调用）"""
+        with self.lock:
+            return getattr(self, '_today_usage', None)
