@@ -11,30 +11,30 @@
 
   /* ── 深色主题（默认）──────────────────────────────── */
   :root, [data-theme="dark"] {
-    --bg: #0f1117; --card: #1a1d27; --card2: #12141e; --border: #2a2d3e;
-    --text: #e2e8f0; --muted: #8892a4; --muted2: #5a6478;
-    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
-    --blue: #3b82f6; --purple: #a855f7;
-    --gauge-track: #2a2d3e;
-    --row-hover: #1e2130; --row-selected: #1a2230;
-    --btn-muted-bg: #2a2d3e;
-    --input-bg: #12141e;
-    --shadow: 0 4px 24px rgba(0,0,0,.4);
+    --bg: #0d1117; --card: #161b22; --card2: #1c2128; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
+    --green: #3fb950; --yellow: #d29922; --red: #f85149;
+    --blue: #58a6ff; --purple: #bc8cff;
+    --gauge-track: #21262d;
+    --row-hover: #1c2128; --row-selected: #1a2230;
+    --btn-muted-bg: #21262d;
+    --input-bg: #0d1117;
+    --shadow: 0 2px 8px rgba(0,0,0,.3);
   }
 
   /* ── 浅色主题 ─────────────────────────────────────── */
   [data-theme="light"] {
-    --bg: #f4f6fb; --card: #ffffff; --card2: #f0f2f8; --border: #dde1ec;
-    --text: #1a1d2e; --muted: #6b7280; --muted2: #9ca3af;
-    --green: #16a34a; --yellow: #d97706; --red: #dc2626;
-    --blue: #2563eb; --purple: #7c3aed;
-    --gauge-track: #e5e7eb;
-    --row-hover: #f0f4ff; --row-selected: #e8eeff;
-    --btn-muted-bg: #e5e7eb;
-    --input-bg: #f9fafb;
-    --shadow: 0 4px 24px rgba(0,0,0,.08);
+    --bg: #f6f8fa; --card: #ffffff; --card2: #f6f8fa; --border: #d0d7de;
+    --text: #1f2328; --muted: #656d76; --muted2: #8b949e;
+    --green: #1a7f37; --yellow: #9a6700; --red: #cf222e;
+    --blue: #0969da; --purple: #8250df;
+    --gauge-track: #eaeef2;
+    --row-hover: #f6f8fa; --row-selected: #ddf4ff;
+    --btn-muted-bg: #eaeef2;
+    --input-bg: #f6f8fa;
+    --shadow: 0 1px 3px rgba(31,35,40,.12), 0 8px 24px rgba(66,74,83,.12);
   }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-size: 14px; min-height: 100vh; transition: background .2s, color .2s; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; font-size: 14px; min-height: 100vh; transition: background .2s, color .2s; }
 
   /* Header */
   header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
@@ -198,6 +198,7 @@
   <nav style="display:flex;gap:6px;margin-left:16px">
     <a href="/" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;background:rgba(59,130,246,.15);color:var(--blue);">监控面板</a>
     <a href="/bookmarks.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">书签管理</a>
+    <a href="/usage.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">Claude 统计</a>
   </nav>
   <div class="header-right">
     <!-- 主题切换按钮 -->
@@ -429,11 +430,13 @@ async function switchView(view) {
   // 获取并显示对应的进程列表
   try {
     if (view === 'ai') {
+      stopAllProcessesPolling();
       const data = await fetch('/api/processes').then(r => r.json());
-      updateProcesses(data);
+      updateProcesses(Array.isArray(data) ? data : []);
     } else {
       const data = await fetch('/api/processes/all').then(r => r.json());
-      updateProcesses(data);
+      updateProcesses(Array.isArray(data) ? data : []);
+      startAllProcessesPolling();
     }
   } catch (e) {
     console.error('切换视图失败:', e);
@@ -828,7 +831,7 @@ async function removeFromWhitelist(procName, pid) {
 async function fetchProcesses() {
   try {
     const data = await fetch('/api/processes').then(r => r.json());
-    updateProcesses(data.processes || []);
+    updateProcesses(Array.isArray(data) ? data : (data.processes || []));
   } catch (e) {
     console.error('获取进程列表失败:', e);
   }
@@ -954,7 +957,7 @@ function connect() {
     try {
       const { metrics, processes, auto_kill_log, autokill_enabled } = JSON.parse(e.data);
       updateMetrics(metrics);
-      // 只在 AI 视图时自动更新进程列表
+      // 只在 AI 视图时自动更新进程列表（SSE 只推送 AI 进程）
       if (_currentView === 'ai') {
         updateProcesses(processes);
       }
@@ -965,6 +968,22 @@ function connect() {
     } catch (_) {}
   };
   es.onerror = () => { es.close(); setTimeout(connect, 3000); };
+}
+
+// 活动监视器视图定时轮询（每 5 秒刷新所有进程）
+let _allProcessesTimer = null;
+function startAllProcessesPolling() {
+  stopAllProcessesPolling();
+  _allProcessesTimer = setInterval(async () => {
+    if (_currentView !== 'all') return;
+    try {
+      const data = await fetch('/api/processes/all').then(r => r.json());
+      updateProcesses(Array.isArray(data) ? data : []);
+    } catch (_) {}
+  }, 5000);
+}
+function stopAllProcessesPolling() {
+  if (_allProcessesTimer) { clearInterval(_allProcessesTimer); _allProcessesTimer = null; }
 }
 
 // ── Settings 抽屉 ──
