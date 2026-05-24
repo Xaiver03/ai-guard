@@ -3,16 +3,52 @@
 > Mac AI 开发资源守护工具 — 监控 + 告警 + 安全干预
 > **当前阶段：开发为 macOS 菜单栏原生 App**
 
+## 开发流程原则
+
+**每次代码更改后必须完成以下步骤：**
+
+1. **重新打包应用**
+   ```bash
+   ./build.sh
+   ```
+
+2. **安装到本地测试**
+   ```bash
+   cp -r "dist/AI Guard.app" /Applications/
+   open "/Applications/AI Guard.app"
+   ```
+
+3. **更新文档**
+   - 更新 README.md（如果有新功能或配置变更）
+   - 更新 CLAUDE.md（如果有架构或技术栈变更）
+
+4. **Git 提交并推送**
+   ```bash
+   git add .
+   git commit -m "feat: 描述你的更改"
+   git push origin main
+   ```
+
+5. **验证功能**
+   - 打开 Web UI (http://localhost:8765)
+   - 测试新功能是否正常工作
+   - 检查菜单栏状态显示是否正确
+
+**注意：** 不要跳过任何步骤，确保每次更改都经过完整的测试和发布流程。
+
 ## 项目简介
 
 解决使用 Claude Code / Codex / Cursor 等 AI 编程 Agent 时，Mac 内存/Swap/磁盘被快速耗尽的问题。
 
 **核心功能：**
-1. 实时监控内存、Swap、磁盘压力
-2. 分级告警（macOS 原生通知）
-3. 可视化仪表盘（浏览器 Web UI）
+1. 实时监控内存、Swap、磁盘、CPU 压力
+2. 分级告警（macOS 原生通知，Swap 独立冷却时间）
+3. 可视化仪表盘（浏览器 Web UI，实时折线图）
 4. 安全进程干预（暂停/恢复/终止，不强制 kill）
-5. 菜单栏托盘驻留（rumps），开机自启，无需开终端
+5. 进程白名单（永不自动终止的关键进程）
+6. 所有进程视图（类似活动监视器，可查看系统所有进程）
+7. 书签管理（智能分析和管理浏览器书签）
+8. 菜单栏托盘驻留（rumps），开机自启，显示 CPU/内存/Swap/磁盘状态
 
 ## 技术栈
 
@@ -34,31 +70,42 @@
 
 ```
 AI Guard/
-├── main.py              # FastAPI 服务 + 后台监控线程（含 start_server()）
-├── app_menubar.py       # 菜单栏 App 入口（rumps，开发/运行时入口）
-├── monitor.py           # 系统指标采集（psutil）
-├── alerter.py           # 分级告警（osascript macOS 通知）
-├── killer.py            # 安全进程干预（SIGSTOP → 确认 → SIGTERM）
-├── advisor.py           # 进程安全评分
-├── alert_history.py     # SQLite 告警历史持久化（~/.aigard/alert_history.db）
-├── config.toml          # 用户配置：阈值、监控关键字
-├── setup.py             # py2app 打包配置
-├── build.sh             # 一键打包脚本
-├── requirements.txt     # 运行时依赖（含 rumps）
-├── requirements-dev.txt # 开发依赖（py2app）
+├── main.py                    # FastAPI 服务 + 后台监控线程（含 start_server()）
+├── app_menubar.py             # 菜单栏 App 入口（rumps，开发/运行时入口）
+├── config.toml                # 用户配置：阈值、监控关键字、白名单
+├── setup.py                   # py2app 打包配置
+├── build.sh                   # 一键打包脚本
+├── requirements.txt           # 运行时依赖（含 rumps）
+├── requirements-dev.txt       # 开发依赖（py2app）
+├── aigard/
+│   ├── core/
+│   │   ├── monitor.py         # 系统指标采集（psutil）
+│   │   ├── alerter.py         # 分级告警（osascript macOS 通知）
+│   │   ├── threads.py         # 后台线程管理
+│   │   ├── whitelist.py       # 白名单管理
+│   │   └── ...
+│   ├── api/
+│   │   ├── routes.py          # 主要 API 路由
+│   │   ├── whitelist.py       # 白名单 API
+│   │   ├── bookmarks.py       # 书签 API
+│   │   └── ...
+│   ├── ui/
+│   │   ├── index.html         # 实时监控仪表盘
+│   │   └── bookmarks.html     # 书签管理界面
+│   └── bookmarks/             # 书签分析模块
 ├── assets/
-│   ├── icon.png         # App 图标源文件（1024×1024）
-│   └── icon.icns        # macOS 图标格式
+│   ├── icon.png               # App 图标源文件（1024×1024）
+│   └── icon.icns              # macOS 图标格式
 ├── scripts/
-│   ├── install_autostart.sh    # 安装开机自启（launchd）
-│   ├── uninstall_autostart.sh  # 卸载开机自启
+│   ├── install_autostart.sh   # 安装开机自启（launchd）
+│   ├── uninstall_autostart.sh # 卸载开机自启
 │   └── com.aigard.menubar.plist # LaunchAgent plist 模板
-├── web/
-│   └── index.html       # 实时仪表盘
 ├── docs/
-│   └── plans/
-│       └── 2026-05-19-mac-menubar-app.md  # 当前实现计划
-└── SCORING.md           # 进程安全评分规则说明
+│   ├── plans/
+│   │   ├── 2026-05-19-mac-menubar-app.md  # 菜单栏 App 实现计划
+│   │   └── v1.2.0-feature-planning.md     # v1.2.0 版本规划
+│   └── BOOKMARKS_GUIDE.md     # 书签功能使用指南
+└── SCORING.md                 # 进程安全评分规则说明
 ```
 
 ## 快速启动
@@ -138,8 +185,9 @@ AI Guard.app（菜单栏托盘）
 
 菜单项：
 - 📊 打开监控面板
-- 状态：内存 XX% · Swap XX%（每2秒刷新）
-- ⚡ 自动终止：开/关
+- 状态：CPU XX% · 内存 XX% · Swap XX% · 磁盘 XX%（每2秒刷新）
+- ⚡ 自动终止：开/关（带 Toast 通知）
+- 🔪 一键终止安全进程
 - ⚙️ 偏好设置（打开 config.toml）
 - 退出 AI Guard
 

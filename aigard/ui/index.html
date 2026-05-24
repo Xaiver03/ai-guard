@@ -73,6 +73,23 @@
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; transition: background .2s, border-color .2s; }
   .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .view-switcher { display: flex; gap: 4px; }
+  .btn-view {
+    padding: 4px 10px;
+    font-size: 11px;
+    background: var(--card2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-view:hover { background: var(--row-hover); }
+  .btn-view.active {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+  }
 
   /* Gauge */
   .gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
@@ -104,7 +121,19 @@
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--row-hover); }
   tr.selected td { background: var(--row-selected); }
-  .proc-name { font-weight: 600; }
+  .proc-name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .whitelist-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(59,130,246,.15);
+    color: var(--blue);
+    white-space: nowrap;
+  }
   .proc-cmd { color: var(--muted); font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-running { color: var(--green); font-size: 12px; }
   .status-stopped { color: var(--yellow); font-size: 12px; }
@@ -166,6 +195,10 @@
 
 <header>
   <div class="logo">AI <span>Guard</span></div>
+  <nav style="display:flex;gap:6px;margin-left:16px">
+    <a href="/" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;background:rgba(59,130,246,.15);color:var(--blue);">监控面板</a>
+    <a href="/bookmarks.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">书签管理</a>
+  </nav>
   <div class="header-right">
     <!-- 主题切换按钮 -->
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
@@ -221,7 +254,11 @@
   <!-- 进程表 -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">AI / 开发工具进程</div>
+      <div class="card-title" id="process-view-title">AI / 开发工具进程</div>
+      <div class="view-switcher">
+        <button class="btn btn-sm btn-view active" data-view="ai" onclick="switchView('ai')">AI/开发进程</button>
+        <button class="btn btn-sm btn-view" data-view="all" onclick="switchView('all')">所有进程</button>
+      </div>
     </div>
 
     <!-- 批量操作栏 -->
@@ -355,6 +392,7 @@ const ICONS = {
   sun:    `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
   gear:   `<path d="M8 1.5L9.5 3.5L11.8 3L12.5 5.2L14.5 6L13.5 8L14.5 10L12.5 10.8L11.8 13L9.5 12.5L8 14.5L6.5 12.5L4.2 13L3.5 10.8L1.5 10L2.5 8L1.5 6L3.5 5.2L4.2 3L6.5 3.5Z" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor" stroke="none"/>`,
   block:  `<circle cx="8" cy="8" r="6.5"/><line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/>`,
+  shield: `<path d="M8 2L3 4v4c0 3 2 6 5 7 3-1 5-4 5-7V4z" stroke-width="1.5"/><polyline points="5.5,8 7.5,10 10.5,6" stroke-width="1.5"/>`,
 };
 function icon(name, cls='') {
   const paths = ICONS[name] || '';
@@ -369,6 +407,38 @@ let _lastProcs = [];
 let _selectedPids = new Set();
 let _autokillTriggerPct = 85;
 let _blockedProcesses = new Set();  // 黑名单进程名
+let _currentView = 'ai';  // 当前视图：'ai' 或 'all'
+
+// ── 视图切换 ──────────────────────────────────────────────
+async function switchView(view) {
+  _currentView = view;
+
+  // 更新按钮状态
+  document.querySelectorAll('.btn-view').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // 更新标题
+  const title = document.getElementById('process-view-title');
+  if (view === 'ai') {
+    title.textContent = 'AI / 开发工具进程';
+  } else {
+    title.textContent = '所有进程（活动监视器）';
+  }
+
+  // 获取并显示对应的进程列表
+  try {
+    if (view === 'ai') {
+      const data = await fetch('/api/processes').then(r => r.json());
+      updateProcesses(data);
+    } else {
+      const data = await fetch('/api/processes/all').then(r => r.json());
+      updateProcesses(data);
+    }
+  } catch (e) {
+    console.error('切换视图失败:', e);
+  }
+}
 
 // ── 主题 ──────────────────────────────────────────────────
 function _applyTheme(theme) {
@@ -494,7 +564,10 @@ function renderTable(procs) {
   const tbody = document.getElementById('proc-tbody');
 
   if (!procs.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">暂无匹配的 AI / 开发工具进程</td></tr>';
+    const emptyText = _currentView === 'ai'
+      ? '暂无匹配的 AI / 开发工具进程'
+      : '暂无进程数据';
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${emptyText}</td></tr>`;
     updateBatchButtons();
     return;
   }
@@ -509,6 +582,7 @@ function renderTable(procs) {
     const tipText    = (p.risk_reasons || []).map(r => '• ' + r).join('\n');
     const isChecked  = prevSelected.has(p.pid);
     const isSelected = isChecked ? 'selected' : '';
+    const isWhitelisted = p.whitelisted || false;
 
     // risk label with icon
     let riskIcon = '';
@@ -520,6 +594,11 @@ function renderTable(procs) {
     const procName = p.name.toLowerCase();
     const isBlocked = _blockedProcesses.has(procName);
 
+    // 白名单标记
+    const whitelistBadge = isWhitelisted
+      ? `<span class="whitelist-badge" title="已加入白名单，永不自动终止">${icon('shield','icon-blue')} 白名单</span>`
+      : '';
+
     let actions = '';
     if (isBlocked) {
       // 黑名单进程：只显示"允许启动"按钮
@@ -530,6 +609,10 @@ function renderTable(procs) {
       actions = `<div class="btn-gap">
         <button class="btn-sm btn-resume" onclick="doAction(${p.pid},'resume')">恢复</button>
         <button class="btn-sm btn-kill"   onclick="doAction(${p.pid},'kill')">终止</button>
+        ${isWhitelisted
+          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
+          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+        }
       </div>`;
     } else if (risk === 'danger') {
       actions = `<div class="btn-gap">
@@ -540,19 +623,27 @@ function renderTable(procs) {
         <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">${icon('star','icon-yellow')} 暂停</button>
         <button class="btn-sm btn-kill"  onclick="doAction(${p.pid},'kill')">终止</button>
         <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
+        ${isWhitelisted
+          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
+          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+        }
       </div>`;
     } else {
       actions = `<div class="btn-gap">
         <button class="btn-sm btn-kill"  style="font-weight:700" onclick="doAction(${p.pid},'kill')">${icon('star','icon-yellow')} 终止</button>
         <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">暂停</button>
         <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
+        ${isWhitelisted
+          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
+          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+        }
       </div>`;
     }
 
     return `<tr class="${isSelected}" data-pid="${p.pid}">
       <td><input type="checkbox" class="proc-chk" data-pid="${p.pid}" ${isChecked ? 'checked' : ''} onchange="onCheckChange(this)"></td>
       <td>${p.pid}</td>
-      <td><div class="proc-name">${p.name}</div></td>
+      <td><div class="proc-name">${p.name}${whitelistBadge}</div></td>
       <td><div class="proc-cmd" title="${p.cmdline}">${p.cmdline || '—'}</div></td>
       <td>${p.mem_mb.toFixed(0)}</td>
       <td>${p.cpu_percent.toFixed(1)}</td>
@@ -701,6 +792,48 @@ async function unblockProcess(procName) {
   } catch (e) { showToast('cross', e.message, true); }
 }
 
+// ── 白名单管理 ──
+async function addToWhitelist(procName, pid) {
+  if (!confirm(`确认将「${procName}」加入白名单？\n\n加入白名单后，该进程将永不被自动终止。`)) return;
+  try {
+    const res = await fetch('/api/whitelist/process-name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: procName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '操作失败');
+    showToast('shield', `已将「${procName}」加入白名单`);
+    // 刷新进程列表以更新白名单标记
+    await fetchProcesses();
+  } catch (e) { showToast('cross', e.message, true); }
+}
+
+async function removeFromWhitelist(procName, pid) {
+  if (!confirm(`确认将「${procName}」移出白名单？\n\n移出后，该进程可能会被自动终止。`)) return;
+  try {
+    const res = await fetch('/api/whitelist/process-name', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: procName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '操作失败');
+    showToast('check', `已将「${procName}」移出白名单`);
+    // 刷新进程列表以更新白名单标记
+    await fetchProcesses();
+  } catch (e) { showToast('cross', e.message, true); }
+}
+
+async function fetchProcesses() {
+  try {
+    const data = await fetch('/api/processes').then(r => r.json());
+    updateProcesses(data.processes || []);
+  } catch (e) {
+    console.error('获取进程列表失败:', e);
+  }
+}
+
 async function loadBlockedProcesses() {
   try {
     const data = await fetch('/api/processes/blocked').then(r => r.json());
@@ -821,7 +954,10 @@ function connect() {
     try {
       const { metrics, processes, auto_kill_log, autokill_enabled } = JSON.parse(e.data);
       updateMetrics(metrics);
-      updateProcesses(processes);
+      // 只在 AI 视图时自动更新进程列表
+      if (_currentView === 'ai') {
+        updateProcesses(processes);
+      }
       updateAutoKillLog(auto_kill_log);
       if (autokill_enabled !== undefined) {
         setAutoKillUI(autokill_enabled, _autokillTriggerPct);
