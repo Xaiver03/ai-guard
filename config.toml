@@ -51,3 +51,9 @@ command_keywords = []
 
 # PID 白名单（临时，重启后失效，运行时动态添加）
 pids = []
+
+[usage]
+# Claude 数据目录
+claude_data_dir = "~/.claude"
+# 数据缓存时间（秒）
+cache_ttl = 300

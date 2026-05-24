@@ -4,14 +4,45 @@ FastAPI 路由定义
 
 import asyncio
 import json
+import time
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from aigard.core import pause_process, resume_process, kill_process
+
+
+# ── 数据缓存和防抖 ────────────────────────────────────────────
+class DataCache:
+    """数据缓存，支持防抖（60秒内返回缓存）"""
+    def __init__(self, ttl: int = 60):
+        self.ttl = ttl
+        self._cache: Dict[str, tuple[float, any]] = {}
+
+    def get(self, key: str) -> Optional[any]:
+        """获取缓存数据，过期返回 None"""
+        if key not in self._cache:
+            return None
+        timestamp, data = self._cache[key]
+        if time.time() - timestamp > self.ttl:
+            del self._cache[key]
+            return None
+        return data
+
+    def set(self, key: str, data: any):
+        """设置缓存数据"""
+        self._cache[key] = (time.time(), data)
+
+    def clear(self, key: str):
+        """清除指定缓存"""
+        self._cache.pop(key, None)
+
+
+# 全局缓存实例（60秒 TTL）
+_data_cache = DataCache(ttl=60)
 
 
 def create_app(base_dir: Path, threads_manager) -> FastAPI:
@@ -25,6 +56,10 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     # 注册书签管理路由
     from aigard.api.bookmarks import router as bookmarks_router
     app.include_router(bookmarks_router)
+
+    # 注册 Claude 使用统计路由
+    from aigard.api.usage import router as usage_router
+    app.include_router(usage_router)
 
     # ── 首页 ──────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
@@ -46,17 +81,35 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
+    # ── Claude 使用统计页面 ──────────────────────────────────
+    @app.get("/usage.html", response_class=HTMLResponse)
+    def usage_page():
+        dev_path = base_dir / "aigard" / "ui" / "usage.html"
+        pkg_path = base_dir / "ui" / "usage.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
     # ── 指标和历史 ────────────────────────────────────────────
     @app.get("/api/metrics")
     def get_metrics():
+        """获取当前指标（无缓存，实时数据）"""
         return threads_manager.history.latest or {}
 
     @app.get("/api/history")
     def get_history():
+        """获取历史数据（无缓存，实时数据）"""
         return threads_manager.history.get_all()
 
     @app.get("/api/processes")
     def get_processes():
+        """获取 AI 进程列表（60秒缓存）"""
+        # 尝试从缓存获取
+        cached = _data_cache.get("processes")
+        if cached is not None:
+            return cached
+
+        # 重新计算
         with threads_manager.lock:
             processes = list(threads_manager.latest_processes)
 
@@ -65,11 +118,18 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         for proc in processes:
             proc["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc)
 
+        # 缓存结果
+        _data_cache.set("processes", processes)
         return processes
 
     @app.get("/api/processes/all")
     def get_all_processes():
-        """获取所有进程（类似活动监视器）"""
+        """获取所有进程（类似活动监视器，60秒缓存）"""
+        # 尝试从缓存获取
+        cached = _data_cache.get("all_processes")
+        if cached is not None:
+            return cached
+
         from aigard.core import collect_all_processes
         import aigard.core.advisor as _advisor_mod
         import main as _main_mod
@@ -93,6 +153,8 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             proc_dict["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc_dict)
             result.append(proc_dict)
 
+        # 缓存结果
+        _data_cache.set("all_processes", result)
         return result
 
     @app.get("/api/autokill/log")
@@ -105,6 +167,42 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         """返回最近 20 条 warn/crit 告警历史"""
         from alert_history import get_recent_alerts
         return get_recent_alerts(20)
+
+    # ── 缓存管理 ──────────────────────────────────────────────
+    @app.post("/api/cache/clear")
+    def clear_cache():
+        """清除所有缓存，强制刷新数据"""
+        _data_cache._cache.clear()
+        return {"status": "ok", "message": "缓存已清除"}
+
+    @app.get("/api/cache/stats")
+    def get_cache_stats():
+        """获取缓存统计信息"""
+        stats = {}
+        for key, (timestamp, _) in _data_cache._cache.items():
+            age = time.time() - timestamp
+            stats[key] = {
+                "age_seconds": round(age, 1),
+                "expires_in": round(_data_cache.ttl - age, 1)
+            }
+        return stats
+
+    # ── 自动更新 ──────────────────────────────────────────────
+    @app.get("/api/update/check")
+    def check_update():
+        """检查是否有新版本"""
+        from aigard.updater import UpdateChecker
+        checker = UpdateChecker()
+        result = checker.check_update()
+        if result is None:
+            raise HTTPException(status_code=503, detail="无法连接到 GitHub")
+        return result
+
+    @app.get("/api/update/current-version")
+    def get_current_version():
+        """获取当前版本号"""
+        from aigard.updater import CURRENT_VERSION
+        return {"version": CURRENT_VERSION}
 
     # ── 自动终止控制 ──────────────────────────────────────────
     @app.get("/api/autokill/status")
