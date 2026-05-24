@@ -10,7 +10,9 @@ import webbrowser
 from pathlib import Path
 
 import tomli
-import uvicorn
+import asyncio
+from hypercorn.config import Config
+from hypercorn.asyncio import serve
 
 from aigard.core import MetricsHistory, Alerter
 from aigard.core.threads import BackgroundThreads
@@ -116,7 +118,25 @@ def start_server(host: str = None, port: int = None):
     _host = host or SERVER_CFG.get("host", "127.0.0.1")
     _port = port or SERVER_CFG.get("port", 8765)
     print(f"AI Guard 服务启动中 → http://{_host}:{_port}")
-    uvicorn.run(app, host=_host, port=_port, log_level="warning")
+
+    # 使用 hypercorn 替代 uvicorn，避免 mypyc 编译模块问题
+    config = Config()
+    config.bind = [f"{_host}:{_port}"]
+    config.loglevel = "WARNING"
+
+    # 在子线程中运行时，禁用信号处理器（避免 RuntimeError）
+    import threading
+    if threading.current_thread() is not threading.main_thread():
+        config.use_reloader = False
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            shutdown_event = asyncio.Event()
+            loop.run_until_complete(serve(app, config, shutdown_trigger=shutdown_event.wait))
+        finally:
+            loop.close()
+    else:
+        asyncio.run(serve(app, config))
 
 
 if __name__ == "__main__":

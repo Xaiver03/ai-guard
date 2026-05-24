@@ -15,6 +15,9 @@ swap_crit = 80
 disk_free_warn_gb = 20
 disk_free_crit_gb = 10
 cooldown_sec = 60
+# Swap 告警冷却时间（秒），默认 300 秒（5 分钟）
+# Swap 释放较慢，使用更长的冷却时间避免频繁报警
+swap_cooldown_sec = 300
 
 [auto_kill]
 enabled = false

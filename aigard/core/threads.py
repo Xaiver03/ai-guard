@@ -130,6 +130,8 @@ class BackgroundThreads:
             if killed_count:
                 last_killed_time = time.time()
                 print(f"[auto-kill] 自动终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
+                # 抑制 Swap 告警 3 分钟，给系统时间释放 Swap
+                self.alerter.suppress_swap_alert(180)
 
     def _block_loop(self):
         """黑名单拦截线程：每秒扫描黑名单进程并终止"""

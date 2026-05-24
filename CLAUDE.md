@@ -18,12 +18,17 @@
 
 | 层 | 技术 |
 |----|------|
-| 后端 | Python 3.10+, FastAPI, uvicorn, psutil |
+| 后端 | Python 3.11+, FastAPI, hypercorn, psutil |
 | 前端 | 单文件 HTML + Vanilla JS + Chart.js (CDN) |
 | 菜单栏 App | rumps 0.4.0（macOS 菜单栏托盘） |
 | 打包 | py2app 0.28（生成独立 .app，可分发） |
 | 持久化 | SQLite 单文件（告警历史，存 `~/.aigard/`） |
 | 配置 | config.toml |
+
+**重要说明：**
+- 使用 Python 3.11（不支持 3.12，因为 py2app 依赖已废弃的 pkg_resources）
+- 使用 hypercorn 替代 uvicorn（避免 mypyc 编译模块打包问题）
+- 依赖必须安装纯 Python 版本（`--no-binary`），避免编译模块打包失败
 
 ## 目录结构
 
@@ -60,6 +65,13 @@ AI Guard/
 
 ```bash
 cd "01_PROJECTS/AI Guard"
+
+# 确保使用 Python 3.11（不支持 3.12）
+pyenv local 3.11.15
+
+# 创建虚拟环境并安装依赖
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 
 # 方式一：纯后端脚本模式（浏览器打开 http://localhost:8765）
@@ -70,11 +82,50 @@ python app_menubar.py
 
 # 打包成可分发 .app
 bash build.sh
-open "dist/AI Guard.app"
+
+# 安装到 /Applications（替换旧版本）
+cp -r "dist/AI Guard.app" /Applications/
+
+# 打开应用
+open "/Applications/AI Guard.app"
 
 # 安装开机自启
 bash scripts/install_autostart.sh
 ```
+
+## 打包注意事项
+
+**重要：** 打包前必须确保以下条件：
+
+1. **Python 版本**：必须使用 Python 3.11.x（不支持 3.12）
+   ```bash
+   pyenv install 3.11.15
+   pyenv local 3.11.15
+   ```
+
+2. **依赖版本**：
+   - setuptools < 70.0.0（避免 pkg_resources 问题）
+   - 使用纯 Python 版本的依赖（避免 mypyc 编译模块）
+   ```bash
+   pip install 'setuptools<70.0.0'
+   pip uninstall -y tomli && pip install tomli --no-binary tomli
+   ```
+
+3. **打包流程**：
+   ```bash
+   # 清理旧的打包文件
+   rm -rf build dist
+   
+   # 执行打包
+   ./build.sh
+   
+   # 安装到 /Applications（替换旧版本）
+   cp -r "dist/AI Guard.app" /Applications/
+   ```
+
+4. **常见问题**：
+   - 如果遇到 `ModuleNotFoundError: No module named 'ddc459050edb75a05942__mypyc'`，说明 tomli 使用了编译版本，需要重新安装纯 Python 版本
+   - 如果遇到 `RuntimeError: set_wakeup_fd only works in main thread`，说明 ASGI 服务器在子线程中无法设置信号处理器，已在 main.py 中处理
 
 ## 菜单栏 App 架构
 
