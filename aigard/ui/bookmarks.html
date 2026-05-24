@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Guard — 书签管理</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z' fill='none' stroke='%233b82f6' stroke-width='1.5'/></svg>">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── 深色主题（默认）──────────────────────────────── */
+  :root, [data-theme="dark"] {
+    --bg: #0f1117; --card: #1a1d27; --card2: #12141e; --border: #2a2d3e;
+    --text: #e2e8f0; --muted: #8892a4; --muted2: #5a6478;
+    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
+    --blue: #3b82f6; --purple: #a855f7;
+    --row-hover: #1e2130; --row-selected: #1a2230;
+    --btn-muted-bg: #2a2d3e;
+    --input-bg: #12141e;
+    --shadow: 0 4px 24px rgba(0,0,0,.4);
+  }
+
+  /* ── 浅色主题 ─────────────────────────────────────── */
+  [data-theme="light"] {
+    --bg: #f4f6fb; --card: #ffffff; --card2: #f0f2f8; --border: #dde1ec;
+    --text: #1a1d2e; --muted: #6b7280; --muted2: #9ca3af;
+    --green: #16a34a; --yellow: #d97706; --red: #dc2626;
+    --blue: #2563eb; --purple: #7c3aed;
+    --row-hover: #f0f4ff; --row-selected: #e8eeff;
+    --btn-muted-bg: #e5e7eb;
+    --input-bg: #f9fafb;
+    --shadow: 0 4px 24px rgba(0,0,0,.08);
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-size: 14px; min-height: 100vh; transition: background .2s, color .2s; }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--blue); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,color .15s,border-color .15s; flex-shrink:0; }
+  .icon-btn:hover { background:var(--card2); color:var(--text); }
+
+  /* Nav */
+  nav { display: flex; gap: 8px; }
+  nav a { padding: 6px 12px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
+  nav a:hover { background: var(--card2); color: var(--text); }
+  nav a.active { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  /* Layout */
+  main { padding: 20px 24px; display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; transition: background .2s, border-color .2s; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  /* Button */
+  .btn { padding: 6px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s; white-space: nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .btn:hover { opacity: .8; }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-primary  { background: rgba(34,197,94,.15);  color: var(--green); }
+  .btn-warning  { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .btn-danger   { background: rgba(239,68,68,.15);  color: var(--red); }
+  .btn-muted    { background: var(--btn-muted-bg);  color: var(--muted); }
+  .btn-blue     { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  /* Browser selector */
+  .browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+  .browser-card { padding: 16px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; transition: all .2s; text-align: center; }
+  .browser-card:hover { border-color: var(--blue); background: var(--card2); }
+  .browser-card.active { border-color: var(--blue); background: rgba(59,130,246,.1); }
+  .browser-icon { font-size: 32px; margin-bottom: 8px; }
+  .browser-name { font-weight: 600; margin-bottom: 4px; }
+  .browser-count { font-size: 12px; color: var(--muted); }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
+  .stat-box { padding: 12px; background: var(--card2); border-radius: 8px; text-align: center; }
+  .stat-value { font-size: 24px; font-weight: 700; color: var(--blue); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Issue badge */
+  .issue-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .issue-badge.error { background: rgba(239,68,68,.15); color: var(--red); }
+  .issue-badge.warning { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .issue-badge.info { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  /* Bookmark list */
+  .bookmark-list { margin-top: 12px; max-height: 400px; overflow-y: auto; }
+  .bookmark-item { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; transition: background .15s; }
+  .bookmark-item:hover { background: var(--row-hover); }
+  .bookmark-item:last-child { border-bottom: none; }
+  .bookmark-icon { width: 16px; height: 16px; flex-shrink: 0; }
+  .bookmark-info { flex: 1; min-width: 0; }
+  .bookmark-name { font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bookmark-url { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bookmark-folder { font-size: 11px; color: var(--muted2); padding: 2px 8px; background: var(--card2); border-radius: 4px; }
+
+  /* Search */
+  .search-box { display: flex; gap: 8px; margin-bottom: 12px; }
+  .search-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--text); font-size: 13px; }
+  .search-input:focus { outline: none; border-color: var(--blue); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* AI config notice */
+  .ai-notice { padding: 12px 16px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 8px; margin-bottom: 16px; display: flex; align-items: start; gap: 10px; }
+  .ai-notice.success { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.3); }
+  .ai-notice-icon { flex-shrink: 0; margin-top: 2px; }
+  .ai-notice-content { flex: 1; }
+  .ai-notice-title { font-weight: 600; margin-bottom: 4px; }
+  .ai-notice-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AI Guard <span>书签管理</span></div>
+  <nav>
+    <a href="/">监控面板</a>
+    <a href="/bookmarks.html" class="active">书签管理</a>
+  </nav>
+  <div class="header-right">
+    <button class="icon-btn" onclick="toggleTheme()" title="切换主题">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="3.5"/>
+        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.3 3.3l1.4 1.4M11.3 11.3l1.4 1.4M11.3 3.3l-1.4 1.4M4.7 11.3l-1.4 1.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- AI 配置状态 -->
+  <div id="ai-config-notice"></div>
+
+  <!-- 浏览器选择 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">选择浏览器</div>
+      <button class="btn btn-muted" onclick="loadBrowsers()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 8A6 6 0 1 1 2 8" stroke-linecap="round"/>
+          <path d="M8 2v6" stroke-linecap="round"/>
+        </svg>
+        刷新
+      </button>
+    </div>
+    <div id="browser-list" class="loading">
+      <div class="spinner"></div>
+      <div style="margin-top: 8px;">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 书签统计 -->
+  <div class="card" id="stats-card" style="display: none;">
+    <div class="card-header">
+      <div class="card-title">书签统计</div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+
+  <!-- 问题分析 -->
+  <div class="card" id="analysis-card" style="display: none;">
+    <div class="card-header">
+      <div class="card-title">问题分析</div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-blue" onclick="analyzeBookmarks()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="7" cy="7" r="5"/>
+            <path d="M11 11l3 3" stroke-linecap="round"/>
+          </svg>
+          分析
+        </button>
+        <button class="btn btn-primary" onclick="aiCategorize()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z"/>
+          </svg>
+          AI 分类
+        </button>
+      </div>
+    </div>
+    <div id="analysis-result"></div>
+  </div>
+
+  <!-- 书签列表 -->
+  <div class="card" id="bookmarks-card" style="display: none;">
+    <div class="card-header">
+      <div class="card-title">书签列表</div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-muted" onclick="exportBookmarks('json')">导出 JSON</button>
+        <button class="btn btn-muted" onclick="exportBookmarks('html')">导出 HTML</button>
+      </div>
+    </div>
+    <div class="search-box">
+      <input type="text" class="search-input" id="search-input" placeholder="搜索书签..." onkeyup="searchBookmarks()">
+    </div>
+    <div id="bookmarks-list" class="bookmark-list"></div>
+  </div>
+</main>
+
+<script>
+let currentBrowser = null;
+let allBookmarks = [];
+
+// 主题切换
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
+// 恢复主题
+const savedTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+// 检查 AI 配置
+async function checkAIConfig() {
+  try {
+    const res = await fetch('/api/bookmarks/ai/config');
+    const data = await res.json();
+
+    const notice = document.getElementById('ai-config-notice');
+    if (data.configured) {
+      notice.innerHTML = `
+        <div class="ai-notice success">
+          <div class="ai-notice-icon">✓</div>
+          <div class="ai-notice-content">
+            <div class="ai-notice-title">AI 已配置</div>
+            <div class="ai-notice-text">
+              已从 Claude Code 配置中读取 API 密钥。模型: ${data.model}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      notice.innerHTML = `
+        <div class="ai-notice">
+          <div class="ai-notice-icon">⚠</div>
+          <div class="ai-notice-content">
+            <div class="ai-notice-title">AI 未配置</div>
+            <div class="ai-notice-text">
+              请确保 Claude Code 的 settings.json 中配置了 ANTHROPIC_AUTH_TOKEN。<br>
+              配置文件位置: ~/.claude/settings.json
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error('检查 AI 配置失败:', err);
+  }
+}
+
+// 加载浏览器列表
+async function loadBrowsers() {
+  const container = document.getElementById('browser-list');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top: 8px;">加载中...</div></div>';
+
+  try {
+    const res = await fetch('/api/bookmarks/browsers');
+    const data = await res.json();
+
+    if (data.browsers.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);">未检测到浏览器</div>';
+      return;
+    }
+
+    const icons = {
+      chrome: '🌐',
+      edge: '🔷',
+      dia: '💎',
+      quark: '⚛️',
+      safari: '🧭'
+    };
+
+    container.innerHTML = '<div class="browser-grid">' + data.browsers.map(b => `
+      <div class="browser-card" onclick="selectBrowser('${b.name}')">
+        <div class="browser-icon">${icons[b.name] || '📑'}</div>
+        <div class="browser-name">${b.display_name}</div>
+        <div class="browser-count">${b.type}</div>
+      </div>
+    `).join('') + '</div>';
+  } catch (err) {
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--red);">加载失败: ${err.message}</div>`;
+  }
+}
+
+// 选择浏览器
+async function selectBrowser(browser) {
+  currentBrowser = browser;
+
+  // 更新选中状态
+  document.querySelectorAll('.browser-card').forEach(card => {
+    card.classList.remove('active');
+  });
+  event.target.closest('.browser-card').classList.add('active');
+
+  // 加载书签
+  await loadBookmarks(browser);
+  await loadStats(browser);
+
+  // 显示卡片
+  document.getElementById('stats-card').style.display = 'block';
+  document.getElementById('analysis-card').style.display = 'block';
+  document.getElementById('bookmarks-card').style.display = 'block';
+}
+
+// 加载书签统计
+async function loadStats(browser) {
+  try {
+    const res = await fetch(`/api/bookmarks/${browser}/stats`);
+    const data = await res.json();
+    const stats = data.stats;
+
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat-box">
+        <div class="stat-value">${stats.total}</div>
+        <div class="stat-label">总书签数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${Object.keys(stats.folders).length}</div>
+        <div class="stat-label">文件夹数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">${Object.keys(stats.domains).length}</div>
+        <div class="stat-label">域名数</div>
+      </div>
+    `;
+  } catch (err) {
+    console.error('加载统计失败:', err);
+  }
+}
+
+// 加载书签列表
+async function loadBookmarks(browser) {
+  const container = document.getElementById('bookmarks-list');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetch(`/api/bookmarks/${browser}`);
+    const data = await res.json();
+    allBookmarks = data.bookmarks;
+
+    renderBookmarks(allBookmarks);
+  } catch (err) {
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--red);">加载失败: ${err.message}</div>`;
+  }
+}
+
+// 渲染书签列表
+function renderBookmarks(bookmarks) {
+  const container = document.getElementById('bookmarks-list');
+
+  if (bookmarks.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);">没有书签</div>';
+    return;
+  }
+
+  container.innerHTML = bookmarks.slice(0, 100).map(bm => `
+    <div class="bookmark-item">
+      <svg class="bookmark-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/>
+      </svg>
+      <div class="bookmark-info">
+        <div class="bookmark-name">${escapeHtml(bm.name)}</div>
+        <div class="bookmark-url">${escapeHtml(bm.url)}</div>
+      </div>
+      <div class="bookmark-folder">${escapeHtml(bm.folder || '未分类')}</div>
+    </div>
+  `).join('');
+
+  if (bookmarks.length > 100) {
+    container.innerHTML += `<div style="text-align: center; padding: 20px; color: var(--muted); font-size: 12px;">仅显示前 100 个书签</div>`;
+  }
+}
+
+// 搜索书签
+async function searchBookmarks() {
+  const query = document.getElementById('search-input').value.trim();
+
+  if (!query) {
+    renderBookmarks(allBookmarks);
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/bookmarks/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser, query })
+    });
+    const data = await res.json();
+    renderBookmarks(data.results);
+  } catch (err) {
+    console.error('搜索失败:', err);
+  }
+}
+
+// 分析书签
+async function analyzeBookmarks() {
+  if (!currentBrowser) return;
+
+  const container = document.getElementById('analysis-result');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetch('/api/bookmarks/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser })
+    });
+    const data = await res.json();
+    const issues = data.analysis.issues;
+
+    let html = '<div style="display: grid; gap: 12px; margin-top: 12px;">';
+
+    if (issues.duplicates.length > 0) {
+      html += `<div class="issue-badge error">重复书签: ${issues.duplicates.length}</div>`;
+    }
+    if (issues.url_issues.length > 0) {
+      html += `<div class="issue-badge warning">URL 问题: ${issues.url_issues.length}</div>`;
+    }
+    if (issues.naming_issues.length > 0) {
+      html += `<div class="issue-badge warning">命名问题: ${issues.naming_issues.length}</div>`;
+    }
+    if (issues.large_folders.length > 0) {
+      html += `<div class="issue-badge info">大型文件夹: ${issues.large_folders.length}</div>`;
+    }
+    if (issues.uncategorized.length > 0) {
+      html += `<div class="issue-badge info">未分类: ${issues.uncategorized.length}</div>`;
+    }
+
+    html += '</div>';
+
+    if (data.analysis.issue_count === 0) {
+      html = '<div style="text-align: center; padding: 20px; color: var(--green);">✓ 未发现问题</div>';
+    }
+
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--red);">分析失败: ${err.message}</div>`;
+  }
+}
+
+// AI 分类
+async function aiCategorize() {
+  if (!currentBrowser) return;
+
+  const container = document.getElementById('analysis-result');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top: 8px;">AI 分析中...</div></div>';
+
+  try {
+    const res = await fetch('/api/bookmarks/categorize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser, max_bookmarks: 50 })
+    });
+    const data = await res.json();
+
+    if (data.result.error) {
+      container.innerHTML = `<div style="color: var(--red);">${data.result.message}</div>`;
+      return;
+    }
+
+    const categories = data.result.categories || [];
+    let html = '<div style="margin-top: 12px;">';
+
+    categories.forEach(cat => {
+      html += `
+        <div style="margin-bottom: 16px; padding: 12px; background: var(--card2); border-radius: 8px;">
+          <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(cat.name)}</div>
+          <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">${escapeHtml(cat.description)}</div>
+          <div style="font-size: 11px; color: var(--muted2);">包含 ${cat.bookmarks.length} 个书签</div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--red);">AI 分类失败: ${err.message}</div>`;
+  }
+}
+
+// 导出书签
+async function exportBookmarks(format) {
+  if (!currentBrowser) return;
+
+  try {
+    const res = await fetch('/api/bookmarks/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser, format })
+    });
+    const data = await res.json();
+    alert(`导出成功！\n文件路径: ${data.path}`);
+  } catch (err) {
+    alert(`导出失败: ${err.message}`);
+  }
+}
+
+// HTML 转义
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 初始化
+checkAIConfig();
+loadBrowsers();
+</script>
+
+</body>
+</html>
