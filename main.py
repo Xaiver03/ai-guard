@@ -14,7 +14,7 @@ import asyncio
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 
-from aigard.core import MetricsHistory, Alerter
+from aigard.core import MetricsHistory, Alerter, WhitelistManager
 from aigard.core.threads import BackgroundThreads
 from aigard.api import create_app
 
@@ -55,14 +55,16 @@ SERVER_CFG = CFG.get("server", {})
 MONITOR_CFG = CFG.get("monitor", {})
 ALERT_CFG = CFG.get("alert", {})
 AUTO_KILL_CFG = CFG.get("auto_kill", {})
+WHITELIST_CFG = CFG.get("whitelist", {})
 
 
 # ── 初始化核心组件 ────────────────────────────────────────────
 history = MetricsHistory(maxlen=MONITOR_CFG.get("history_points", 150))
 alerter = Alerter(ALERT_CFG)
+whitelist = WhitelistManager(WHITELIST_CFG)
 
 # 初始化后台线程管理器
-threads = BackgroundThreads(CFG, history, alerter)
+threads = BackgroundThreads(CFG, history, alerter, whitelist)
 
 # 初始化运行时配置
 threads.settings = {

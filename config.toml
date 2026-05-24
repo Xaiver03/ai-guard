@@ -41,3 +41,13 @@ safe_keywords = [
     "python3",
     "launchd",
 ]
+
+[whitelist]
+# 进程名白名单（精确匹配，不区分大小写）
+process_names = []
+
+# 命令行关键字白名单（包含匹配）
+command_keywords = []
+
+# PID 白名单（临时，重启后失效，运行时动态添加）
+pids = []

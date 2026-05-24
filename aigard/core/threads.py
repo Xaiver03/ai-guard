@@ -8,17 +8,18 @@ from dataclasses import asdict
 
 from aigard.core import (
     collect_metrics, collect_ai_processes, advise_list,
-    kill_process, Alerter, MetricsHistory
+    kill_process, Alerter, MetricsHistory, WhitelistManager
 )
 
 
 class BackgroundThreads:
     """管理所有后台线程"""
 
-    def __init__(self, config: dict, history: MetricsHistory, alerter: Alerter):
+    def __init__(self, config: dict, history: MetricsHistory, alerter: Alerter, whitelist: WhitelistManager):
         self.config = config
         self.history = history
         self.alerter = alerter
+        self.whitelist = whitelist
 
         # 共享状态
         self.latest_processes = []
@@ -100,7 +101,11 @@ class BackgroundThreads:
                 continue
 
             with self.lock:
-                candidates = [p for p in self.latest_processes if p.get("risk") == "safe"]
+                # 过滤掉白名单中的进程
+                candidates = [
+                    p for p in self.latest_processes
+                    if p.get("risk") == "safe" and not self.whitelist.is_whitelisted(p)
+                ]
             candidates.sort(key=lambda p: p.get("mem_mb", 0), reverse=True)
 
             killed_count = 0
@@ -165,7 +170,11 @@ class BackgroundThreads:
                 continue
 
             with self.lock:
-                candidates = [p for p in self.latest_processes if p.get("risk") == "safe"]
+                # 过滤掉白名单中的进程
+                candidates = [
+                    p for p in self.latest_processes
+                    if p.get("risk") == "safe" and not self.whitelist.is_whitelisted(p)
+                ]
             candidates.sort(key=lambda p: p.get("mem_mb", 0), reverse=True)
 
             killed_count = 0
