@@ -102,6 +102,7 @@ class AIGuardApp(rumps.App):
             rumps.separator,
             self._status_item,
             rumps.separator,
+            rumps.MenuItem("一键终止安全进程", callback=self._kill_safe),
             self._autokill_item,
             rumps.separator,
             rumps.MenuItem("偏好设置", callback=self._open_config),
@@ -132,12 +133,40 @@ class AIGuardApp(rumps.App):
                       else Path(__file__).parent / "config.toml"
         subprocess.run(["open", "-t", str(config_path)], check=False)
 
+    def _kill_safe(self, _):
+        """一键终止所有评分为 safe 的进程"""
+        from aigard.core import kill_process
+
+        threads = _main_mod.threads
+        with threads.lock:
+            safe_procs = [p for p in threads.latest_processes if p.get("risk") == "safe"]
+
+        if not safe_procs:
+            rumps.notification("AI Guard", "", "当前没有可安全终止的进程")
+            return
+
+        killed = 0
+        total_freed = 0.0
+        for proc in safe_procs:
+            r = kill_process(proc["pid"])
+            if r.success:
+                killed += 1
+                total_freed += r.mem_freed_mb
+
+        msg = f"已终止 {killed} 个进程，释放 {total_freed:.0f} MB"
+        rumps.notification("AI Guard", "一键终止完成", msg)
+
     def _toggle_autokill(self, _):
         threads = _main_mod.threads
         with threads.lock:
             threads.autokill_enabled = not threads.autokill_enabled
             state = threads.autokill_enabled
         self._autokill_item.title = f"自动终止: {'开' if state else '关'}"
+
+        # 发送通知
+        status = "已开启" if state else "已关闭"
+        msg = "当内存压力过高时，将自动终止安全进程" if state else "不再自动终止进程"
+        rumps.notification("AI Guard", f"自动终止{status}", msg)
 
     def _quit(self, _):
         rumps.quit_application()
@@ -162,8 +191,10 @@ class AIGuardApp(rumps.App):
                 self.icon = icon_path
             self._last_level = level
 
-        # 状态行
-        self._status_item.title = f"状态: 内存 {mem:.0f}% / Swap {swap:.0f}%"
+        # 状态行 - 显示 CPU、内存、Swap、磁盘
+        cpu = latest.get("cpu_percent", 0)
+        disk = latest.get("disk_percent", 0)
+        self._status_item.title = f"CPU {cpu:.0f}% · 内存 {mem:.0f}% · Swap {swap:.0f}% · 磁盘 {disk:.0f}%"
 
         # 同步自动终止开关
         state = _main_mod.threads.autokill_enabled
