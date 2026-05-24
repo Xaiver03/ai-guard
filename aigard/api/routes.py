@@ -18,6 +18,14 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     """创建 FastAPI 应用实例"""
     app = FastAPI(title="AI Guard", version="1.0.0")
 
+    # 注册白名单路由
+    from aigard.api.whitelist import router as whitelist_router
+    app.include_router(whitelist_router)
+
+    # 注册书签管理路由
+    from aigard.api.bookmarks import router as bookmarks_router
+    app.include_router(bookmarks_router)
+
     # ── 首页 ──────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
     def index():
@@ -25,6 +33,15 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         # py2app 打包后：base_dir 是 Contents/Resources/
         dev_path = base_dir / "aigard" / "ui" / "index.html"
         pkg_path = base_dir / "ui" / "index.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    # ── 书签管理页面 ──────────────────────────────────────────
+    @app.get("/bookmarks.html", response_class=HTMLResponse)
+    def bookmarks_page():
+        dev_path = base_dir / "aigard" / "ui" / "bookmarks.html"
+        pkg_path = base_dir / "ui" / "bookmarks.html"
         html_path = dev_path if dev_path.exists() else pkg_path
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
@@ -41,7 +58,42 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     @app.get("/api/processes")
     def get_processes():
         with threads_manager.lock:
-            return list(threads_manager.latest_processes)
+            processes = list(threads_manager.latest_processes)
+
+        # 为每个进程添加白名单标记
+        import main as _main_mod
+        for proc in processes:
+            proc["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc)
+
+        return processes
+
+    @app.get("/api/processes/all")
+    def get_all_processes():
+        """获取所有进程（类似活动监视器）"""
+        from aigard.core import collect_all_processes
+        import aigard.core.advisor as _advisor_mod
+        import main as _main_mod
+
+        all_procs = collect_all_processes()
+        result = []
+        for proc in all_procs:
+            proc_dict = {
+                "pid": proc.pid,
+                "name": proc.name,
+                "cmdline": proc.cmdline,
+                "mem_mb": proc.mem_mb,
+                "cpu_percent": proc.cpu_percent,
+                "status": proc.status,
+                "create_time": proc.create_time,
+            }
+            # 评分和建议
+            advice = _advisor_mod.advise_process(proc)
+            proc_dict.update(advice)
+            # 白名单标记
+            proc_dict["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc_dict)
+            result.append(proc_dict)
+
+        return result
 
     @app.get("/api/autokill/log")
     def get_autokill_log():

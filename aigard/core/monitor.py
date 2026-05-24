@@ -104,6 +104,30 @@ def collect_ai_processes(watch_keywords: list) -> list:
     return result
 
 
+def collect_all_processes() -> list:
+    """获取所有进程（类似活动监视器）"""
+    result = []
+
+    for proc in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "cpu_percent", "status", "create_time"]):
+        try:
+            info = proc.info
+            mem_bytes = info["memory_info"].rss if info["memory_info"] else 0
+            result.append(ProcessInfo(
+                pid=info["pid"],
+                name=info["name"] or "",
+                cmdline=" ".join(info["cmdline"] or [])[:200],
+                mem_mb=round(mem_bytes / (1024 * 1024), 1),
+                cpu_percent=info["cpu_percent"] or 0.0,
+                status=info["status"] or "",
+                create_time=info["create_time"] or 0,
+            ))
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+
+    result.sort(key=lambda p: p.mem_mb, reverse=True)
+    return result
+
+
 class MetricsHistory:
     """环形缓冲区保存历史数据"""
 
