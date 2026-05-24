@@ -4,17 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Guard — 资源监控</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='2.5' fill='none' stroke='%233b82f6' stroke-width='1.75'/><path d='M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4' stroke='%233b82f6' stroke-width='1.75' stroke-linecap='round'/></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='2.5' fill='none' stroke='%2358a6ff' stroke-width='1.75'/><path d='M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4' stroke='%2358a6ff' stroke-width='1.75' stroke-linecap='round'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   /* ── 深色主题（默认）──────────────────────────────── */
   :root, [data-theme="dark"] {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-card: #1c2128;
     --bg: #0d1117; --card: #161b22; --card2: #1c2128; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
+    --text: #e6edf3; --text-primary: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
     --green: #3fb950; --yellow: #d29922; --red: #f85149;
     --blue: #58a6ff; --purple: #bc8cff;
+    --accent-blue: #58a6ff; --accent-green: #3fb950;
     --gauge-track: #21262d;
     --row-hover: #1c2128; --row-selected: #1a2230;
     --btn-muted-bg: #21262d;
@@ -24,55 +28,220 @@
 
   /* ── 浅色主题 ─────────────────────────────────────── */
   [data-theme="light"] {
+    --bg-primary: #f6f8fa;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
     --bg: #f6f8fa; --card: #ffffff; --card2: #f6f8fa; --border: #d0d7de;
-    --text: #1f2328; --muted: #656d76; --muted2: #8b949e;
+    --text: #1f2328; --text-primary: #1f2328; --muted: #656d76; --muted2: #8b949e;
     --green: #1a7f37; --yellow: #9a6700; --red: #cf222e;
     --blue: #0969da; --purple: #8250df;
+    --accent-blue: #0969da; --accent-green: #1a7f37;
     --gauge-track: #eaeef2;
     --row-hover: #f6f8fa; --row-selected: #ddf4ff;
     --btn-muted-bg: #eaeef2;
     --input-bg: #f6f8fa;
     --shadow: 0 1px 3px rgba(31,35,40,.12), 0 8px 24px rgba(66,74,83,.12);
   }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; font-size: 14px; min-height: 100vh; transition: background .2s, color .2s; }
 
-  /* Header */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
-  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    transition: background .2s, color .2s;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ─────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 57px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
   .logo span { color: var(--blue); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  #status-badge { padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; background: rgba(34,197,94,.15); color: var(--green); display:inline-flex; align-items:center; gap:5px; }
-  #status-badge.warn { background: rgba(245,158,11,.15); color: var(--yellow); }
-  #status-badge.crit { background: rgba(239,68,68,.15); color: var(--red); animation: pulse 1s infinite; }
+
+  .header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Nav Tabs */
+  .nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .nav-tab {
+    padding: 5px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--row-hover); }
+  .nav-tab.active {
+    background: var(--card);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: var(--shadow);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Lang toggle */
+  .lang-toggle {
+    display: flex;
+    gap: 0;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .lang-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .lang-btn.active { background: var(--blue); color: #fff; }
+  .lang-btn:not(.active):hover { background: var(--row-hover); color: var(--text); }
+
+  /* Status badge */
+  #status-badge {
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(63,185,80,.12);
+    color: var(--green);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  #status-badge.warn { background: rgba(210,153,34,.12); color: var(--yellow); }
+  #status-badge.crit { background: rgba(248,81,73,.12); color: var(--red); animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-  #last-update { color: var(--muted); font-size: 12px; }
+  #last-update { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
   /* Icon btn */
-  .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,color .15s,border-color .15s; flex-shrink:0; }
-  .icon-btn:hover { background:var(--card2); color:var(--text); }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, color .15s, border-color .15s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--card2); color: var(--text); }
 
   /* Auto-kill toggle */
-  #autokill-toggle { padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); cursor: pointer; transition: background .2s, color .2s; display:inline-flex; align-items:center; gap:5px; }
+  #autokill-toggle {
+    padding: 5px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--card2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
   #autokill-toggle:hover { opacity: .85; }
-  #autokill-toggle.on { background: rgba(34,197,94,.15); color: var(--green); border-color: rgba(34,197,94,.3); }
+  #autokill-toggle.on { background: rgba(63,185,80,.12); color: var(--green); border-color: rgba(63,185,80,.3); }
 
   /* SVG icons */
-  .icon { display:inline-block; flex-shrink:0; vertical-align:-.125em; }
+  .icon { display: inline-block; flex-shrink: 0; vertical-align: -.125em; }
   .icon-green  { color: var(--green); }
   .icon-yellow { color: var(--yellow); }
   .icon-red    { color: var(--red); }
   .icon-blue   { color: var(--blue); }
   .icon-muted  { color: var(--muted); }
 
-  /* Layout */
-  main { padding: 20px 24px; display: grid; gap: 16px; }
+  /* ── Main Layout ─────────────────────────────────── */
+  main {
+    flex: 1;
+    padding: 20px 24px;
+    display: grid;
+    gap: 16px;
+  }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media(max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
 
-  /* Card */
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; transition: background .2s, border-color .2s; }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  /* ── Card ────────────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    transition: background .2s, border-color .2s;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
   .view-switcher { display: flex; gap: 4px; }
   .btn-view {
     padding: 4px 10px;
@@ -85,13 +254,9 @@
     transition: all .2s;
   }
   .btn-view:hover { background: var(--row-hover); }
-  .btn-view.active {
-    background: var(--blue);
-    color: white;
-    border-color: var(--blue);
-  }
+  .btn-view.active { background: var(--blue); color: white; border-color: var(--blue); }
 
-  /* Gauge */
+  /* ── Gauge ────────────────────────────────────────── */
   .gauge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
   .gauge-label { width: 52px; font-size: 13px; color: var(--muted); flex-shrink: 0; }
   .gauge-bar { flex: 1; height: 8px; background: var(--gauge-track); border-radius: 4px; overflow: hidden; }
@@ -99,24 +264,54 @@
   .gauge-val { width: 60px; text-align: right; font-size: 13px; font-weight: 600; flex-shrink: 0; }
   .gauge-detail { font-size: 11px; color: var(--muted); margin-left: 64px; margin-bottom: 10px; }
 
-  /* Chart */
+  /* ── Chart ───────────────────────────────────────── */
   .chart-wrap { position: relative; height: 150px; }
 
-  /* Batch toolbar */
-  .batch-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  /* ── Batch toolbar ────────────────────────────────── */
+  .batch-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
   .batch-count { font-size: 12px; color: var(--muted); }
-  .btn { padding: 5px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: opacity .15s; white-space: nowrap; display:inline-flex; align-items:center; gap:5px; }
+  .btn {
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: opacity .15s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
   .btn:hover { opacity: .8; }
   .btn:disabled { opacity: .35; cursor: not-allowed; }
-  .btn-primary  { background: rgba(34,197,94,.15);  color: var(--green); }
-  .btn-warning  { background: rgba(245,158,11,.15); color: var(--yellow); }
-  .btn-danger   { background: rgba(239,68,68,.15);  color: var(--red); }
+  .btn-primary  { background: rgba(63,185,80,.12);  color: var(--green); }
+  .btn-warning  { background: rgba(210,153,34,.12); color: var(--yellow); }
+  .btn-danger   { background: rgba(248,81,73,.12);  color: var(--red); }
   .btn-muted    { background: var(--btn-muted-bg);  color: var(--muted); }
-  .btn-blue     { background: rgba(59,130,246,.15); color: var(--blue); }
+  .btn-blue     { background: rgba(88,166,255,.15); color: var(--blue); }
 
-  /* Table */
+  /* ── Table ───────────────────────────────────────── */
   table { width: 100%; border-collapse: collapse; }
-  th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--muted);
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
   td { padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--row-hover); }
@@ -130,25 +325,36 @@
     font-weight: 600;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(59,130,246,.15);
+    background: rgba(88,166,255,.12);
     color: var(--blue);
     white-space: nowrap;
   }
   .proc-cmd { color: var(--muted); font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-running { color: var(--green); font-size: 12px; }
   .status-stopped { color: var(--yellow); font-size: 12px; }
-  .btn-sm { padding: 3px 8px; border-radius: 5px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; transition: opacity .15s; display:inline-flex; align-items:center; gap:3px; }
+  .btn-sm {
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: opacity .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
   .btn-sm:hover { opacity: .8; }
   .btn-pause  { background: var(--btn-muted-bg); color: var(--yellow); }
-  .btn-resume { background: rgba(34,197,94,.15);  color: var(--green); }
-  .btn-kill   { background: rgba(239,68,68,.15);  color: var(--red); }
+  .btn-resume { background: rgba(63,185,80,.12);  color: var(--green); }
+  .btn-kill   { background: rgba(248,81,73,.12);  color: var(--red); }
   .btn-gap { display: inline-flex; gap: 4px; }
   .empty-row td { text-align: center; color: var(--muted); padding: 20px; }
 
-  /* Risk */
-  .risk-safe    { color: var(--green); font-size: 12px; display:inline-flex; align-items:center; gap:4px; }
-  .risk-caution { color: var(--yellow); font-size: 12px; display:inline-flex; align-items:center; gap:4px; }
-  .risk-danger  { color: var(--red); font-size: 12px; display:inline-flex; align-items:center; gap:4px; }
+  /* ── Risk ────────────────────────────────────────── */
+  .risk-safe    { color: var(--green); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .risk-caution { color: var(--yellow); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .risk-danger  { color: var(--red); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
   [data-tip] { position: relative; cursor: help; }
   [data-tip]:hover::after {
     content: attr(data-tip);
@@ -159,64 +365,132 @@
     box-shadow: var(--shadow);
   }
 
-  /* Auto-kill log */
+  /* ── Auto-kill log ────────────────────────────────── */
   .log-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
-  .log-item { font-size: 12px; color: var(--muted); padding: 6px 10px; background: var(--card2); border-radius: 6px; border-left: 3px solid var(--red); }
+  .log-item {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: var(--card2);
+    border-radius: 6px;
+    border-left: 3px solid var(--red);
+  }
   .log-item .log-name { color: var(--text); font-weight: 600; }
   .log-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 16px; }
 
-  /* Toast */
-  #toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 18px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; max-width: 380px; display:flex; align-items:center; gap:7px; box-shadow: var(--shadow); }
+  /* ── Toast ───────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    padding: 10px 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    z-index: 999;
+    max-width: 380px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    box-shadow: var(--shadow);
+  }
   #toast.show { opacity: 1; }
 
-  /* Checkbox */
+  /* ── Checkbox ─────────────────────────────────────── */
   input[type=checkbox] { accent-color: var(--blue); width: 14px; height: 14px; cursor: pointer; }
 
-  /* ── Settings Drawer ───────────────────────────── */
-  .settings-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; opacity:0; pointer-events:none; transition:opacity .25s; }
-  .settings-overlay.open { opacity:1; pointer-events:auto; }
-  .settings-drawer { position:fixed; top:0; right:0; bottom:0; width:340px; background:var(--card); border-left:1px solid var(--border); z-index:201; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .25s cubic-bezier(.4,0,.2,1); box-shadow: var(--shadow); }
-  .settings-drawer.open { transform:translateX(0); }
-  .drawer-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); flex-shrink:0; }
-  .drawer-title { font-size:15px; font-weight:700; }
-  .drawer-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:20px; }
-  .drawer-footer { display:flex; gap:8px; justify-content:flex-end; padding:14px 20px; border-top:1px solid var(--border); flex-shrink:0; }
-  .settings-group { display:flex; flex-direction:column; gap:9px; }
-  .settings-group-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding-bottom:7px; border-bottom:1px solid var(--border); }
-  .settings-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-  .settings-row label { font-size:13px; color:var(--text); flex:1; line-height:1.4; }
-  .settings-row .unit { font-size:11px; color:var(--muted); flex-shrink:0; }
-  .settings-row input[type=number] { width:72px; background:var(--input-bg); border:1px solid var(--border); border-radius:7px; color:var(--text); font-size:13px; padding:5px 8px; text-align:right; outline:none; transition:border-color .15s; }
-  .settings-row input[type=number]:focus { border-color:var(--blue); }
-  .settings-row input[type=number]::-webkit-inner-spin-button { opacity:.4; }
+  /* ── Settings Drawer ──────────────────────────────── */
+  .settings-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .settings-overlay.open { opacity: 1; pointer-events: auto; }
+  .settings-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 340px;
+    background: var(--card);
+    border-left: 1px solid var(--border);
+    z-index: 201;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow: var(--shadow);
+  }
+  .settings-drawer.open { transform: translateX(0); }
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .drawer-title { font-size: 15px; font-weight: 700; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 20px; }
+  .drawer-footer {
+    display: flex; gap: 8px; justify-content: flex-end;
+    padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+  .settings-group { display: flex; flex-direction: column; gap: 9px; }
+  .settings-group-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); padding-bottom: 7px; border-bottom: 1px solid var(--border);
+  }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .settings-row label { font-size: 13px; color: var(--text); flex: 1; line-height: 1.4; }
+  .settings-row .unit { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .settings-row input[type=number] {
+    width: 72px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 5px 8px;
+    text-align: right;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .settings-row input[type=number]:focus { border-color: var(--blue); }
+  .settings-row input[type=number]::-webkit-inner-spin-button { opacity: .4; }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">AI <span>Guard</span></div>
-  <nav style="display:flex;gap:6px;margin-left:16px">
-    <a href="/" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;background:rgba(59,130,246,.15);color:var(--blue);">监控面板</a>
-    <a href="/bookmarks.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">书签管理</a>
-    <a href="/usage.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">Claude 统计</a>
-  </nav>
+  <div class="header-left">
+    <div class="logo">AI <span>Guard</span></div>
+  </div>
+
+  <div class="header-center">
+    <nav class="nav-tabs">
+      <a href="/" class="nav-tab active" data-i18n="nav.monitor">监控面板</a>
+      <a href="/usage.html" class="nav-tab" data-i18n="nav.usage">Claude 统计</a>
+      <a href="/bookmarks.html" class="nav-tab" data-i18n="nav.bookmarks">书签管理</a>
+    </nav>
+  </div>
+
   <div class="header-right">
-    <!-- 主题切换按钮 -->
+    <div class="lang-toggle">
+      <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
-    <!-- 设置按钮 -->
     <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="设置"></button>
-    <button id="autokill-toggle" onclick="toggleAutoKill()" title="点击开启/关闭超阈值自动终止 Safe 进程"></button>
+    <button id="autokill-toggle" onclick="toggleAutoKill()"></button>
     <span id="status-badge"></span>
     <span id="last-update">—</span>
   </div>
 </header>
 
 <main>
-  <!-- 资源进度条 -->
+  <!-- 资源压力仪表 -->
   <div class="card">
-    <div class="card-title" style="margin-bottom:12px">资源压力</div>
+    <div class="card-title" style="margin-bottom:12px" data-i18n="monitor.resourcePressure">资源压力</div>
     <div class="gauge-row">
-      <div class="gauge-label">内存</div>
+      <div class="gauge-label" data-i18n="monitor.memory">内存</div>
       <div class="gauge-bar"><div class="gauge-fill" id="mem-bar"></div></div>
       <div class="gauge-val" id="mem-pct">—</div>
     </div>
@@ -228,11 +502,11 @@
     </div>
     <div class="gauge-detail" id="swap-detail">— / — GB</div>
     <div class="gauge-row">
-      <div class="gauge-label">磁盘</div>
+      <div class="gauge-label" data-i18n="monitor.disk">磁盘</div>
       <div class="gauge-bar"><div class="gauge-fill" id="disk-bar"></div></div>
       <div class="gauge-val" id="disk-pct">—</div>
     </div>
-    <div class="gauge-detail" id="disk-detail">剩余 — GB</div>
+    <div class="gauge-detail" id="disk-detail" data-i18n-prefix="monitor.diskFree">剩余 — GB</div>
     <div class="gauge-row" style="margin-top:6px">
       <div class="gauge-label">CPU</div>
       <div class="gauge-bar"><div class="gauge-fill" id="cpu-bar"></div></div>
@@ -243,11 +517,11 @@
   <!-- 趋势图 -->
   <div class="row2">
     <div class="card">
-      <div class="card-title" style="margin-bottom:10px">内存 &amp; Swap 趋势（2.5 分钟）</div>
+      <div class="card-title" style="margin-bottom:10px" data-i18n="monitor.memSwapTrend">内存 &amp; Swap 趋势（2.5 分钟）</div>
       <div class="chart-wrap"><canvas id="chart-mem"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-title" style="margin-bottom:10px">CPU &amp; 磁盘趋势（2.5 分钟）</div>
+      <div class="card-title" style="margin-bottom:10px" data-i18n="monitor.cpuDiskTrend">CPU &amp; 磁盘趋势（2.5 分钟）</div>
       <div class="chart-wrap"><canvas id="chart-cpu"></canvas></div>
     </div>
   </div>
@@ -255,19 +529,19 @@
   <!-- 进程表 -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title" id="process-view-title">AI / 开发工具进程</div>
+      <div class="card-title" id="process-view-title" data-i18n="monitor.aiProcesses">AI / 开发工具进程</div>
       <div class="view-switcher">
-        <button class="btn btn-sm btn-view active" data-view="ai" onclick="switchView('ai')">AI/开发进程</button>
-        <button class="btn btn-sm btn-view" data-view="all" onclick="switchView('all')">所有进程</button>
+        <button class="btn btn-sm btn-view active" data-view="ai" onclick="switchView('ai')" data-i18n="monitor.viewAI">AI/开发进程</button>
+        <button class="btn btn-sm btn-view" data-view="all" onclick="switchView('all')" data-i18n="monitor.viewAll">所有进程</button>
       </div>
     </div>
 
     <!-- 批量操作栏 -->
     <div class="batch-toolbar">
       <button class="btn btn-muted" id="btn-select-safe" onclick="selectAllSafe()"></button>
-      <button class="btn btn-muted" onclick="selectNone()">取消选择</button>
-      <button class="btn btn-danger" id="btn-batch-kill" disabled onclick="batchKill()">终止选中</button>
-      <button class="btn btn-warning" id="btn-batch-pause" disabled onclick="batchPause()">暂停选中</button>
+      <button class="btn btn-muted" onclick="selectNone()" data-i18n="monitor.deselect">取消选择</button>
+      <button class="btn btn-danger" id="btn-batch-kill" disabled onclick="batchKill()" data-i18n="monitor.killSelected">终止选中</button>
+      <button class="btn btn-warning" id="btn-batch-pause" disabled onclick="batchPause()" data-i18n="monitor.pauseSelected">暂停选中</button>
       <span style="flex:1"></span>
       <button class="btn btn-primary" id="btn-kill-all-safe" onclick="killAllSafe()"></button>
       <span class="batch-count" id="batch-count"></span>
@@ -278,17 +552,17 @@
         <tr>
           <th><input type="checkbox" id="chk-all" onchange="toggleAll(this)"></th>
           <th>PID</th>
-          <th>进程名</th>
-          <th>命令行</th>
-          <th>内存 MB</th>
-          <th>CPU %</th>
-          <th>状态</th>
-          <th>安全评估</th>
-          <th>操作</th>
+          <th data-i18n="table.name">进程名</th>
+          <th data-i18n="table.cmdline">命令行</th>
+          <th data-i18n="table.memMB">内存 MB</th>
+          <th data-i18n="table.cpuPct">CPU %</th>
+          <th data-i18n="table.status">状态</th>
+          <th data-i18n="table.risk">安全评估</th>
+          <th data-i18n="table.actions">操作</th>
         </tr>
       </thead>
       <tbody id="proc-tbody">
-        <tr class="empty-row"><td colspan="9">暂无匹配进程</td></tr>
+        <tr class="empty-row"><td colspan="9" data-i18n="monitor.noProcesses">暂无匹配进程</td></tr>
       </tbody>
     </table>
   </div>
@@ -296,22 +570,22 @@
   <!-- 自动终止日志 -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">自动终止日志</div>
-      <span style="font-size:11px;color:var(--muted)">点击顶部「自动终止」按钮开启</span>
+      <div class="card-title" data-i18n="monitor.autoKillLog">自动终止日志</div>
+      <span style="font-size:11px;color:var(--muted)" data-i18n="monitor.autoKillHint">点击顶部「自动终止」按钮开启</span>
     </div>
     <div class="log-list" id="auto-kill-log">
-      <div class="log-empty">暂无自动终止记录</div>
+      <div class="log-empty" data-i18n="monitor.noAutoKillRecord">暂无自动终止记录</div>
     </div>
   </div>
 
   <!-- 启动拦截黑名单 -->
   <div class="card">
     <div class="card-header">
-      <div class="card-title">启动拦截黑名单</div>
-      <button class="btn btn-muted" style="font-size:11px;padding:3px 8px" onclick="clearBlacklist()">清空</button>
+      <div class="card-title" data-i18n="monitor.blacklist">启动拦截黑名单</div>
+      <button class="btn btn-muted" style="font-size:11px;padding:3px 8px" onclick="clearBlacklist()" data-i18n="monitor.clearBlacklist">清空</button>
     </div>
     <div id="blacklist-container" style="font-size:12px;color:var(--muted);padding:8px 0">
-      <div style="text-align:center;padding:12px">暂无黑名单进程</div>
+      <div style="text-align:center;padding:12px" data-i18n="monitor.noBlacklist">暂无黑名单进程</div>
     </div>
   </div>
 </main>
@@ -322,7 +596,7 @@
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 <aside class="settings-drawer" id="settings-drawer">
   <div class="drawer-header">
-    <span class="drawer-title">设置</span>
+    <span class="drawer-title" data-i18n="settings.title">设置</span>
     <button class="icon-btn" onclick="closeSettings()" title="关闭">
       <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
@@ -332,55 +606,303 @@
   <div class="drawer-body">
 
     <section class="settings-group">
-      <div class="settings-group-title">告警阈值</div>
-      <div class="settings-row"><label>内存警告</label><input type="number" min="50" max="99" data-key="alert.mem_warn"><span class="unit">%</span></div>
-      <div class="settings-row"><label>内存危险</label><input type="number" min="50" max="99" data-key="alert.mem_crit"><span class="unit">%</span></div>
-      <div class="settings-row"><label>Swap 警告</label><input type="number" min="10" max="99" data-key="alert.swap_warn"><span class="unit">%</span></div>
-      <div class="settings-row"><label>Swap 危险</label><input type="number" min="10" max="99" data-key="alert.swap_crit"><span class="unit">%</span></div>
-      <div class="settings-row"><label>磁盘剩余警告</label><input type="number" min="1" data-key="alert.disk_free_warn_gb"><span class="unit">GB</span></div>
-      <div class="settings-row"><label>磁盘剩余危险</label><input type="number" min="1" data-key="alert.disk_free_crit_gb"><span class="unit">GB</span></div>
-      <div class="settings-row"><label>告警冷却</label><input type="number" min="10" data-key="alert.cooldown_sec"><span class="unit">秒</span></div>
+      <div class="settings-group-title" data-i18n="settings.alertThresholds">告警阈值</div>
+      <div class="settings-row"><label data-i18n="settings.memWarn">内存警告</label><input type="number" min="50" max="99" data-key="alert.mem_warn"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.memCrit">内存危险</label><input type="number" min="50" max="99" data-key="alert.mem_crit"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.swapWarn">Swap 警告</label><input type="number" min="10" max="99" data-key="alert.swap_warn"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.swapCrit">Swap 危险</label><input type="number" min="10" max="99" data-key="alert.swap_crit"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.diskFreeWarn">磁盘剩余警告</label><input type="number" min="1" data-key="alert.disk_free_warn_gb"><span class="unit">GB</span></div>
+      <div class="settings-row"><label data-i18n="settings.diskFreeCrit">磁盘剩余危险</label><input type="number" min="1" data-key="alert.disk_free_crit_gb"><span class="unit">GB</span></div>
+      <div class="settings-row"><label data-i18n="settings.cooldown">告警冷却</label><input type="number" min="10" data-key="alert.cooldown_sec"><span class="unit" data-i18n="unit.seconds">秒</span></div>
     </section>
 
     <section class="settings-group">
-      <div class="settings-group-title">自动终止</div>
-      <div class="settings-row"><label>内存触发阈值</label><input type="number" min="50" max="99" data-key="auto_kill.mem_trigger_pct"><span class="unit">%</span></div>
-      <div class="settings-row"><label>Swap 触发阈值</label><input type="number" min="10" max="99" data-key="auto_kill.swap_trigger_pct"><span class="unit">%</span></div>
-      <div class="settings-row"><label>目标内存降至</label><input type="number" min="30" max="95" data-key="auto_kill.target_mem_pct"><span class="unit">%</span></div>
-      <div class="settings-row"><label>终止冷却</label><input type="number" min="10" data-key="auto_kill.cooldown_sec"><span class="unit">秒</span></div>
+      <div class="settings-group-title" data-i18n="settings.autoKill">自动终止</div>
+      <div class="settings-row"><label data-i18n="settings.memTrigger">内存触发阈值</label><input type="number" min="50" max="99" data-key="auto_kill.mem_trigger_pct"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.swapTrigger">Swap 触发阈值</label><input type="number" min="10" max="99" data-key="auto_kill.swap_trigger_pct"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.targetMem">目标内存降至</label><input type="number" min="30" max="95" data-key="auto_kill.target_mem_pct"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.killCooldown">终止冷却</label><input type="number" min="10" data-key="auto_kill.cooldown_sec"><span class="unit" data-i18n="unit.seconds">秒</span></div>
     </section>
 
     <section class="settings-group">
-      <div class="settings-group-title">定时终止</div>
+      <div class="settings-group-title" data-i18n="settings.scheduledKill">定时终止</div>
       <div class="settings-row">
-        <label>启用定时终止</label>
+        <label data-i18n="settings.enableScheduledKill">启用定时终止</label>
         <input type="checkbox" id="scheduled-kill-enabled" style="width:auto;height:16px">
       </div>
-      <div class="settings-row"><label>终止间隔</label><input type="number" min="1" max="120" id="scheduled-kill-interval"><span class="unit">分钟</span></div>
-      <div style="font-size:11px;color:var(--muted);padding:8px 0;line-height:1.5">
+      <div class="settings-row"><label data-i18n="settings.killInterval">终止间隔</label><input type="number" min="1" max="120" id="scheduled-kill-interval"><span class="unit" data-i18n="unit.minutes">分钟</span></div>
+      <div style="font-size:11px;color:var(--muted);padding:8px 0;line-height:1.5" data-i18n="settings.scheduledKillDesc">
         每隔指定时间自动终止最多 3 个 safe 进程（不管内存是否超标）
       </div>
     </section>
 
     <section class="settings-group">
-      <div class="settings-group-title">进程评分规则</div>
-      <div class="settings-row"><label>CPU 活跃判定（大于则 caution）</label><input type="number" min="1" max="100" data-key="scoring.cpu_caution_pct"><span class="unit">%</span></div>
-      <div class="settings-row"><label>空转判定最短时长</label><input type="number" min="0.5" max="24" step="0.5" data-key="scoring.idle_min_hours"><span class="unit">小时</span></div>
+      <div class="settings-group-title" data-i18n="settings.scoringRules">进程评分规则</div>
+      <div class="settings-row"><label data-i18n="settings.cpuCaution">CPU 活跃判定（大于则 caution）</label><input type="number" min="1" max="100" data-key="scoring.cpu_caution_pct"><span class="unit">%</span></div>
+      <div class="settings-row"><label data-i18n="settings.idleMinHours">空转判定最短时长</label><input type="number" min="0.5" max="24" step="0.5" data-key="scoring.idle_min_hours"><span class="unit" data-i18n="unit.hours">小时</span></div>
     </section>
 
     <section class="settings-group">
-      <div class="settings-group-title">监控设置</div>
-      <div class="settings-row"><label>数据采集间隔</label><input type="number" min="1" max="60" data-key="monitor.interval_sec"><span class="unit">秒</span></div>
+      <div class="settings-group-title" data-i18n="settings.monitorSettings">监控设置</div>
+      <div class="settings-row"><label data-i18n="settings.intervalSec">数据采集间隔</label><input type="number" min="1" max="60" data-key="monitor.interval_sec"><span class="unit" data-i18n="unit.seconds">秒</span></div>
     </section>
 
   </div>
   <div class="drawer-footer">
-    <button class="btn btn-muted" onclick="closeSettings()">取消</button>
-    <button class="btn btn-blue" onclick="saveSettings()">保存并应用</button>
+    <button class="btn btn-muted" onclick="closeSettings()" data-i18n="settings.cancel">取消</button>
+    <button class="btn btn-blue" onclick="saveSettings()" data-i18n="settings.save">保存并应用</button>
   </div>
 </aside>
 
 <script>
+// ── i18n ─────────────────────────────────────────────────
+const translations = {
+  zh: {
+    'nav.monitor': '监控面板',
+    'nav.usage': 'Claude 统计',
+    'nav.bookmarks': '书签管理',
+    'monitor.resourcePressure': '资源压力',
+    'monitor.memory': '内存',
+    'monitor.disk': '磁盘',
+    'monitor.memSwapTrend': '内存 & Swap 趋势（2.5 分钟）',
+    'monitor.cpuDiskTrend': 'CPU & 磁盘趋势（2.5 分钟）',
+    'monitor.aiProcesses': 'AI / 开发工具进程',
+    'monitor.allProcesses': '所有进程（活动监视器）',
+    'monitor.viewAI': 'AI/开发进程',
+    'monitor.viewAll': '所有进程',
+    'monitor.deselect': '取消选择',
+    'monitor.killSelected': '终止选中',
+    'monitor.pauseSelected': '暂停选中',
+    'monitor.noProcesses': '暂无匹配进程',
+    'monitor.noAIProcesses': '暂无匹配的 AI / 开发工具进程',
+    'monitor.noAllProcesses': '暂无进程数据',
+    'monitor.autoKillLog': '自动终止日志',
+    'monitor.autoKillHint': '点击顶部「自动终止」按钮开启',
+    'monitor.noAutoKillRecord': '暂无自动终止记录',
+    'monitor.blacklist': '启动拦截黑名单',
+    'monitor.clearBlacklist': '清空',
+    'monitor.noBlacklist': '暂无黑名单进程',
+    'monitor.autoKillOn': '自动终止: 开',
+    'monitor.autoKillOff': '自动终止: 关',
+    'monitor.statusNormal': '正常',
+    'monitor.statusWarn': '警告',
+    'monitor.statusCrit': '危险',
+    'monitor.selectSafe': '全选 安全',
+    'monitor.killAllSafe': '一键终止所有 安全进程',
+    'monitor.selectedCount': '已选 {n} 个',
+    'table.name': '进程名',
+    'table.cmdline': '命令行',
+    'table.memMB': '内存 MB',
+    'table.cpuPct': 'CPU %',
+    'table.status': '状态',
+    'table.risk': '安全评估',
+    'table.actions': '操作',
+    'proc.running': '运行中',
+    'proc.stopped': '已暂停',
+    'proc.safe': '可安全终止',
+    'proc.caution': '谨慎（建议先暂停）',
+    'proc.danger': '不建议操作',
+    'proc.whitelist': '白名单',
+    'proc.pause': '暂停',
+    'proc.resume': '恢复',
+    'proc.kill': '终止',
+    'proc.blockRestart': '禁止重启',
+    'proc.addWhitelist': '加入白名单',
+    'proc.removeWhitelist': '移出白名单',
+    'proc.allowStart': '允许启动',
+    'settings.title': '设置',
+    'settings.alertThresholds': '告警阈值',
+    'settings.memWarn': '内存警告',
+    'settings.memCrit': '内存危险',
+    'settings.swapWarn': 'Swap 警告',
+    'settings.swapCrit': 'Swap 危险',
+    'settings.diskFreeWarn': '磁盘剩余警告',
+    'settings.diskFreeCrit': '磁盘剩余危险',
+    'settings.cooldown': '告警冷却',
+    'settings.autoKill': '自动终止',
+    'settings.memTrigger': '内存触发阈值',
+    'settings.swapTrigger': 'Swap 触发阈值',
+    'settings.targetMem': '目标内存降至',
+    'settings.killCooldown': '终止冷却',
+    'settings.scheduledKill': '定时终止',
+    'settings.enableScheduledKill': '启用定时终止',
+    'settings.killInterval': '终止间隔',
+    'settings.scheduledKillDesc': '每隔指定时间自动终止最多 3 个 safe 进程（不管内存是否超标）',
+    'settings.scoringRules': '进程评分规则',
+    'settings.cpuCaution': 'CPU 活跃判定（大于则 caution）',
+    'settings.idleMinHours': '空转判定最短时长',
+    'settings.monitorSettings': '监控设置',
+    'settings.intervalSec': '数据采集间隔',
+    'settings.cancel': '取消',
+    'settings.save': '保存并应用',
+    'unit.seconds': '秒',
+    'unit.minutes': '分钟',
+    'unit.hours': '小时',
+    'confirm.killSelected': '确认终止选中的 {n} 个进程？',
+    'confirm.killAllSafe': '确认一键终止全部 {n} 个「可安全终止」进程？',
+    'confirm.blockProcess': '确认禁止「{name}」重启？\n\n该进程启动后将被自动终止，直到手动允许启动。',
+    'confirm.addWhitelist': '确认将「{name}」加入白名单？\n\n加入白名单后，该进程将永不被自动终止。',
+    'confirm.removeWhitelist': '确认将「{name}」移出白名单？\n\n移出后，该进程可能会被自动终止。',
+    'confirm.clearBlacklist': '确定清空黑名单？当前有 {n} 个进程被拦截',
+    'toast.killed': '已终止 {ok}/{total} 个进程，释放约 {mb} MB',
+    'toast.paused': '已暂停 {ok}/{total} 个进程',
+    'toast.noSafe': '没有可安全终止的进程',
+    'toast.killedAll': '已终止 {n} 个安全进程，释放约 {mb} MB',
+    'toast.settingsSaved': '设置已保存并立即生效',
+    'toast.settingsLoadFailed': '加载设置失败: ',
+    'toast.blacklistEmpty': '黑名单已为空',
+    'toast.blacklistCleared': '黑名单已清空',
+    'toast.blacklistClearFailed': '清空失败: ',
+    'toast.blocked': '已禁止「{name}」重启',
+    'toast.unblocked': '已允许「{name}」启动',
+    'toast.addedWhitelist': '已将「{name}」加入白名单',
+    'toast.removedWhitelist': '已将「{name}」移出白名单',
+    'toast.autoKillOn': '自动终止已开启（内存 ≥ {pct}% 触发）',
+    'toast.autoKillOff': '自动终止已关闭',
+  },
+  en: {
+    'nav.monitor': 'Monitor',
+    'nav.usage': 'Claude Usage',
+    'nav.bookmarks': 'Bookmarks',
+    'monitor.resourcePressure': 'Resource Pressure',
+    'monitor.memory': 'Memory',
+    'monitor.disk': 'Disk',
+    'monitor.memSwapTrend': 'Memory & Swap Trend (2.5 min)',
+    'monitor.cpuDiskTrend': 'CPU & Disk Trend (2.5 min)',
+    'monitor.aiProcesses': 'AI / Dev Processes',
+    'monitor.allProcesses': 'All Processes (Activity Monitor)',
+    'monitor.viewAI': 'AI/Dev',
+    'monitor.viewAll': 'All Processes',
+    'monitor.deselect': 'Deselect',
+    'monitor.killSelected': 'Kill Selected',
+    'monitor.pauseSelected': 'Pause Selected',
+    'monitor.noProcesses': 'No matching processes',
+    'monitor.noAIProcesses': 'No matching AI / dev processes',
+    'monitor.noAllProcesses': 'No process data',
+    'monitor.autoKillLog': 'Auto-Kill Log',
+    'monitor.autoKillHint': 'Click "Auto-Kill" button to enable',
+    'monitor.noAutoKillRecord': 'No auto-kill records',
+    'monitor.blacklist': 'Launch Blocklist',
+    'monitor.clearBlacklist': 'Clear',
+    'monitor.noBlacklist': 'No blocked processes',
+    'monitor.autoKillOn': 'Auto-Kill: On',
+    'monitor.autoKillOff': 'Auto-Kill: Off',
+    'monitor.statusNormal': 'Normal',
+    'monitor.statusWarn': 'Warning',
+    'monitor.statusCrit': 'Critical',
+    'monitor.selectSafe': 'Select Safe',
+    'monitor.killAllSafe': 'Kill All Safe Processes',
+    'monitor.selectedCount': '{n} selected',
+    'table.name': 'Name',
+    'table.cmdline': 'Command',
+    'table.memMB': 'Mem MB',
+    'table.cpuPct': 'CPU %',
+    'table.status': 'Status',
+    'table.risk': 'Risk',
+    'table.actions': 'Actions',
+    'proc.running': 'Running',
+    'proc.stopped': 'Stopped',
+    'proc.safe': 'Safe to Kill',
+    'proc.caution': 'Caution (pause first)',
+    'proc.danger': 'Not Recommended',
+    'proc.whitelist': 'Whitelist',
+    'proc.pause': 'Pause',
+    'proc.resume': 'Resume',
+    'proc.kill': 'Kill',
+    'proc.blockRestart': 'Block Restart',
+    'proc.addWhitelist': 'Add to Whitelist',
+    'proc.removeWhitelist': 'Remove from Whitelist',
+    'proc.allowStart': 'Allow Start',
+    'settings.title': 'Settings',
+    'settings.alertThresholds': 'Alert Thresholds',
+    'settings.memWarn': 'Memory Warning',
+    'settings.memCrit': 'Memory Critical',
+    'settings.swapWarn': 'Swap Warning',
+    'settings.swapCrit': 'Swap Critical',
+    'settings.diskFreeWarn': 'Disk Free Warning',
+    'settings.diskFreeCrit': 'Disk Free Critical',
+    'settings.cooldown': 'Alert Cooldown',
+    'settings.autoKill': 'Auto-Kill',
+    'settings.memTrigger': 'Memory Trigger',
+    'settings.swapTrigger': 'Swap Trigger',
+    'settings.targetMem': 'Target Memory',
+    'settings.killCooldown': 'Kill Cooldown',
+    'settings.scheduledKill': 'Scheduled Kill',
+    'settings.enableScheduledKill': 'Enable Scheduled Kill',
+    'settings.killInterval': 'Kill Interval',
+    'settings.scheduledKillDesc': 'Automatically kill up to 3 safe processes at set intervals (regardless of memory usage)',
+    'settings.scoringRules': 'Process Scoring Rules',
+    'settings.cpuCaution': 'CPU Active Threshold (caution if above)',
+    'settings.idleMinHours': 'Min Idle Duration',
+    'settings.monitorSettings': 'Monitor Settings',
+    'settings.intervalSec': 'Data Collection Interval',
+    'settings.cancel': 'Cancel',
+    'settings.save': 'Save & Apply',
+    'unit.seconds': 's',
+    'unit.minutes': 'min',
+    'unit.hours': 'h',
+    'confirm.killSelected': 'Confirm kill {n} selected processes?',
+    'confirm.killAllSafe': 'Confirm kill all {n} "safe to kill" processes?',
+    'confirm.blockProcess': 'Confirm block "{name}" from restarting?\n\nThis process will be auto-killed on startup until manually allowed.',
+    'confirm.addWhitelist': 'Add "{name}" to whitelist?\n\nThis process will never be auto-killed.',
+    'confirm.removeWhitelist': 'Remove "{name}" from whitelist?\n\nThis process may be auto-killed.',
+    'confirm.clearBlacklist': 'Clear blocklist? Currently {n} processes are blocked.',
+    'toast.killed': 'Killed {ok}/{total} processes, freed ~{mb} MB',
+    'toast.paused': 'Paused {ok}/{total} processes',
+    'toast.noSafe': 'No safe processes to kill',
+    'toast.killedAll': 'Killed {n} safe processes, freed ~{mb} MB',
+    'toast.settingsSaved': 'Settings saved and applied',
+    'toast.settingsLoadFailed': 'Failed to load settings: ',
+    'toast.blacklistEmpty': 'Blocklist is already empty',
+    'toast.blacklistCleared': 'Blocklist cleared',
+    'toast.blacklistClearFailed': 'Clear failed: ',
+    'toast.blocked': 'Blocked "{name}" from restarting',
+    'toast.unblocked': 'Allowed "{name}" to start',
+    'toast.addedWhitelist': 'Added "{name}" to whitelist',
+    'toast.removedWhitelist': 'Removed "{name}" from whitelist',
+    'toast.autoKillOn': 'Auto-Kill enabled (triggers at memory ≥ {pct}%)',
+    'toast.autoKillOff': 'Auto-Kill disabled',
+  }
+};
+
+let _lang = localStorage.getItem('ai-guard-lang') || 'zh';
+
+function t(key, vars) {
+  const str = (translations[_lang] || translations.zh)[key] || key;
+  if (!vars) return str;
+  return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : '{' + k + '}');
+}
+
+function setLang(lang) {
+  _lang = lang;
+  localStorage.setItem('ai-guard-lang', lang);
+  document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+  updateAllText();
+  // Update chart labels
+  updateChartLabels();
+  // Re-render processes with updated labels
+  renderTable(_lastProcs);
+  // Update autokill button
+  setAutoKillUI(_autoKillEnabled, _autokillTriggerPct);
+  // Update batch count
+  updateBatchButtons();
+  // Refresh process view title
+  const title = document.getElementById('process-view-title');
+  if (title) title.textContent = _currentView === 'ai'
+    ? t('monitor.aiProcesses')
+    : t('monitor.allProcesses');
+}
+
+function updateAllText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  // Keep btn icons by re-initializing
+  initButtons();
+}
+
 // ── SVG 图标库 ────────────────────────────────────────────
 const ICONS = {
   bolt:   `<path d="M9.5 2L4 9h4.5L7 14l6-7H9.5z" fill="currentColor" stroke="none"/>`,
@@ -395,6 +917,7 @@ const ICONS = {
   block:  `<circle cx="8" cy="8" r="6.5"/><line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/>`,
   shield: `<path d="M8 2L3 4v4c0 3 2 6 5 7 3-1 5-4 5-7V4z" stroke-width="1.5"/><polyline points="5.5,8 7.5,10 10.5,6" stroke-width="1.5"/>`,
 };
+
 function icon(name, cls='') {
   const paths = ICONS[name] || '';
   return `<svg class="icon${cls?' '+cls:''}" viewBox="0 0 16 16" width="1em" height="1em"
@@ -407,27 +930,21 @@ function icon(name, cls='') {
 let _lastProcs = [];
 let _selectedPids = new Set();
 let _autokillTriggerPct = 85;
-let _blockedProcesses = new Set();  // 黑名单进程名
-let _currentView = 'ai';  // 当前视图：'ai' 或 'all'
+let _autoKillEnabled = false;
+let _blockedProcesses = new Set();
+let _currentView = 'ai';
 
 // ── 视图切换 ──────────────────────────────────────────────
 async function switchView(view) {
   _currentView = view;
 
-  // 更新按钮状态
   document.querySelectorAll('.btn-view').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
 
-  // 更新标题
   const title = document.getElementById('process-view-title');
-  if (view === 'ai') {
-    title.textContent = 'AI / 开发工具进程';
-  } else {
-    title.textContent = '所有进程（活动监视器）';
-  }
+  if (title) title.textContent = view === 'ai' ? t('monitor.aiProcesses') : t('monitor.allProcesses');
 
-  // 获取并显示对应的进程列表
   try {
     if (view === 'ai') {
       stopAllProcessesPolling();
@@ -439,7 +956,7 @@ async function switchView(view) {
       startAllProcessesPolling();
     }
   } catch (e) {
-    console.error('切换视图失败:', e);
+    console.error('switchView failed:', e);
   }
 }
 
@@ -449,10 +966,9 @@ function _applyTheme(theme) {
   const isDark = theme === 'dark';
   const btn = document.getElementById('theme-btn');
   if (btn) btn.innerHTML = isDark ? icon('moon') : icon('sun');
-  // 更新 Chart.js 图表颜色（图表初始化后才生效）
-  const gridColor   = isDark ? '#2a2d3e' : '#e5e7eb';
-  const tickColor   = isDark ? '#8892a4' : '#6b7280';
-  const legendColor = isDark ? '#8892a4' : '#6b7280';
+  const gridColor   = isDark ? '#30363d' : '#e5e7eb';
+  const tickColor   = isDark ? '#8b949e' : '#6b7280';
+  const legendColor = isDark ? '#8b949e' : '#6b7280';
   if (typeof chartMem !== 'undefined' && chartMem) {
     [chartMem, chartCpu].forEach(chart => {
       chart.options.scales.y.grid.color = gridColor;
@@ -470,14 +986,12 @@ function toggleTheme() {
   _applyTheme(next);
 }
 
-// ── 颜色 ──
 function barColor(pct) {
-  if (pct >= 90) return '#ef4444';
-  if (pct >= 70) return '#f59e0b';
-  return '#22c55e';
+  if (pct >= 90) return 'var(--red)';
+  if (pct >= 70) return 'var(--yellow)';
+  return 'var(--green)';
 }
 
-// ── 进度条 ──
 function setBar(barId, pctId, pct) {
   const bar = document.getElementById(barId);
   const txt = document.getElementById(pctId);
@@ -486,24 +1000,25 @@ function setBar(barId, pctId, pct) {
   if (txt) txt.textContent = pct.toFixed(1) + '%';
 }
 
-// ── 状态徽章 ──
 function setStatus(level) {
   const el = document.getElementById('status-badge');
   el.className = '';
   if (level === 'crit') {
-    el.innerHTML = icon('warn','icon-red') + ' 危险';
+    el.innerHTML = icon('warn','icon-red') + ' ' + t('monitor.statusCrit');
     el.className = 'crit';
   } else if (level === 'warn') {
-    el.innerHTML = icon('dot','icon-yellow') + ' 警告';
+    el.innerHTML = icon('dot','icon-yellow') + ' ' + t('monitor.statusWarn');
     el.className = 'warn';
   } else {
-    el.innerHTML = icon('check','icon-green') + ' 正常';
+    el.innerHTML = icon('check','icon-green') + ' ' + t('monitor.statusNormal');
   }
 }
 
-// ── 图表 ──
+// ── 图表 ──────────────────────────────────────────────────
 const MAX_PTS = 150;
 const labels = [];
+const isDark = () => document.documentElement.getAttribute('data-theme') !== 'light';
+
 function makeChart(id, datasets) {
   return new Chart(document.getElementById(id).getContext('2d'), {
     type: 'line',
@@ -511,22 +1026,36 @@ function makeChart(id, datasets) {
     options: {
       animation: false, responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { labels: { color: '#8892a4', boxWidth: 12, font: { size: 11 } } } },
+      plugins: { legend: { labels: { color: '#8b949e', boxWidth: 12, font: { size: 11 } } } },
       scales: {
         x: { display: false },
-        y: { min: 0, max: 100, grid: { color: '#2a2d3e' },
-             ticks: { color: '#8892a4', font: { size: 10 }, callback: v => v + '%' } }
+        y: {
+          min: 0, max: 100,
+          grid: { color: '#30363d' },
+          ticks: { color: '#8b949e', font: { size: 10 }, callback: v => v + '%' }
+        }
       }
     }
   });
 }
+
+function updateChartLabels() {
+  if (typeof chartMem === 'undefined') return;
+  chartMem.data.datasets[0].label = _lang === 'zh' ? '内存 %' : 'Memory %';
+  chartMem.data.datasets[1].label = 'Swap %';
+  chartCpu.data.datasets[0].label = 'CPU %';
+  chartCpu.data.datasets[1].label = _lang === 'zh' ? '磁盘 %' : 'Disk %';
+  chartMem.update('none');
+  chartCpu.update('none');
+}
+
 const chartMem = makeChart('chart-mem', [
-  { label: '内存 %',  data: [], borderColor: '#3b82f6', backgroundColor: '#3b82f618', tension: 0.3, pointRadius: 0, fill: true },
-  { label: 'Swap %', data: [], borderColor: '#a855f7', backgroundColor: '#a855f718', tension: 0.3, pointRadius: 0, fill: true },
+  { label: '内存 %',  data: [], borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,.1)', tension: 0.3, pointRadius: 0, fill: true },
+  { label: 'Swap %', data: [], borderColor: '#bc8cff', backgroundColor: 'rgba(188,140,255,.1)', tension: 0.3, pointRadius: 0, fill: true },
 ]);
 const chartCpu = makeChart('chart-cpu', [
-  { label: 'CPU %',  data: [], borderColor: '#22c55e', backgroundColor: '#22c55e18', tension: 0.3, pointRadius: 0, fill: true },
-  { label: '磁盘 %', data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b18', tension: 0.3, pointRadius: 0, fill: true },
+  { label: 'CPU %',  data: [], borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,.1)', tension: 0.3, pointRadius: 0, fill: true },
+  { label: '磁盘 %', data: [], borderColor: '#d29922', backgroundColor: 'rgba(210,153,34,.1)', tension: 0.3, pointRadius: 0, fill: true },
 ]);
 
 function pushCharts(m) {
@@ -542,22 +1071,24 @@ function pushCharts(m) {
   chartCpu.update('none');
 }
 
-// ── 更新指标 ──
+// ── 更新指标 ──────────────────────────────────────────────
 function updateMetrics(m) {
   if (!m) return;
   setBar('mem-bar',  'mem-pct',  m.mem_percent);
   setBar('swap-bar', 'swap-pct', m.swap_percent);
   setBar('disk-bar', 'disk-pct', m.disk_percent);
   setBar('cpu-bar',  'cpu-pct',  m.cpu_percent);
-  document.getElementById('mem-detail').textContent  = `${m.mem_used_gb} / ${m.mem_total_gb} GB（可用 ${m.mem_available_gb} GB）`;
+  document.getElementById('mem-detail').textContent  = `${m.mem_used_gb} / ${m.mem_total_gb} GB${_lang === 'zh' ? `（可用 ${m.mem_available_gb} GB）` : ` (available ${m.mem_available_gb} GB)`}`;
   document.getElementById('swap-detail').textContent = `${m.swap_used_gb} / ${m.swap_total_gb} GB`;
-  document.getElementById('disk-detail').textContent = `剩余 ${m.disk_free_gb} GB（共 ${m.disk_total_gb} GB）`;
+  document.getElementById('disk-detail').textContent = _lang === 'zh'
+    ? `剩余 ${m.disk_free_gb} GB（共 ${m.disk_total_gb} GB）`
+    : `${m.disk_free_gb} GB free (${m.disk_total_gb} GB total)`;
   setStatus(m.alert_level || 'normal');
   document.getElementById('last-update').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
   pushCharts(m);
 }
 
-// ── 更新进程表 ──
+// ── 更新进程表 ────────────────────────────────────────────
 function updateProcesses(procs) {
   _lastProcs = procs || [];
   renderTable(_lastProcs);
@@ -568,8 +1099,8 @@ function renderTable(procs) {
 
   if (!procs.length) {
     const emptyText = _currentView === 'ai'
-      ? '暂无匹配的 AI / 开发工具进程'
-      : '暂无进程数据';
+      ? t('monitor.noAIProcesses')
+      : t('monitor.noAllProcesses');
     tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${emptyText}</td></tr>`;
     updateBatchButtons();
     return;
@@ -580,65 +1111,62 @@ function renderTable(procs) {
   tbody.innerHTML = procs.map(p => {
     const isStopped  = p.status === 'stopped';
     const statusCls  = isStopped ? 'status-stopped' : 'status-running';
-    const statusTxt  = isStopped ? '已暂停' : p.status;
+    const statusTxt  = isStopped ? t('proc.stopped') : t('proc.running');
     const risk       = p.risk || 'safe';
     const tipText    = (p.risk_reasons || []).map(r => '• ' + r).join('\n');
     const isChecked  = prevSelected.has(p.pid);
     const isSelected = isChecked ? 'selected' : '';
     const isWhitelisted = p.whitelisted || false;
 
-    // risk label with icon
     let riskIcon = '';
     let riskText = p.risk_label || '—';
-    if (risk === 'safe')    { riskIcon = icon('check','icon-green');  riskText = '可安全终止'; }
-    if (risk === 'caution') { riskIcon = icon('warn','icon-yellow');  riskText = '谨慎（建议先暂停）'; }
-    if (risk === 'danger')  { riskIcon = icon('cross','icon-red');    riskText = '不建议操作'; }
+    if (risk === 'safe')    { riskIcon = icon('check','icon-green');  riskText = t('proc.safe'); }
+    if (risk === 'caution') { riskIcon = icon('warn','icon-yellow');  riskText = t('proc.caution'); }
+    if (risk === 'danger')  { riskIcon = icon('cross','icon-red');    riskText = t('proc.danger'); }
 
     const procName = p.name.toLowerCase();
     const isBlocked = _blockedProcesses.has(procName);
 
-    // 白名单标记
     const whitelistBadge = isWhitelisted
-      ? `<span class="whitelist-badge" title="已加入白名单，永不自动终止">${icon('shield','icon-blue')} 白名单</span>`
+      ? `<span class="whitelist-badge" title="${t('proc.whitelist')}">${icon('shield','icon-blue')} ${t('proc.whitelist')}</span>`
       : '';
 
     let actions = '';
     if (isBlocked) {
-      // 黑名单进程：只显示"允许启动"按钮
       actions = `<div class="btn-gap">
-        <button class="btn-sm btn-resume" onclick="unblockProcess('${procName}')">${icon('check','icon-green')} 允许启动</button>
+        <button class="btn-sm btn-resume" onclick="unblockProcess('${procName}')">${icon('check','icon-green')} ${t('proc.allowStart')}</button>
       </div>`;
     } else if (isStopped) {
       actions = `<div class="btn-gap">
-        <button class="btn-sm btn-resume" onclick="doAction(${p.pid},'resume')">恢复</button>
-        <button class="btn-sm btn-kill"   onclick="doAction(${p.pid},'kill')">终止</button>
+        <button class="btn-sm btn-resume" onclick="doAction(${p.pid},'resume')">${t('proc.resume')}</button>
+        <button class="btn-sm btn-kill"   onclick="doAction(${p.pid},'kill')">${t('proc.kill')}</button>
         ${isWhitelisted
-          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
-          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+          ? `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.removeWhitelist')}</button>`
+          : `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.addWhitelist')}</button>`
         }
       </div>`;
     } else if (risk === 'danger') {
       actions = `<div class="btn-gap">
-        <button class="btn-sm btn-pause" style="opacity:.3;cursor:not-allowed" title="高危进程，不建议操作">—</button>
+        <button class="btn-sm btn-pause" style="opacity:.3;cursor:not-allowed" title="${t('proc.danger')}">—</button>
       </div>`;
     } else if (p.suggested_action === 'pause') {
       actions = `<div class="btn-gap">
-        <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">${icon('star','icon-yellow')} 暂停</button>
-        <button class="btn-sm btn-kill"  onclick="doAction(${p.pid},'kill')">终止</button>
-        <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
+        <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">${icon('star','icon-yellow')} ${t('proc.pause')}</button>
+        <button class="btn-sm btn-kill"  onclick="doAction(${p.pid},'kill')">${t('proc.kill')}</button>
+        <button class="btn-sm" style="background:rgba(248,81,73,.12);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} ${t('proc.blockRestart')}</button>
         ${isWhitelisted
-          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
-          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+          ? `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.removeWhitelist')}</button>`
+          : `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.addWhitelist')}</button>`
         }
       </div>`;
     } else {
       actions = `<div class="btn-gap">
-        <button class="btn-sm btn-kill"  style="font-weight:700" onclick="doAction(${p.pid},'kill')">${icon('star','icon-yellow')} 终止</button>
-        <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">暂停</button>
-        <button class="btn-sm" style="background:rgba(239,68,68,.15);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} 禁止重启</button>
+        <button class="btn-sm btn-kill"  style="font-weight:700" onclick="doAction(${p.pid},'kill')">${icon('star','icon-yellow')} ${t('proc.kill')}</button>
+        <button class="btn-sm btn-pause" onclick="doAction(${p.pid},'pause')">${t('proc.pause')}</button>
+        <button class="btn-sm" style="background:rgba(248,81,73,.12);color:var(--red)" onclick="blockProcess('${procName}')">${icon('block','icon-red')} ${t('proc.blockRestart')}</button>
         ${isWhitelisted
-          ? `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 移出白名单</button>`
-          : `<button class="btn-sm" style="background:rgba(59,130,246,.15);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} 加入白名单</button>`
+          ? `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="removeFromWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.removeWhitelist')}</button>`
+          : `<button class="btn-sm" style="background:rgba(88,166,255,.12);color:var(--blue)" onclick="addToWhitelist('${procName}',${p.pid})">${icon('shield','icon-blue')} ${t('proc.addWhitelist')}</button>`
         }
       </div>`;
     }
@@ -659,7 +1187,7 @@ function renderTable(procs) {
   updateBatchButtons();
 }
 
-// ── 勾选逻辑 ──
+// ── 勾选逻辑 ─────────────────────────────────────────────
 function onCheckChange(chk) {
   const pid = parseInt(chk.dataset.pid);
   if (chk.checked) _selectedPids.add(pid);
@@ -705,14 +1233,14 @@ function updateBatchButtons() {
   const n = _selectedPids.size;
   document.getElementById('btn-batch-kill').disabled  = n === 0;
   document.getElementById('btn-batch-pause').disabled = n === 0;
-  document.getElementById('batch-count').textContent  = n > 0 ? `已选 ${n} 个` : '';
+  document.getElementById('batch-count').textContent  = n > 0 ? t('monitor.selectedCount', { n }) : '';
 }
 
-// ── 批量操作 ──
+// ── 批量操作 ─────────────────────────────────────────────
 async function batchKill() {
   const pids = [..._selectedPids];
   if (!pids.length) return;
-  if (!confirm(`确认终止选中的 ${pids.length} 个进程？`)) return;
+  if (!confirm(t('confirm.killSelected', { n: pids.length }))) return;
   try {
     const res  = await fetch('/api/processes/batch/kill', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -720,7 +1248,7 @@ async function batchKill() {
     });
     const data = await res.json();
     const ok   = data.results.filter(r => r.success).length;
-    showToast('check', `已终止 ${ok}/${pids.length} 个进程，释放约 ${data.total_freed_mb} MB`);
+    showToast('check', t('toast.killed', { ok, total: pids.length, mb: data.total_freed_mb }));
     selectNone();
   } catch (e) { showToast('cross', e.message, true); }
 }
@@ -735,35 +1263,35 @@ async function batchPause() {
     });
     const data = await res.json();
     const ok   = data.results.filter(r => r.success).length;
-    showToast('check', `已暂停 ${ok}/${pids.length} 个进程`);
+    showToast('check', t('toast.paused', { ok, total: pids.length }));
     selectNone();
   } catch (e) { showToast('cross', e.message, true); }
 }
 
 async function killAllSafe() {
   const safeCount = _lastProcs.filter(p => p.risk === 'safe').length;
-  if (!safeCount) { showToast('warn', '没有可安全终止的进程'); return; }
-  if (!confirm(`确认一键终止全部 ${safeCount} 个「可安全终止」进程？`)) return;
+  if (!safeCount) { showToast('warn', t('toast.noSafe')); return; }
+  if (!confirm(t('confirm.killAllSafe', { n: safeCount }))) return;
   try {
     const res  = await fetch('/api/processes/batch/kill-safe', { method: 'POST' });
     const data = await res.json();
-    showToast('bolt', `已终止 ${data.killed} 个安全进程，释放约 ${data.total_freed_mb} MB`);
+    showToast('bolt', t('toast.killedAll', { n: data.killed, mb: data.total_freed_mb }));
   } catch (e) { showToast('cross', e.message, true); }
 }
 
-// ── 单进程操作 ──
+// ── 单进程操作 ────────────────────────────────────────────
 async function doAction(pid, action) {
   try {
     const res  = await fetch(`/api/processes/${pid}/${action}`, { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '操作失败');
+    if (!res.ok) throw new Error(data.detail || 'Operation failed');
     showToast('check', `${data.message}${data.mem_freed_mb ? '，释放约 ' + data.mem_freed_mb + ' MB' : ''}`);
   } catch (e) { showToast('cross', e.message, true); }
 }
 
-// ── 黑名单操作 ──
+// ── 黑名单操作 ────────────────────────────────────────────
 async function blockProcess(procName) {
-  if (!confirm(`确认禁止「${procName}」重启？\n\n该进程启动后将被自动终止，直到手动允许启动。`)) return;
+  if (!confirm(t('confirm.blockProcess', { name: procName }))) return;
   try {
     const res = await fetch('/api/processes/block', {
       method: 'POST',
@@ -771,11 +1299,11 @@ async function blockProcess(procName) {
       body: JSON.stringify({ name: procName })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '操作失败');
+    if (!res.ok) throw new Error(data.detail || 'Operation failed');
     _blockedProcesses.add(procName);
     updateBlacklist();
-    showToast('block', `已禁止「${procName}」重启`);
-    renderTable(_lastProcs);  // 刷新表格显示
+    showToast('block', t('toast.blocked', { name: procName }));
+    renderTable(_lastProcs);
   } catch (e) { showToast('cross', e.message, true); }
 }
 
@@ -787,17 +1315,17 @@ async function unblockProcess(procName) {
       body: JSON.stringify({ name: procName })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '操作失败');
+    if (!res.ok) throw new Error(data.detail || 'Operation failed');
     _blockedProcesses.delete(procName);
     updateBlacklist();
-    showToast('check', `已允许「${procName}」启动`);
-    renderTable(_lastProcs);  // 刷新表格显示
+    showToast('check', t('toast.unblocked', { name: procName }));
+    renderTable(_lastProcs);
   } catch (e) { showToast('cross', e.message, true); }
 }
 
-// ── 白名单管理 ──
+// ── 白名单管理 ────────────────────────────────────────────
 async function addToWhitelist(procName, pid) {
-  if (!confirm(`确认将「${procName}」加入白名单？\n\n加入白名单后，该进程将永不被自动终止。`)) return;
+  if (!confirm(t('confirm.addWhitelist', { name: procName }))) return;
   try {
     const res = await fetch('/api/whitelist/process-name', {
       method: 'POST',
@@ -805,15 +1333,14 @@ async function addToWhitelist(procName, pid) {
       body: JSON.stringify({ name: procName })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '操作失败');
-    showToast('shield', `已将「${procName}」加入白名单`);
-    // 刷新进程列表以更新白名单标记
+    if (!res.ok) throw new Error(data.detail || 'Operation failed');
+    showToast('shield', t('toast.addedWhitelist', { name: procName }));
     await fetchProcesses();
   } catch (e) { showToast('cross', e.message, true); }
 }
 
 async function removeFromWhitelist(procName, pid) {
-  if (!confirm(`确认将「${procName}」移出白名单？\n\n移出后，该进程可能会被自动终止。`)) return;
+  if (!confirm(t('confirm.removeWhitelist', { name: procName }))) return;
   try {
     const res = await fetch('/api/whitelist/process-name', {
       method: 'DELETE',
@@ -821,9 +1348,8 @@ async function removeFromWhitelist(procName, pid) {
       body: JSON.stringify({ name: procName })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '操作失败');
-    showToast('check', `已将「${procName}」移出白名单`);
-    // 刷新进程列表以更新白名单标记
+    if (!res.ok) throw new Error(data.detail || 'Operation failed');
+    showToast('check', t('toast.removedWhitelist', { name: procName }));
     await fetchProcesses();
   } catch (e) { showToast('cross', e.message, true); }
 }
@@ -833,7 +1359,7 @@ async function fetchProcesses() {
     const data = await fetch('/api/processes').then(r => r.json());
     updateProcesses(Array.isArray(data) ? data : (data.processes || []));
   } catch (e) {
-    console.error('获取进程列表失败:', e);
+    console.error('Failed to fetch processes:', e);
   }
 }
 
@@ -845,35 +1371,35 @@ async function loadBlockedProcesses() {
   } catch (_) {}
 }
 
-// ── 自动终止日志 ──
+// ── 自动终止日志 ─────────────────────────────────────────
 function updateAutoKillLog(log) {
   const el = document.getElementById('auto-kill-log');
   if (!log || !log.length) {
-    el.innerHTML = '<div class="log-empty">暂无自动终止记录</div>';
+    el.innerHTML = `<div class="log-empty">${t('monitor.noAutoKillRecord')}</div>`;
     return;
   }
   el.innerHTML = [...log].reverse().map(entry => {
-    const t = new Date(entry.ts * 1000).toLocaleTimeString('zh-CN', { hour12: false });
+    const time = new Date(entry.ts * 1000).toLocaleTimeString('zh-CN', { hour12: false });
     return `<div class="log-item">
       <span class="log-name">${entry.name}</span> PID ${entry.pid}
-      &nbsp;·&nbsp; ${entry.mem_mb.toFixed(0)} MB &nbsp;·&nbsp; ${t}<br>
+      &nbsp;·&nbsp; ${entry.mem_mb.toFixed(0)} MB &nbsp;·&nbsp; ${time}<br>
       <span>${entry.reason}</span>
     </div>`;
   }).join('');
 }
 
-// ── 黑名单显示 ──
+// ── 黑名单显示 ────────────────────────────────────────────
 function updateBlacklist() {
   const container = document.getElementById('blacklist-container');
   if (!container) return;
   if (_blockedProcesses.size === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:12px">暂无黑名单进程</div>';
+    container.innerHTML = `<div style="text-align:center;padding:12px">${t('monitor.noBlacklist')}</div>`;
     return;
   }
   const items = Array.from(_blockedProcesses).map(name =>
     `<div style="display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border)">
       <span style="flex:1;font-weight:500;color:var(--text)">${name}</span>
-      <button class="btn-sm" style="background:rgba(34,197,94,.15);color:var(--green)" onclick="unblockProcess('${name}')">${icon('check','icon-green')} 允许启动</button>
+      <button class="btn-sm" style="background:rgba(63,185,80,.12);color:var(--green)" onclick="unblockProcess('${name}')">${icon('check','icon-green')} ${t('proc.allowStart')}</button>
     </div>`
   ).join('');
   container.innerHTML = items;
@@ -881,10 +1407,10 @@ function updateBlacklist() {
 
 async function clearBlacklist() {
   if (_blockedProcesses.size === 0) {
-    showToast('warn', '黑名单已为空');
+    showToast('warn', t('toast.blacklistEmpty'));
     return;
   }
-  if (!confirm(`确定清空黑名单？当前有 ${_blockedProcesses.size} 个进程被拦截`)) return;
+  if (!confirm(t('confirm.clearBlacklist', { n: _blockedProcesses.size }))) return;
   try {
     const promises = Array.from(_blockedProcesses).map(name =>
       fetch('/api/processes/unblock', {
@@ -896,21 +1422,22 @@ async function clearBlacklist() {
     await Promise.all(promises);
     _blockedProcesses.clear();
     updateBlacklist();
-    showToast('check', '黑名单已清空');
+    showToast('check', t('toast.blacklistCleared'));
   } catch (e) {
-    showToast('cross', '清空失败: ' + e.message, true);
+    showToast('cross', t('toast.blacklistClearFailed') + e.message, true);
   }
 }
 
-// ── 自动终止开关 ──
+// ── 自动终止开关 ─────────────────────────────────────────
 function setAutoKillUI(enabled, triggerPct) {
+  _autoKillEnabled = enabled;
   const btn = document.getElementById('autokill-toggle');
   if (!btn) return;
   if (enabled) {
-    btn.innerHTML = `${icon('bolt','icon-green')} 自动终止: 开 (≥${triggerPct || '?'}%)`;
+    btn.innerHTML = `${icon('bolt','icon-green')} ${t('monitor.autoKillOn')} (≥${triggerPct || '?'}%)`;
     btn.className = 'on';
   } else {
-    btn.innerHTML = `${icon('bolt')} 自动终止: 关`;
+    btn.innerHTML = `${icon('bolt')} ${t('monitor.autoKillOff')}`;
     btn.className = '';
   }
 }
@@ -923,9 +1450,9 @@ async function toggleAutoKill() {
     _autokillTriggerPct = s.mem_trigger_pct || 85;
     setAutoKillUI(data.enabled, s.mem_trigger_pct);
     if (data.enabled) {
-      showToast('bolt', `自动终止已开启（内存 ≥ ${s.mem_trigger_pct}% 触发）`);
+      showToast('bolt', t('toast.autoKillOn', { pct: s.mem_trigger_pct }));
     } else {
-      showToast('bolt', '自动终止已关闭');
+      showToast('bolt', t('toast.autoKillOff'));
     }
   } catch (e) { showToast('cross', e.message, true); }
 }
@@ -938,7 +1465,7 @@ async function loadAutoKillStatus() {
   } catch (_) {}
 }
 
-// ── Toast ──
+// ── Toast ─────────────────────────────────────────────────
 let _toastTimer;
 function showToast(iconName, msg, isErr = false) {
   const el = document.getElementById('toast');
@@ -950,14 +1477,13 @@ function showToast(iconName, msg, isErr = false) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-// ── SSE 连接 ──
+// ── SSE 连接 ─────────────────────────────────────────────
 function connect() {
   const es = new EventSource('/api/stream');
   es.onmessage = e => {
     try {
       const { metrics, processes, auto_kill_log, autokill_enabled } = JSON.parse(e.data);
       updateMetrics(metrics);
-      // 只在 AI 视图时自动更新进程列表（SSE 只推送 AI 进程）
       if (_currentView === 'ai') {
         updateProcesses(processes);
       }
@@ -970,7 +1496,6 @@ function connect() {
   es.onerror = () => { es.close(); setTimeout(connect, 3000); };
 }
 
-// 活动监视器视图定时轮询（每 5 秒刷新所有进程）
 let _allProcessesTimer = null;
 function startAllProcessesPolling() {
   stopAllProcessesPolling();
@@ -986,7 +1511,7 @@ function stopAllProcessesPolling() {
   if (_allProcessesTimer) { clearInterval(_allProcessesTimer); _allProcessesTimer = null; }
 }
 
-// ── Settings 抽屉 ──
+// ── Settings 抽屉 ────────────────────────────────────────
 async function openSettings() {
   try {
     const data = await fetch('/api/settings').then(r => r.json());
@@ -996,14 +1521,13 @@ async function openSettings() {
         el.value = data[group][key];
       }
     });
-    // 加载定时终止配置
     const schedData = await fetch('/api/scheduled-kill/status').then(r => r.json());
     document.getElementById('scheduled-kill-enabled').checked = schedData.enabled || false;
     document.getElementById('scheduled-kill-interval').value = schedData.interval_minutes || 10;
 
     document.getElementById('settings-overlay').classList.add('open');
     document.getElementById('settings-drawer').classList.add('open');
-  } catch (e) { showToast('cross', '加载设置失败: ' + e.message, true); }
+  } catch (e) { showToast('cross', t('toast.settingsLoadFailed') + e.message, true); }
 }
 
 function closeSettings() {
@@ -1024,9 +1548,8 @@ async function saveSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error((await res.json()).detail || '保存失败');
+    if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
 
-    // 保存定时终止配置
     const schedEnabled = document.getElementById('scheduled-kill-enabled').checked;
     const schedInterval = parseInt(document.getElementById('scheduled-kill-interval').value);
     await fetch('/api/scheduled-kill/config', {
@@ -1035,43 +1558,48 @@ async function saveSettings() {
       body: JSON.stringify({ enabled: schedEnabled, interval_minutes: schedInterval }),
     });
 
-    // 刷新自动终止按钮阈值显示
     const s = await fetch('/api/autokill/status').then(r => r.json());
     _autokillTriggerPct = s.mem_trigger_pct || 85;
     setAutoKillUI(s.enabled, s.mem_trigger_pct);
-    showToast('check', '设置已保存并立即生效');
+    showToast('check', t('toast.settingsSaved'));
     closeSettings();
   } catch (e) { showToast('cross', e.message, true); }
 }
 
-// ── 页面初始化：填充带图标的按钮文字 ──
-(function initButtons() {
-  document.getElementById('btn-select-safe').innerHTML =
-    `全选 ${icon('check','icon-green')} 安全`;
-  document.getElementById('btn-kill-all-safe').innerHTML =
-    `${icon('bolt')} 一键终止所有 ${icon('check','icon-green')} 安全进程`;
-  // 初始化主题按钮图标
+// ── 初始化 ────────────────────────────────────────────────
+function initButtons() {
+  const selectSafeBtn = document.getElementById('btn-select-safe');
+  if (selectSafeBtn) selectSafeBtn.innerHTML = `${t('monitor.selectSafe')} ${icon('check','icon-green')}`;
+
+  const killAllSafeBtn = document.getElementById('btn-kill-all-safe');
+  if (killAllSafeBtn) killAllSafeBtn.innerHTML = `${icon('bolt')} ${t('monitor.killAllSafe')}`;
+
   const savedTheme = localStorage.getItem('aigard-theme') || 'dark';
   const themeBtn = document.getElementById('theme-btn');
   if (themeBtn) themeBtn.innerHTML = savedTheme === 'dark' ? icon('moon') : icon('sun');
-  // 初始化设置按钮图标
+
   const settingsBtn = document.getElementById('settings-btn');
   if (settingsBtn) settingsBtn.innerHTML = icon('gear');
-  // 初始状态下自动终止按钮
+}
+
+// ── 页面启动 ─────────────────────────────────────────────
+(function init() {
+  // 恢复语言
+  document.getElementById('lang-zh').classList.toggle('active', _lang === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', _lang === 'en');
+  // 恢复主题
+  const savedTheme = localStorage.getItem('aigard-theme') || 'dark';
+  _applyTheme(savedTheme);
+  // 初始化按钮
+  initButtons();
+  // 初始状态
   setAutoKillUI(false, 85);
-  // 初始状态徽章
   setStatus('normal');
+  // 加载数据
+  loadAutoKillStatus();
+  loadBlockedProcesses();
+  connect();
 })();
-
-// 从 localStorage 恢复主题（图表已初始化，可安全更新颜色）
-(function restoreTheme() {
-  const saved = localStorage.getItem('aigard-theme') || 'dark';
-  _applyTheme(saved);
-})();
-
-loadAutoKillStatus();
-loadBlockedProcesses();
-connect();
 </script>
 </body>
 </html>

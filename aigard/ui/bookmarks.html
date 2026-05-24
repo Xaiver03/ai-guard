@@ -4,530 +4,1367 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Guard — 书签管理</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z' fill='none' stroke='%233b82f6' stroke-width='1.5'/></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z' fill='none' stroke='%2358a6ff' stroke-width='1.5'/></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Theme Variables ───────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg: #0d1117; --card: #161b22; --card2: #1c2128; --border: #30363d;
+  --text: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
+  --green: #3fb950; --yellow: #d29922; --red: #f85149;
+  --blue: #58a6ff; --purple: #bc8cff; --orange: #d29922;
+  --btn-muted-bg: #21262d;
+  --input-bg: #0d1117;
+  --row-hover: rgba(88,166,255,.06);
+  --row-selected: rgba(88,166,255,.1);
+  --shadow: 0 2px 8px rgba(0,0,0,.3);
+  --scrollbar-bg: #161b22; --scrollbar-thumb: #30363d;
+}
+[data-theme="light"] {
+  --bg: #f6f8fa; --card: #ffffff; --card2: #f6f8fa; --border: #d0d7de;
+  --text: #1f2328; --muted: #656d76; --muted2: #8b949e;
+  --green: #1a7f37; --yellow: #9a6700; --red: #cf222e;
+  --blue: #0969da; --purple: #8250df; --orange: #9a6700;
+  --btn-muted-bg: #eaeef2;
+  --input-bg: #f6f8fa;
+  --row-hover: rgba(9,105,218,.04);
+  --row-selected: rgba(9,105,218,.08);
+  --shadow: 0 1px 3px rgba(31,35,40,.12), 0 8px 24px rgba(66,74,83,.12);
+  --scrollbar-bg: #f6f8fa; --scrollbar-thumb: #d0d7de;
+}
 
-  /* ── 深色主题（默认）──────────────────────────────── */
-  :root, [data-theme="dark"] {
-    --bg: #0f1117; --card: #1a1d27; --card2: #12141e; --border: #2a2d3e;
-    --text: #e2e8f0; --muted: #8892a4; --muted2: #5a6478;
-    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
-    --blue: #3b82f6; --purple: #a855f7;
-    --row-hover: #1e2130; --row-selected: #1a2230;
-    --btn-muted-bg: #2a2d3e;
-    --input-bg: #12141e;
-    --shadow: 0 4px 24px rgba(0,0,0,.4);
-  }
+/* ── Reset & Base ──────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.5;
+  min-height: 100vh;
+  transition: background .2s, color .2s;
+}
 
-  /* ── 浅色主题 ─────────────────────────────────────── */
-  [data-theme="light"] {
-    --bg: #f4f6fb; --card: #ffffff; --card2: #f0f2f8; --border: #dde1ec;
-    --text: #1a1d2e; --muted: #6b7280; --muted2: #9ca3af;
-    --green: #16a34a; --yellow: #d97706; --red: #dc2626;
-    --blue: #2563eb; --purple: #7c3aed;
-    --row-hover: #f0f4ff; --row-selected: #e8eeff;
-    --btn-muted-bg: #e5e7eb;
-    --input-bg: #f9fafb;
-    --shadow: 0 4px 24px rgba(0,0,0,.08);
-  }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-size: 14px; min-height: 100vh; transition: background .2s, color .2s; }
+/* ── Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
-  /* Header */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
-  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
-  .logo span { color: var(--blue); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,color .15s,border-color .15s; flex-shrink:0; }
-  .icon-btn:hover { background:var(--card2); color:var(--text); }
+/* ── Header ────────────────────────────────────── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px;
+}
+.header-left { display: flex; align-items: center; gap: 0; }
+.logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; }
+.logo span { color: var(--blue); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+nav { display: flex; gap: 6px; margin-left: 16px; }
+nav a {
+  padding: 5px 12px; border-radius: 7px; text-decoration: none;
+  font-size: 12px; font-weight: 600; transition: all 0.2s;
+}
+nav a.active { background: rgba(88,166,255,0.15); color: var(--blue); }
+nav a:not(.active) { background: var(--btn-muted-bg); color: var(--muted); }
+nav a:not(.active):hover { color: var(--text); }
+.lang-toggle { display: flex; gap: 2px; }
+.lang-toggle button {
+  padding: 4px 8px; font-size: 11px; font-weight: 600; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; border-radius: 6px;
+  transition: all .15s;
+}
+.lang-toggle button.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.icon-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.icon-btn:hover { background: var(--card2); color: var(--text); }
 
-  /* Layout */
-  main { padding: 20px 24px; display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media(max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
+/* ── Main Layout ───────────────────────────────── */
+main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap: 16px; }
 
-  /* Card */
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; transition: background .2s, border-color .2s; }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+/* ── Card ──────────────────────────────────────── */
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 20px; transition: background .2s, border-color .2s;
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.card-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--muted); display: flex; align-items: center; gap: 8px;
+}
 
-  /* Button */
-  .btn { padding: 6px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s; white-space: nowrap; display:inline-flex; align-items:center; gap:6px; }
-  .btn:hover { opacity: .8; }
-  .btn:disabled { opacity: .35; cursor: not-allowed; }
-  .btn-primary  { background: rgba(34,197,94,.15);  color: var(--green); }
-  .btn-warning  { background: rgba(245,158,11,.15); color: var(--yellow); }
-  .btn-danger   { background: rgba(239,68,68,.15);  color: var(--red); }
-  .btn-muted    { background: var(--btn-muted-bg);  color: var(--muted); }
-  .btn-blue     { background: rgba(59,130,246,.15); color: var(--blue); }
+/* ── Grid Layouts ──────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media(max-width: 1000px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
+@media(max-width: 600px) { .grid-3, .grid-4 { grid-template-columns: 1fr; } }
 
-  /* Browser selector */
-  .browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
-  .browser-card { padding: 16px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; transition: all .2s; text-align: center; }
-  .browser-card:hover { border-color: var(--blue); background: var(--card2); }
-  .browser-card.active { border-color: var(--blue); background: rgba(59,130,246,.1); }
-  .browser-icon { font-size: 32px; margin-bottom: 8px; }
-  .browser-name { font-weight: 600; margin-bottom: 4px; }
-  .browser-count { font-size: 12px; color: var(--muted); }
+/* ── Stat Card ─────────────────────────────────── */
+.stat-card {
+  padding: 14px 16px; background: var(--card2); border-radius: 8px;
+  border: 1px solid var(--border); transition: all .15s;
+}
+.stat-card:hover { border-color: var(--blue); }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-value { font-size: 28px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+.stat-value.blue { color: var(--blue); }
+.stat-value.green { color: var(--green); }
+.stat-value.purple { color: var(--purple); }
+.stat-value.orange { color: var(--orange); }
+.stat-sub { font-size: 11px; color: var(--muted2); margin-top: 2px; }
 
-  /* Stats */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
-  .stat-box { padding: 12px; background: var(--card2); border-radius: 8px; text-align: center; }
-  .stat-value { font-size: 24px; font-weight: 700; color: var(--blue); }
-  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+/* ── Button ────────────────────────────────────── */
+.btn {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); color: var(--muted);
+}
+.btn:hover { background: var(--card2); color: var(--text); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn-primary { background: rgba(63,185,80,.12); color: var(--green); border-color: rgba(63,185,80,.3); }
+.btn-primary:hover { background: rgba(63,185,80,.2); }
+.btn-blue { background: rgba(88,166,255,.1); color: var(--blue); border-color: rgba(88,166,255,.3); }
+.btn-blue:hover { background: rgba(88,166,255,.2); }
+.btn-danger { background: rgba(248,81,73,.1); color: var(--red); border-color: rgba(248,81,73,.3); }
+.btn-danger:hover { background: rgba(248,81,73,.2); }
 
-  /* Issue badge */
-  .issue-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-  .issue-badge.error { background: rgba(239,68,68,.15); color: var(--red); }
-  .issue-badge.warning { background: rgba(245,158,11,.15); color: var(--yellow); }
-  .issue-badge.info { background: rgba(59,130,246,.15); color: var(--blue); }
+/* ── Browser Selector ──────────────────────────── */
+.browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.browser-card {
+  padding: 16px; border: 1px solid var(--border); border-radius: 10px;
+  cursor: pointer; transition: all .2s; text-align: center; background: var(--card2);
+}
+.browser-card:hover { border-color: var(--blue); }
+.browser-card.active { border-color: var(--blue); background: rgba(88,166,255,.08); }
+.browser-icon { width: 36px; height: 36px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.browser-card.active .browser-icon { color: var(--blue); }
+.browser-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+.browser-type { font-size: 11px; color: var(--muted2); }
 
-  /* Bookmark list */
-  .bookmark-list { margin-top: 12px; max-height: 400px; overflow-y: auto; }
-  .bookmark-item { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; transition: background .15s; }
-  .bookmark-item:hover { background: var(--row-hover); }
-  .bookmark-item:last-child { border-bottom: none; }
-  .bookmark-icon { width: 16px; height: 16px; flex-shrink: 0; }
-  .bookmark-info { flex: 1; min-width: 0; }
-  .bookmark-name { font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bookmark-url { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bookmark-folder { font-size: 11px; color: var(--muted2); padding: 2px 8px; background: var(--card2); border-radius: 4px; }
+/* ── Issue Badge ───────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+}
+.badge-red { background: rgba(248,81,73,.12); color: var(--red); }
+.badge-yellow { background: rgba(210,153,34,.12); color: var(--yellow); }
+.badge-blue { background: rgba(88,166,255,.12); color: var(--blue); }
+.badge-green { background: rgba(63,185,80,.12); color: var(--green); }
+.badge-purple { background: rgba(188,140,255,.12); color: var(--purple); }
 
-  /* Search */
-  .search-box { display: flex; gap: 8px; margin-bottom: 12px; }
-  .search-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--text); font-size: 13px; }
-  .search-input:focus { outline: none; border-color: var(--blue); }
+/* ── Search & Filter ───────────────────────────── */
+.toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.search-input {
+  flex: 1; min-width: 200px; padding: 7px 12px 7px 32px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--input-bg); color: var(--text); font-size: 13px;
+  transition: border-color .15s;
+}
+.search-input:focus { outline: none; border-color: var(--blue); }
+.search-wrap { position: relative; flex: 1; min-width: 200px; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted2); pointer-events: none; }
+.filter-select {
+  padding: 7px 28px 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--input-bg); color: var(--text); font-size: 12px;
+  appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+.filter-select:focus { outline: none; border-color: var(--blue); }
 
-  /* Loading */
-  .loading { text-align: center; padding: 40px; color: var(--muted); }
-  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.6s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Bookmark Table ────────────────────────────── */
+.bookmark-table-wrap {
+  overflow: auto; max-height: calc(100vh - 420px); min-height: 300px;
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.bookmark-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.bookmark-table thead { position: sticky; top: 0; z-index: 1; }
+.bookmark-table th {
+  padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted);
+  background: var(--card2); border-bottom: 1px solid var(--border);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+.bookmark-table th:hover { color: var(--text); }
+.bookmark-table th .sort-arrow { margin-left: 4px; font-size: 10px; opacity: 0.4; }
+.bookmark-table th.sorted .sort-arrow { opacity: 1; color: var(--blue); }
+.bookmark-table td {
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.bookmark-table tr:hover td { background: var(--row-hover); }
+.bookmark-table tr:last-child td { border-bottom: none; }
+.bm-name { font-weight: 500; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-name a { color: var(--text); text-decoration: none; }
+.bm-name a:hover { color: var(--blue); text-decoration: underline; }
+.bm-url { font-size: 11px; color: var(--muted2); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+.bm-folder {
+  font-size: 11px; padding: 2px 8px; background: var(--card2); border-radius: 4px;
+  color: var(--muted); white-space: nowrap; display: inline-block;
+}
 
-  /* AI config notice */
-  .ai-notice { padding: 12px 16px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 8px; margin-bottom: 16px; display: flex; align-items: start; gap: 10px; }
-  .ai-notice.success { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.3); }
-  .ai-notice-icon { flex-shrink: 0; margin-top: 2px; }
-  .ai-notice-content { flex: 1; }
-  .ai-notice-title { font-weight: 600; margin-bottom: 4px; }
-  .ai-notice-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+/* ── Folder Distribution ───────────────────────── */
+.folder-bar-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.folder-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background .15s; }
+.folder-bar-row:hover { background: var(--row-hover); }
+.folder-bar-row.active { background: var(--row-selected); }
+.folder-bar-name { width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.folder-bar-track { flex: 1; height: 8px; background: var(--card2); border-radius: 4px; overflow: hidden; }
+.folder-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+.folder-bar-count { width: 40px; text-align: right; color: var(--muted); font-family: 'SF Mono', 'Fira Code', Consolas, monospace; font-size: 11px; }
+
+/* ── AI Notice ─────────────────────────────────── */
+.ai-notice {
+  padding: 12px 16px; border: 1px solid; border-radius: 8px;
+  display: flex; align-items: flex-start; gap: 10px; font-size: 13px;
+}
+.ai-notice.success { background: rgba(63,185,80,.06); border-color: rgba(63,185,80,.3); }
+.ai-notice.warning { background: rgba(210,153,34,.06); border-color: rgba(210,153,34,.3); }
+.ai-notice svg { flex-shrink: 0; margin-top: 2px; }
+.ai-notice-body { flex: 1; }
+.ai-notice-title { font-weight: 600; margin-bottom: 2px; }
+.ai-notice-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── Analysis Category Cards ───────────────────── */
+.cat-card {
+  padding: 12px 16px; background: var(--card2); border-radius: 8px;
+  border: 1px solid var(--border); transition: border-color .15s;
+}
+.cat-card:hover { border-color: var(--blue); }
+.cat-name { font-weight: 600; margin-bottom: 4px; }
+.cat-desc { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.cat-count { font-size: 11px; color: var(--muted2); }
+
+/* ── Loading & Empty ───────────────────────────── */
+.loading { text-align: center; padding: 40px; color: var(--muted); }
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 2px solid var(--border); border-top-color: var(--blue);
+  border-radius: 50%; animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+.empty-state svg { margin-bottom: 12px; color: var(--muted2); }
+.empty-state .title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+
+/* ── Refresh spin ──────────────────────────────── */
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+.spinning svg { animation: refresh-spin .8s linear infinite; }
+
+/* ── Footer stats bar ──────────────────────────── */
+.footer-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; font-size: 11px; color: var(--muted2); margin-top: 8px;
+}
+
+/* ── Modal / Wizard ────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  width: 680px; max-width: 92vw; max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: var(--shadow); transform: translateY(12px) scale(.97);
+  transition: transform .2s;
+}
+.modal-overlay.open .modal { transform: translateY(0) scale(1); }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.modal-close {
+  width: 28px; height: 28px; border-radius: 6px; border: none;
+  background: transparent; color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.modal-close:hover { background: var(--card2); color: var(--text); }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+/* ── Steps indicator ───────────────────────────── */
+.steps { display: flex; gap: 4px; }
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--border);
+  transition: background .2s;
+}
+.step-dot.active { background: var(--blue); width: 20px; border-radius: 4px; }
+.step-dot.done { background: var(--green); }
+
+/* ── Wizard content ────────────────────────────── */
+.wizard-step { display: none; }
+.wizard-step.active { display: block; }
+.issue-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 8px; transition: border-color .15s;
+}
+.issue-row:hover { border-color: var(--blue); }
+.issue-row .left { display: flex; align-items: center; gap: 10px; }
+.issue-row .count {
+  font-size: 18px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  min-width: 36px;
+}
+.issue-row .label { font-size: 13px; }
+.issue-row .desc { font-size: 11px; color: var(--muted2); }
+.action-tag {
+  font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.action-tag.clean { background: rgba(63,185,80,.1); color: var(--green); }
+.action-tag.warn { background: rgba(210,153,34,.1); color: var(--yellow); }
+.action-tag.info { background: rgba(88,166,255,.1); color: var(--blue); }
+.preview-table {
+  width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 12px;
+}
+.preview-table th {
+  padding: 6px 10px; text-align: left; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border);
+}
+.preview-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--border);
+}
+.preview-table tr:last-child td { border-bottom: none; }
+.preview-change { color: var(--green); font-weight: 500; }
+.preview-remove { color: var(--red); text-decoration: line-through; }
+.summary-box {
+  padding: 16px; background: var(--card2); border-radius: 8px; text-align: center;
+  margin-bottom: 16px;
+}
+.summary-box .big { font-size: 32px; font-weight: 700; color: var(--green); }
+.summary-box .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── AI Organize Button (prominent) ────────────── */
+.btn-ai {
+  background: linear-gradient(135deg, rgba(88,166,255,.15), rgba(188,140,255,.15));
+  border: 1px solid rgba(88,166,255,.3); color: var(--blue);
+  padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.btn-ai:hover {
+  background: linear-gradient(135deg, rgba(88,166,255,.25), rgba(188,140,255,.25));
+  border-color: var(--blue); transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88,166,255,.2);
+}
+.btn-ai:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
 </style>
 </head>
 <body>
 
+<!-- ── Header ──────────────────────────────────── -->
 <header>
-  <div class="logo">AI <span>Guard</span></div>
-  <nav style="display:flex;gap:6px;margin-left:16px">
-    <a href="/" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">监控面板</a>
-    <a href="/bookmarks.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;background:rgba(59,130,246,.15);color:var(--blue);">书签管理</a>
-  </nav>
+  <div class="header-left">
+    <h1 class="logo">AI <span>Guard</span></h1>
+    <nav>
+      <a href="/" id="nav-monitor"></a>
+      <a href="/usage.html" id="nav-usage"></a>
+      <a href="/bookmarks.html" class="active" id="nav-bookmarks"></a>
+    </nav>
+  </div>
   <div class="header-right">
-    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
+    <div class="lang-toggle">
+      <button id="lang-zh" onclick="setLang('zh')">中</button>
+      <button id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()"></button>
   </div>
 </header>
 
+<!-- ── Main Content ────────────────────────────── -->
 <main>
-  <!-- AI 配置状态 -->
+  <!-- AI Config Notice -->
   <div id="ai-config-notice"></div>
 
-  <!-- 浏览器选择 -->
-  <div class="card">
+  <!-- Browser Selector -->
+  <div class="card" id="browser-card">
     <div class="card-header">
-      <div class="card-title">选择浏览器</div>
-      <button class="btn btn-muted" onclick="loadBrowsers()">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 8A6 6 0 1 1 2 8" stroke-linecap="round"/>
-          <path d="M8 2v6" stroke-linecap="round"/>
-        </svg>
-        刷新
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2a10 10 0 0 1 3 6 10 10 0 0 1-3 6 10 10 0 0 1-3-6 10 10 0 0 1 3-6z"/></svg>
+        <span data-i18n="browserSelect"></span>
+      </div>
+      <button class="btn" id="refresh-browsers-btn" onclick="loadBrowsers()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M14 8A6 6 0 1 1 2 8"/><path d="M14 3v5h-5"/></svg>
+        <span data-i18n="refresh"></span>
       </button>
     </div>
     <div id="browser-list" class="loading">
       <div class="spinner"></div>
-      <div style="margin-top: 8px;">加载中...</div>
+      <div style="margin-top: 8px;" data-i18n="loading"></div>
     </div>
   </div>
 
-  <!-- 书签统计 -->
-  <div class="card" id="stats-card" style="display: none;">
-    <div class="card-header">
-      <div class="card-title">书签统计</div>
-    </div>
-    <div class="stats-grid" id="stats-grid"></div>
+  <!-- Stats Cards -->
+  <div class="grid-4" id="stats-section" style="display:none;">
+    <div class="stat-card"><div class="stat-label" data-i18n="totalBookmarks"></div><div class="stat-value blue" id="st-total">0</div></div>
+    <div class="stat-card"><div class="stat-label" data-i18n="totalFolders"></div><div class="stat-value green" id="st-folders">0</div></div>
+    <div class="stat-card"><div class="stat-label" data-i18n="totalDomains"></div><div class="stat-value purple" id="st-domains">0</div></div>
+    <div class="stat-card"><div class="stat-label" data-i18n="issuesFound"></div><div class="stat-value orange" id="st-issues">--</div><div class="stat-sub" id="st-issues-sub" data-i18n="clickAnalyze"></div></div>
   </div>
 
-  <!-- 问题分析 -->
-  <div class="card" id="analysis-card" style="display: none;">
+  <!-- AI Organize Button -->
+  <div id="ai-organize-section" style="display:none;text-align:center;padding:4px 0;">
+    <button class="btn-ai" id="btn-ai-organize" onclick="openAIWizard()" disabled>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 1l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>
+      <span data-i18n="aiOrganize"></span>
+    </button>
+    <div style="font-size:11px;color:var(--muted2);margin-top:6px;" data-i18n="aiOrganizeDesc"></div>
+  </div>
+
+  <!-- Folder Distribution + Analysis  -->
+  <div class="grid-2" id="middle-section" style="display:none;">
+    <!-- Folder Distribution -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2 3h4l2 2h6v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/></svg>
+          <span data-i18n="folderDist"></span>
+        </div>
+      </div>
+      <div id="folder-dist" class="folder-bar-wrap" style="max-height:320px;overflow-y:auto;"></div>
+    </div>
+    <!-- Analysis -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+          <span data-i18n="analysis"></span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-blue" onclick="analyzeBookmarks()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+            <span data-i18n="analyze"></span>
+          </button>
+          <button class="btn btn-primary" onclick="aiCategorize()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 1l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>
+            <span data-i18n="aiCategorize"></span>
+          </button>
+        </div>
+      </div>
+      <div id="analysis-result">
+        <div class="empty-state" style="padding:24px;">
+          <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+          <div class="title" data-i18n="noAnalysis"></div>
+          <div data-i18n="clickAnalyzeHint"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookmark List -->
+  <div class="card" id="bookmarks-card" style="display:none;">
     <div class="card-header">
-      <div class="card-title">问题分析</div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn btn-blue" onclick="analyzeBookmarks()">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="7" cy="7" r="5"/>
-            <path d="M11 11l3 3" stroke-linecap="round"/>
-          </svg>
-          分析
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
+        <span data-i18n="bookmarkList"></span>
+        <span id="bm-count-badge" class="badge badge-blue" style="margin-left:6px;"></span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="exportBookmarks('json')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+          JSON
         </button>
-        <button class="btn btn-primary" onclick="aiCategorize()">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z"/>
-          </svg>
-          AI 分类
+        <button class="btn" onclick="exportBookmarks('html')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+          HTML
+        </button>
+        <button class="btn" onclick="exportBookmarks('csv')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+          CSV
         </button>
       </div>
     </div>
-    <div id="analysis-result"></div>
-  </div>
-
-  <!-- 书签列表 -->
-  <div class="card" id="bookmarks-card" style="display: none;">
-    <div class="card-header">
-      <div class="card-title">书签列表</div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn btn-muted" onclick="exportBookmarks('json')">导出 JSON</button>
-        <button class="btn btn-muted" onclick="exportBookmarks('html')">导出 HTML</button>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+        <input type="text" class="search-input" id="search-input" data-i18n-placeholder="searchPlaceholder" oninput="filterBookmarks()">
       </div>
+      <select class="filter-select" id="folder-filter" onchange="filterBookmarks()">
+        <option value="" data-i18n="allFolders"></option>
+      </select>
+      <select class="filter-select" id="sort-select" onchange="sortBookmarks()">
+        <option value="name-asc" data-i18n="sortNameAsc"></option>
+        <option value="name-desc" data-i18n="sortNameDesc"></option>
+        <option value="url-asc" data-i18n="sortUrlAsc"></option>
+        <option value="folder-asc" data-i18n="sortFolderAsc"></option>
+      </select>
     </div>
-    <div class="search-box">
-      <input type="text" class="search-input" id="search-input" placeholder="搜索书签..." onkeyup="searchBookmarks()">
+    <!-- Table -->
+    <div class="bookmark-table-wrap" id="bm-table-wrap">
+      <table class="bookmark-table">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th data-i18n="colName" onclick="toggleSort('name')"><span></span><span class="sort-arrow"></span></th>
+            <th data-i18n="colUrl" onclick="toggleSort('url')"><span></span><span class="sort-arrow"></span></th>
+            <th data-i18n="colFolder" onclick="toggleSort('folder')"><span></span><span class="sort-arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="bm-tbody"></tbody>
+      </table>
     </div>
-    <div id="bookmarks-list" class="bookmark-list"></div>
+    <div class="footer-bar">
+      <span id="footer-info"></span>
+      <span id="footer-status"></span>
+    </div>
   </div>
 </main>
 
+<!-- ── AI Organize Wizard Modal ────────────────── -->
+<div class="modal-overlay" id="wizard-overlay" onclick="if(event.target===this)closeWizard()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--blue)" stroke-width="1.75" stroke-linecap="round"><path d="M8 1l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>
+        <span id="wizard-title"></span>
+      </div>
+      <button class="modal-close" onclick="closeWizard()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="wizard-body"></div>
+    <div class="modal-footer">
+      <div class="steps" id="wizard-steps"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="wizard-back" onclick="wizardBack()" style="display:none;" data-i18n="back"></button>
+        <button class="btn btn-blue" id="wizard-next" onclick="wizardNext()"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-// ── SVG Icons ──────────────────────────────────────────────
-const ICONS = {
-  moon:   `<path d="M12 12.5A5.5 5.5 0 0 1 6.5 4a5.5 5.5 0 1 0 7 7.5c-.5.1-1 .05-1.5 0z" fill="currentColor" stroke="none"/>`,
-  sun:    `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
+/* ══════════════════════════════════════════════════
+   i18n
+   ══════════════════════════════════════════════════ */
+const T = {
+  zh: {
+    navMonitor: '监控面板', navUsage: 'Claude 统计', navBookmarks: '书签管理',
+    browserSelect: '选择浏览器', refresh: '刷新', loading: '加载中...',
+    totalBookmarks: '总书签数', totalFolders: '文件夹数', totalDomains: '域名数', issuesFound: '发现问题',
+    clickAnalyze: '点击分析按钮检测', folderDist: '文件夹分布', analysis: '问题分析',
+    analyze: '分析', aiCategorize: 'AI 分类', noAnalysis: '尚未分析',
+    clickAnalyzeHint: '点击上方按钮开始分析书签质量',
+    bookmarkList: '书签列表', searchPlaceholder: '搜索书签名称、URL...',
+    allFolders: '全部文件夹', sortNameAsc: '名称 A-Z', sortNameDesc: '名称 Z-A',
+    sortUrlAsc: 'URL A-Z', sortFolderAsc: '文件夹 A-Z',
+    colName: '名称', colUrl: 'URL', colFolder: '文件夹',
+    noBrowsers: '未检测到浏览器', noBookmarks: '没有书签',
+    showingOf: (f, t) => `显示 ${f} / ${t} 条`,
+    exported: (p) => `已导出到 ${p}`,
+    exportFail: (e) => `导出失败: ${e}`,
+    analyzing: '分析中...', aiAnalyzing: 'AI 分析中...',
+    duplicates: '重复书签', urlIssues: 'URL 问题', namingIssues: '命名问题',
+    largeFolders: '大型文件夹', uncategorized: '未分类',
+    noIssues: '未发现问题', contains: '包含', items: '个书签',
+    aiConfigured: 'AI 已配置', aiNotConfigured: 'AI 未配置',
+    aiConfiguredDesc: (m) => `已从 Claude Code 配置中读取 API 密钥 / 模型: ${m}`,
+    aiNotConfiguredDesc: '请确保 ~/.claude/settings.json 中配置了 ANTHROPIC_AUTH_TOKEN',
+    uncategorizedFolder: '未分类',
+    aiOrganize: 'AI 一键整理', aiOrganizeDesc: '智能扫描问题 + AI 分类建议 + 导出整理后的书签',
+    back: '上一步', next: '下一步', close: '关闭', startScan: '开始扫描',
+    wizardStep1: '扫描问题', wizardStep2: 'AI 智能分类', wizardStep3: '整理预览', wizardStep4: '导出结果',
+    scanning: '正在扫描书签...', scanComplete: '扫描完成',
+    aiClassifying: 'AI 正在分析书签...', aiClassifyDone: 'AI 分类完成',
+    previewTitle: '以下是整理建议预览',
+    removeDuplicates: '移除重复书签', cleanUrls: '清理追踪参数', fixNames: '修复命名问题',
+    reclassify: 'AI 分类建议', exportReady: '整理方案已就绪',
+    exportDesc: '选择导出格式，下载整理后的书签文件，然后导入到浏览器中',
+    exportJson: '导出 JSON', exportHtml: '导出 HTML (浏览器可导入)', exportCsv: '导出 CSV',
+    willRemove: '将移除', willClean: '将清理', willRename: '将重命名', willReclassify: '将重新分类',
+    noIssuesFound: '你的书签很整洁! 没有发现需要修复的问题。',
+    step: (n) => `第 ${n} 步`,
+  },
+  en: {
+    navMonitor: 'Monitor', navUsage: 'Claude Stats', navBookmarks: 'Bookmarks',
+    browserSelect: 'Select Browser', refresh: 'Refresh', loading: 'Loading...',
+    totalBookmarks: 'Total Bookmarks', totalFolders: 'Folders', totalDomains: 'Domains', issuesFound: 'Issues',
+    clickAnalyze: 'Click Analyze to detect', folderDist: 'Folder Distribution', analysis: 'Analysis',
+    analyze: 'Analyze', aiCategorize: 'AI Categorize', noAnalysis: 'No analysis yet',
+    clickAnalyzeHint: 'Click the button above to analyze bookmark quality',
+    bookmarkList: 'Bookmark List', searchPlaceholder: 'Search name, URL...',
+    allFolders: 'All Folders', sortNameAsc: 'Name A-Z', sortNameDesc: 'Name Z-A',
+    sortUrlAsc: 'URL A-Z', sortFolderAsc: 'Folder A-Z',
+    colName: 'Name', colUrl: 'URL', colFolder: 'Folder',
+    noBrowsers: 'No browsers detected', noBookmarks: 'No bookmarks',
+    showingOf: (f, t) => `Showing ${f} / ${t}`,
+    exported: (p) => `Exported to ${p}`,
+    exportFail: (e) => `Export failed: ${e}`,
+    analyzing: 'Analyzing...', aiAnalyzing: 'AI Analyzing...',
+    duplicates: 'Duplicates', urlIssues: 'URL Issues', namingIssues: 'Naming Issues',
+    largeFolders: 'Large Folders', uncategorized: 'Uncategorized',
+    noIssues: 'No issues found', contains: 'Contains', items: 'bookmarks',
+    aiConfigured: 'AI Configured', aiNotConfigured: 'AI Not Configured',
+    aiConfiguredDesc: (m) => `API key read from Claude Code config / Model: ${m}`,
+    aiNotConfiguredDesc: 'Ensure ANTHROPIC_AUTH_TOKEN is set in ~/.claude/settings.json',
+    uncategorizedFolder: 'Uncategorized',
+    aiOrganize: 'AI Organize', aiOrganizeDesc: 'Smart scan + AI categorization + Export cleaned bookmarks',
+    back: 'Back', next: 'Next', close: 'Close', startScan: 'Start Scan',
+    wizardStep1: 'Scan Issues', wizardStep2: 'AI Categorize', wizardStep3: 'Preview', wizardStep4: 'Export',
+    scanning: 'Scanning bookmarks...', scanComplete: 'Scan Complete',
+    aiClassifying: 'AI is analyzing bookmarks...', aiClassifyDone: 'AI Categorization Done',
+    previewTitle: 'Here is the cleanup preview',
+    removeDuplicates: 'Remove Duplicates', cleanUrls: 'Clean Tracking Params', fixNames: 'Fix Naming Issues',
+    reclassify: 'AI Category Suggestions', exportReady: 'Cleanup Plan Ready',
+    exportDesc: 'Choose a format, download the cleaned bookmarks, then import into your browser',
+    exportJson: 'Export JSON', exportHtml: 'Export HTML (browser importable)', exportCsv: 'Export CSV',
+    willRemove: 'Will remove', willClean: 'Will clean', willRename: 'Will rename', willReclassify: 'Will reclassify',
+    noIssuesFound: 'Your bookmarks are clean! No issues found.',
+    step: (n) => `Step ${n}`,
+  }
 };
 
-function icon(name, cls='') {
-  const paths = ICONS[name] || '';
-  return `<svg class="icon${cls?' '+cls:''}" viewBox="0 0 16 16" width="1em" height="1em"
-    fill="none" stroke="currentColor" stroke-width="1.75"
-    stroke-linecap="round" stroke-linejoin="round"
-    aria-hidden="true">${paths}</svg>`;
+let _lang = localStorage.getItem('ai-guard-lang') || 'zh';
+const t = (key, ...args) => {
+  const v = T[_lang][key];
+  return typeof v === 'function' ? v(...args) : (v || key);
+};
+
+function setLang(lang) {
+  _lang = lang; localStorage.setItem('ai-guard-lang', lang);
+  applyI18n(); applyLangButtons();
+  renderBookmarks(); // re-render with new language
 }
 
+function applyLangButtons() {
+  document.getElementById('lang-zh').classList.toggle('active', _lang === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', _lang === 'en');
+}
+
+function applyI18n() {
+  // data-i18n text
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (T[_lang][key] && typeof T[_lang][key] === 'string') el.textContent = T[_lang][key];
+  });
+  // data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (T[_lang][key]) el.placeholder = T[_lang][key];
+  });
+  // selects
+  document.querySelectorAll('option[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (T[_lang][key] && typeof T[_lang][key] === 'string') el.textContent = T[_lang][key];
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   Theme
+   ══════════════════════════════════════════════════ */
+const ICONS = {
+  moon: `<path d="M12 12.5A5.5 5.5 0 0 1 6.5 4a5.5 5.5 0 1 0 7 7.5c-.5.1-1 .05-1.5 0z" fill="currentColor" stroke="none"/>`,
+  sun: `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
+};
+function svgIcon(name) {
+  return `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-btn').innerHTML = theme === 'dark' ? svgIcon('moon') : svgIcon('sun');
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('ai-guard-theme', next);
+  applyTheme(next);
+}
+
+/* ══════════════════════════════════════════════════
+   State
+   ══════════════════════════════════════════════════ */
 let currentBrowser = null;
 let allBookmarks = [];
+let filteredBookmarks = [];
+let folderStats = {};
+let activeFolder = '';
+let sortField = 'name'; let sortAsc = true;
 
-// ── 主题 ──────────────────────────────────────────────────
-function _applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const isDark = theme === 'dark';
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.innerHTML = isDark ? icon('moon') : icon('sun');
+/* ══════════════════════════════════════════════════
+   Util
+   ══════════════════════════════════════════════════ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
 }
 
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('aigard-theme', next);
-  _applyTheme(next);
-}
-
-// 恢复主题
-const savedTheme = localStorage.getItem('aigard-theme') || 'dark';
-_applyTheme(savedTheme);
-
-// 检查 AI 配置
+/* ══════════════════════════════════════════════════
+   AI Config
+   ══════════════════════════════════════════════════ */
 async function checkAIConfig() {
   try {
     const res = await fetch('/api/bookmarks/ai/config');
     const data = await res.json();
-
-    const notice = document.getElementById('ai-config-notice');
+    const el = document.getElementById('ai-config-notice');
     if (data.configured) {
-      notice.innerHTML = `
-        <div class="ai-notice success">
-          <div class="ai-notice-icon">✓</div>
-          <div class="ai-notice-content">
-            <div class="ai-notice-title">AI 已配置</div>
-            <div class="ai-notice-text">
-              已从 Claude Code 配置中读取 API 密钥。模型: ${data.model}
-            </div>
-          </div>
-        </div>
-      `;
+      el.innerHTML = `<div class="ai-notice success">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
+        <div class="ai-notice-body"><div class="ai-notice-title">${t('aiConfigured')}</div><div class="ai-notice-text">${t('aiConfiguredDesc', data.model)}</div></div></div>`;
     } else {
-      notice.innerHTML = `
-        <div class="ai-notice">
-          <div class="ai-notice-icon">⚠</div>
-          <div class="ai-notice-content">
-            <div class="ai-notice-title">AI 未配置</div>
-            <div class="ai-notice-text">
-              请确保 Claude Code 的 settings.json 中配置了 ANTHROPIC_AUTH_TOKEN。<br>
-              配置文件位置: ~/.claude/settings.json
-            </div>
-          </div>
-        </div>
-      `;
+      el.innerHTML = `<div class="ai-notice warning">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"><path d="M8 3v5M8 11v1"/><path d="M2 14h12L8 2 2 14z"/></svg>
+        <div class="ai-notice-body"><div class="ai-notice-title">${t('aiNotConfigured')}</div><div class="ai-notice-text">${t('aiNotConfiguredDesc')}</div></div></div>`;
     }
-  } catch (err) {
-    console.error('检查 AI 配置失败:', err);
-  }
+  } catch (e) { /* silent */ }
 }
 
-// 加载浏览器列表
-async function loadBrowsers() {
-  const container = document.getElementById('browser-list');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top: 8px;">加载中...</div></div>';
+/* ══════════════════════════════════════════════════
+   Browser Selector
+   ══════════════════════════════════════════════════ */
+const BROWSER_ICONS = {
+  chrome: `<svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/><path d="M10.5 8h5.5M5 4.5L2 0M5 11.5L2 16"/></svg>`,
+  edge: `<svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M8 2a6 6 0 1 1 0 12"/><path d="M4 8a4 4 0 0 1 8 0"/><circle cx="10" cy="10" r="2"/></svg>`,
+  safari: `<svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="6"/><path d="M5 11l2-5 5-2-2 5z"/></svg>`,
+  dia: `<svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M8 2l5 6-5 6-5-6z"/></svg>`,
+  quark: `<svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></svg>`,
+};
 
+async function loadBrowsers() {
+  const c = document.getElementById('browser-list');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div><div style="margin-top:8px;">${t('loading')}</div></div>`;
   try {
     const res = await fetch('/api/bookmarks/browsers');
     const data = await res.json();
-
-    if (data.browsers.length === 0) {
-      container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);">未检测到浏览器</div>';
+    if (!data.browsers.length) {
+      c.innerHTML = `<div class="empty-state"><svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M5 8h6"/></svg><div class="title">${t('noBrowsers')}</div></div>`;
       return;
     }
-
-    const icons = {
-      chrome: '🌐',
-      edge: '🔷',
-      dia: '💎',
-      quark: '⚛️',
-      safari: '🧭'
-    };
-
-    container.innerHTML = '<div class="browser-grid">' + data.browsers.map(b => `
-      <div class="browser-card" onclick="selectBrowser('${b.name}')">
-        <div class="browser-icon">${icons[b.name] || '📑'}</div>
-        <div class="browser-name">${b.display_name}</div>
-        <div class="browser-count">${b.type}</div>
-      </div>
-    `).join('') + '</div>';
-  } catch (err) {
-    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--red);">加载失败: ${err.message}</div>`;
+    c.innerHTML = '<div class="browser-grid">' + data.browsers.map(b =>
+      `<div class="browser-card" data-browser="${b.name}" onclick="selectBrowser('${b.name}', this)">
+        <div class="browser-icon">${BROWSER_ICONS[b.name] || BROWSER_ICONS.chrome}</div>
+        <div class="browser-name">${escapeHtml(b.display_name)}</div>
+        <div class="browser-type">${escapeHtml(b.type)}</div>
+      </div>`
+    ).join('') + '</div>';
+  } catch (e) {
+    c.innerHTML = `<div class="empty-state" style="color:var(--red);">${e.message}</div>`;
   }
 }
 
-// 选择浏览器
-async function selectBrowser(browser) {
+async function selectBrowser(browser, cardEl) {
   currentBrowser = browser;
+  document.querySelectorAll('.browser-card').forEach(c => c.classList.remove('active'));
+  if (cardEl) cardEl.classList.add('active');
 
-  // 更新选中状态
-  document.querySelectorAll('.browser-card').forEach(card => {
-    card.classList.remove('active');
-  });
-  event.target.closest('.browser-card').classList.add('active');
+  // show sections
+  document.getElementById('stats-section').style.display = '';
+  document.getElementById('ai-organize-section').style.display = '';
+  document.getElementById('middle-section').style.display = '';
+  document.getElementById('bookmarks-card').style.display = '';
+  document.getElementById('btn-ai-organize').disabled = false;
 
-  // 加载书签
-  await loadBookmarks(browser);
-  await loadStats(browser);
-
-  // 显示卡片
-  document.getElementById('stats-card').style.display = 'block';
-  document.getElementById('analysis-card').style.display = 'block';
-  document.getElementById('bookmarks-card').style.display = 'block';
+  await Promise.all([loadBookmarks(browser), loadStats(browser)]);
 }
 
-// 加载书签统计
+/* ══════════════════════════════════════════════════
+   Stats
+   ══════════════════════════════════════════════════ */
 async function loadStats(browser) {
   try {
     const res = await fetch(`/api/bookmarks/${browser}/stats`);
     const data = await res.json();
-    const stats = data.stats;
+    const s = data.stats;
 
-    document.getElementById('stats-grid').innerHTML = `
-      <div class="stat-box">
-        <div class="stat-value">${stats.total}</div>
-        <div class="stat-label">总书签数</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value">${Object.keys(stats.folders).length}</div>
-        <div class="stat-label">文件夹数</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value">${Object.keys(stats.domains).length}</div>
-        <div class="stat-label">域名数</div>
-      </div>
-    `;
-  } catch (err) {
-    console.error('加载统计失败:', err);
-  }
+    document.getElementById('st-total').textContent = s.total.toLocaleString();
+    document.getElementById('st-folders').textContent = Object.keys(s.folders).length.toLocaleString();
+    document.getElementById('st-domains').textContent = Object.keys(s.domains).length.toLocaleString();
+
+    // folder distribution
+    folderStats = s.folders;
+    renderFolderDist();
+    populateFolderFilter();
+  } catch (e) { console.error(e); }
 }
 
-// 加载书签列表
+function renderFolderDist() {
+  const el = document.getElementById('folder-dist');
+  const sorted = Object.entries(folderStats).sort((a, b) => b[1] - a[1]);
+  const max = sorted.length > 0 ? sorted[0][1] : 1;
+  const colors = ['var(--blue)', 'var(--green)', 'var(--purple)', 'var(--orange)', 'var(--red)'];
+
+  el.innerHTML = sorted.map(([name, count], i) =>
+    `<div class="folder-bar-row${activeFolder === name ? ' active' : ''}" onclick="toggleFolderFilter('${escapeHtml(name)}')">
+      <div class="folder-bar-name" title="${escapeHtml(name)}">${escapeHtml(name || t('uncategorizedFolder'))}</div>
+      <div class="folder-bar-track"><div class="folder-bar-fill" style="width:${(count / max * 100).toFixed(1)}%;background:${colors[i % colors.length]};"></div></div>
+      <div class="folder-bar-count">${count}</div>
+    </div>`
+  ).join('');
+}
+
+function toggleFolderFilter(folder) {
+  activeFolder = activeFolder === folder ? '' : folder;
+  document.getElementById('folder-filter').value = activeFolder;
+  renderFolderDist();
+  filterBookmarks();
+}
+
+function populateFolderFilter() {
+  const sel = document.getElementById('folder-filter');
+  const opts = [`<option value="" data-i18n="allFolders">${t('allFolders')}</option>`];
+  Object.keys(folderStats).sort().forEach(f => {
+    opts.push(`<option value="${escapeHtml(f)}">${escapeHtml(f || t('uncategorizedFolder'))} (${folderStats[f]})</option>`);
+  });
+  sel.innerHTML = opts.join('');
+}
+
+/* ══════════════════════════════════════════════════
+   Bookmarks - Load & Render ALL
+   ══════════════════════════════════════════════════ */
 async function loadBookmarks(browser) {
-  const container = document.getElementById('bookmarks-list');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const tbody = document.getElementById('bm-tbody');
+  tbody.innerHTML = `<tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>`;
 
   try {
     const res = await fetch(`/api/bookmarks/${browser}`);
     const data = await res.json();
-    allBookmarks = data.bookmarks;
-
-    renderBookmarks(allBookmarks);
-  } catch (err) {
-    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--red);">加载失败: ${err.message}</div>`;
+    allBookmarks = data.bookmarks || [];
+    filterBookmarks();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--red);">${e.message}</td></tr>`;
   }
 }
 
-// 渲染书签列表
-function renderBookmarks(bookmarks) {
-  const container = document.getElementById('bookmarks-list');
+function filterBookmarks() {
+  const query = (document.getElementById('search-input').value || '').toLowerCase();
+  const folder = document.getElementById('folder-filter').value;
 
-  if (bookmarks.length === 0) {
-    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);">没有书签</div>';
+  filteredBookmarks = allBookmarks.filter(bm => {
+    if (folder && (bm.folder || '') !== folder) return false;
+    if (query) {
+      const name = (bm.name || '').toLowerCase();
+      const url = (bm.url || '').toLowerCase();
+      if (!name.includes(query) && !url.includes(query)) return false;
+    }
+    return true;
+  });
+
+  sortBookmarks();
+}
+
+function sortBookmarks() {
+  const sel = document.getElementById('sort-select').value;
+  const [field, dir] = sel.split('-');
+  sortField = field; sortAsc = dir === 'asc';
+
+  filteredBookmarks.sort((a, b) => {
+    const av = (a[sortField] || '').toLowerCase();
+    const bv = (b[sortField] || '').toLowerCase();
+    return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  renderBookmarks();
+}
+
+function toggleSort(field) {
+  if (sortField === field) { sortAsc = !sortAsc; }
+  else { sortField = field; sortAsc = true; }
+  const sel = document.getElementById('sort-select');
+  sel.value = `${field}-${sortAsc ? 'asc' : 'desc'}`;
+  filteredBookmarks.sort((a, b) => {
+    const av = (a[sortField] || '').toLowerCase();
+    const bv = (b[sortField] || '').toLowerCase();
+    return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  renderBookmarks();
+}
+
+function renderBookmarks() {
+  const tbody = document.getElementById('bm-tbody');
+  const bms = filteredBookmarks;
+  const total = allBookmarks.length;
+
+  document.getElementById('bm-count-badge').textContent = bms.length.toLocaleString();
+  document.getElementById('footer-info').textContent = t('showingOf', bms.length.toLocaleString(), total.toLocaleString());
+
+  if (bms.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">
+      <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
+      <div class="title">${t('noBookmarks')}</div></div></td></tr>`;
     return;
   }
 
-  container.innerHTML = bookmarks.slice(0, 100).map(bm => `
-    <div class="bookmark-item">
-      <svg class="bookmark-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/>
-      </svg>
-      <div class="bookmark-info">
-        <div class="bookmark-name">${escapeHtml(bm.name)}</div>
-        <div class="bookmark-url">${escapeHtml(bm.url)}</div>
-      </div>
-      <div class="bookmark-folder">${escapeHtml(bm.folder || '未分类')}</div>
-    </div>
-  `).join('');
+  // Render ALL bookmarks using DocumentFragment for performance
+  const fragment = document.createDocumentFragment();
+  bms.forEach((bm, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td style="color:var(--muted2);font-size:11px;font-family:'SF Mono','Fira Code',Consolas,monospace;">${i + 1}</td>` +
+      `<td><div class="bm-name"><a href="${escapeHtml(bm.url)}" target="_blank" rel="noopener">${escapeHtml(bm.name)}</a></div></td>` +
+      `<td><div class="bm-url" title="${escapeHtml(bm.url)}">${escapeHtml(bm.url)}</div></td>` +
+      `<td><span class="bm-folder">${escapeHtml(bm.folder || t('uncategorizedFolder'))}</span></td>`;
+    fragment.appendChild(tr);
+  });
 
-  if (bookmarks.length > 100) {
-    container.innerHTML += `<div style="text-align: center; padding: 20px; color: var(--muted); font-size: 12px;">仅显示前 100 个书签</div>`;
-  }
+  tbody.innerHTML = '';
+  tbody.appendChild(fragment);
 }
 
-// 搜索书签
-async function searchBookmarks() {
-  const query = document.getElementById('search-input').value.trim();
-
-  if (!query) {
-    renderBookmarks(allBookmarks);
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/bookmarks/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ browser: currentBrowser, query })
-    });
-    const data = await res.json();
-    renderBookmarks(data.results);
-  } catch (err) {
-    console.error('搜索失败:', err);
-  }
-}
-
-// 分析书签
+/* ══════════════════════════════════════════════════
+   Analysis
+   ══════════════════════════════════════════════════ */
 async function analyzeBookmarks() {
   if (!currentBrowser) return;
-
-  const container = document.getElementById('analysis-result');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const c = document.getElementById('analysis-result');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div><div style="margin-top:8px;">${t('analyzing')}</div></div>`;
 
   try {
     const res = await fetch('/api/bookmarks/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ browser: currentBrowser })
     });
     const data = await res.json();
     const issues = data.analysis.issues;
+    const total = data.analysis.issue_count || 0;
 
-    let html = '<div style="display: grid; gap: 12px; margin-top: 12px;">';
+    document.getElementById('st-issues').textContent = total;
+    document.getElementById('st-issues').style.color = total > 0 ? 'var(--yellow)' : 'var(--green)';
+    document.getElementById('st-issues-sub').textContent = '';
 
-    if (issues.duplicates.length > 0) {
-      html += `<div class="issue-badge error">重复书签: ${issues.duplicates.length}</div>`;
-    }
-    if (issues.url_issues.length > 0) {
-      html += `<div class="issue-badge warning">URL 问题: ${issues.url_issues.length}</div>`;
-    }
-    if (issues.naming_issues.length > 0) {
-      html += `<div class="issue-badge warning">命名问题: ${issues.naming_issues.length}</div>`;
-    }
-    if (issues.large_folders.length > 0) {
-      html += `<div class="issue-badge info">大型文件夹: ${issues.large_folders.length}</div>`;
-    }
-    if (issues.uncategorized.length > 0) {
-      html += `<div class="issue-badge info">未分类: ${issues.uncategorized.length}</div>`;
+    if (total === 0) {
+      c.innerHTML = `<div class="empty-state" style="padding:24px;">
+        <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
+        <div class="title" style="color:var(--green);">${t('noIssues')}</div></div>`;
+      return;
     }
 
+    let html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">';
+    if (issues.duplicates.length) html += `<span class="badge badge-red">${t('duplicates')}: ${issues.duplicates.length}</span>`;
+    if (issues.url_issues.length) html += `<span class="badge badge-yellow">${t('urlIssues')}: ${issues.url_issues.length}</span>`;
+    if (issues.naming_issues.length) html += `<span class="badge badge-yellow">${t('namingIssues')}: ${issues.naming_issues.length}</span>`;
+    if (issues.large_folders.length) html += `<span class="badge badge-blue">${t('largeFolders')}: ${issues.large_folders.length}</span>`;
+    if (issues.uncategorized.length) html += `<span class="badge badge-purple">${t('uncategorized')}: ${issues.uncategorized.length}</span>`;
     html += '</div>';
 
-    if (data.analysis.issue_count === 0) {
-      html = '<div style="text-align: center; padding: 20px; color: var(--green);">✓ 未发现问题</div>';
+    // Show details for duplicates
+    if (issues.duplicates.length) {
+      html += `<div style="margin-top:12px;font-size:12px;color:var(--muted);max-height:200px;overflow-y:auto;">`;
+      issues.duplicates.slice(0, 20).forEach(d => {
+        html += `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${escapeHtml(d.name || d.url)}</div>`;
+      });
+      if (issues.duplicates.length > 20) html += `<div style="padding:4px 0;color:var(--muted2);">... +${issues.duplicates.length - 20} more</div>`;
+      html += '</div>';
     }
 
-    container.innerHTML = html;
-  } catch (err) {
-    container.innerHTML = `<div style="color: var(--red);">分析失败: ${err.message}</div>`;
+    c.innerHTML = html;
+  } catch (e) {
+    c.innerHTML = `<div style="color:var(--red);padding:12px;">${e.message}</div>`;
   }
 }
 
-// AI 分类
 async function aiCategorize() {
   if (!currentBrowser) return;
-
-  const container = document.getElementById('analysis-result');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top: 8px;">AI 分析中...</div></div>';
+  const c = document.getElementById('analysis-result');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div><div style="margin-top:8px;">${t('aiAnalyzing')}</div></div>`;
 
   try {
     const res = await fetch('/api/bookmarks/categorize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ browser: currentBrowser, max_bookmarks: 50 })
     });
     const data = await res.json();
 
-    if (data.result.error) {
-      container.innerHTML = `<div style="color: var(--red);">${data.result.message}</div>`;
+    if (data.result && data.result.error) {
+      c.innerHTML = `<div style="color:var(--red);padding:12px;">${data.result.message}</div>`;
       return;
     }
 
-    const categories = data.result.categories || [];
-    let html = '<div style="margin-top: 12px;">';
-
+    const categories = (data.result && data.result.categories) || [];
+    let html = '<div style="display:grid;gap:8px;margin-top:8px;">';
     categories.forEach(cat => {
-      html += `
-        <div style="margin-bottom: 16px; padding: 12px; background: var(--card2); border-radius: 8px;">
-          <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(cat.name)}</div>
-          <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">${escapeHtml(cat.description)}</div>
-          <div style="font-size: 11px; color: var(--muted2);">包含 ${cat.bookmarks.length} 个书签</div>
-        </div>
-      `;
+      html += `<div class="cat-card">
+        <div class="cat-name">${escapeHtml(cat.name)}</div>
+        <div class="cat-desc">${escapeHtml(cat.description)}</div>
+        <div class="cat-count">${t('contains')} ${cat.bookmarks.length} ${t('items')}</div>
+      </div>`;
     });
-
     html += '</div>';
-    container.innerHTML = html;
-  } catch (err) {
-    container.innerHTML = `<div style="color: var(--red);">AI 分类失败: ${err.message}</div>`;
+    c.innerHTML = html;
+  } catch (e) {
+    c.innerHTML = `<div style="color:var(--red);padding:12px;">${e.message}</div>`;
   }
 }
 
-// 导出书签
+/* ══════════════════════════════════════════════════
+   Export
+   ══════════════════════════════════════════════════ */
 async function exportBookmarks(format) {
   if (!currentBrowser) return;
-
   try {
     const res = await fetch('/api/bookmarks/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ browser: currentBrowser, format })
     });
     const data = await res.json();
-    alert(`导出成功！\n文件路径: ${data.path}`);
-  } catch (err) {
-    alert(`导出失败: ${err.message}`);
+    const el = document.getElementById('footer-status');
+    el.textContent = t('exported', data.path);
+    setTimeout(() => el.textContent = '', 5000);
+  } catch (e) {
+    const el = document.getElementById('footer-status');
+    el.textContent = t('exportFail', e.message);
+    el.style.color = 'var(--red)';
+    setTimeout(() => { el.textContent = ''; el.style.color = ''; }, 5000);
   }
 }
 
-// HTML 转义
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+/* ══════════════════════════════════════════════════
+   AI Organize Wizard
+   ══════════════════════════════════════════════════ */
+let wizardStep = 0;
+let wizardData = { analysis: null, aiCategories: null, aiConfigured: false };
+
+function openAIWizard() {
+  if (!currentBrowser || allBookmarks.length === 0) return;
+  wizardStep = 0;
+  wizardData = { analysis: null, aiCategories: null, aiConfigured: false };
+  document.getElementById('wizard-overlay').classList.add('open');
+  renderWizardStep();
 }
 
-// 初始化
+function closeWizard() {
+  document.getElementById('wizard-overlay').classList.remove('open');
+}
+
+function wizardBack() {
+  if (wizardStep > 0) { wizardStep--; renderWizardStep(); }
+}
+
+function wizardNext() {
+  const maxStep = wizardData.aiConfigured ? 3 : 2;
+  if (wizardStep === 0) { runStep1Scan(); return; }
+  if (wizardStep === 1 && wizardData.aiConfigured) { runStep2AI(); return; }
+  if (wizardStep < maxStep) { wizardStep++; renderWizardStep(); }
+}
+
+function renderWizardStep() {
+  const totalSteps = wizardData.aiConfigured ? 4 : 3;
+  const titles = wizardData.aiConfigured
+    ? [t('wizardStep1'), t('wizardStep2'), t('wizardStep3'), t('wizardStep4')]
+    : [t('wizardStep1'), t('wizardStep3'), t('wizardStep4')];
+
+  document.getElementById('wizard-title').textContent = titles[wizardStep] || '';
+
+  // Steps dots
+  const stepsEl = document.getElementById('wizard-steps');
+  stepsEl.innerHTML = Array.from({length: totalSteps}, (_, i) =>
+    `<div class="step-dot${i === wizardStep ? ' active' : (i < wizardStep ? ' done' : '')}"></div>`
+  ).join('');
+
+  // Back button
+  document.getElementById('wizard-back').style.display = wizardStep > 0 ? '' : 'none';
+  document.getElementById('wizard-back').textContent = t('back');
+
+  // Next button
+  const nextBtn = document.getElementById('wizard-next');
+  if (wizardStep === 0) {
+    nextBtn.textContent = t('startScan');
+  } else if (wizardStep === totalSteps - 1) {
+    nextBtn.style.display = 'none';
+  } else {
+    nextBtn.style.display = '';
+    nextBtn.textContent = t('next');
+  }
+
+  // Body
+  const body = document.getElementById('wizard-body');
+
+  if (wizardStep === 0) {
+    // Step 1 intro
+    body.innerHTML = `
+      <div style="text-align:center;padding:20px 0;">
+        <svg width="48" height="48" viewBox="0 0 16 16" fill="none" stroke="var(--blue)" stroke-width="1.25" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+        <div style="font-size:16px;font-weight:700;margin:12px 0 6px;">${t('wizardStep1')}</div>
+        <div style="color:var(--muted);font-size:13px;max-width:400px;margin:0 auto;">
+          ${_lang === 'zh' ? '将扫描所有 ' + allBookmarks.length.toLocaleString() + ' 条书签，检测重复、URL 问题、命名问题和未分类项目。'
+            : 'Will scan all ' + allBookmarks.length.toLocaleString() + ' bookmarks for duplicates, URL issues, naming problems and uncategorized items.'}
+        </div>
+      </div>`;
+  }
+}
+
+// Step 1: Scan
+async function runStep1Scan() {
+  const body = document.getElementById('wizard-body');
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.disabled = true;
+  body.innerHTML = `<div class="loading"><div class="spinner"></div><div style="margin-top:8px;">${t('scanning')}</div></div>`;
+
+  try {
+    // Run analysis
+    const res = await fetch('/api/bookmarks/analyze', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser })
+    });
+    const data = await res.json();
+    wizardData.analysis = data.analysis;
+
+    // Check AI config
+    try {
+      const aiRes = await fetch('/api/bookmarks/ai/config');
+      const aiData = await aiRes.json();
+      wizardData.aiConfigured = aiData.configured;
+    } catch (e) { wizardData.aiConfigured = false; }
+
+    // Update stats card
+    const total = data.analysis.issue_count || 0;
+    document.getElementById('st-issues').textContent = total;
+    document.getElementById('st-issues').style.color = total > 0 ? 'var(--yellow)' : 'var(--green)';
+    document.getElementById('st-issues-sub').textContent = '';
+
+    wizardStep = 1;
+    nextBtn.disabled = false;
+    renderStep1Results();
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">${e.message}</div>`;
+    nextBtn.disabled = false;
+  }
+}
+
+function renderStep1Results() {
+  const body = document.getElementById('wizard-body');
+  const a = wizardData.analysis;
+  const issues = a.issues;
+  const total = a.issue_count || 0;
+
+  // Re-render next button
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.style.display = '';
+  nextBtn.textContent = t('next');
+  nextBtn.disabled = false;
+
+  // Update title
+  const totalSteps = wizardData.aiConfigured ? 4 : 3;
+  const titles = wizardData.aiConfigured
+    ? [t('wizardStep1'), t('wizardStep2'), t('wizardStep3'), t('wizardStep4')]
+    : [t('wizardStep1'), t('wizardStep3'), t('wizardStep4')];
+  document.getElementById('wizard-title').textContent = `${titles[0]} - ${t('scanComplete')}`;
+
+  // Steps dots
+  const stepsEl = document.getElementById('wizard-steps');
+  stepsEl.innerHTML = Array.from({length: totalSteps}, (_, i) =>
+    `<div class="step-dot${i === 1 ? ' active' : (i < 1 ? ' done' : '')}"></div>`
+  ).join('');
+  document.getElementById('wizard-back').style.display = '';
+
+  if (total === 0) {
+    body.innerHTML = `<div style="text-align:center;padding:24px;">
+      <svg width="36" height="36" viewBox="0 0 16 16" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
+      <div style="font-size:15px;font-weight:600;color:var(--green);margin-top:12px;">${t('noIssuesFound')}</div>
+    </div>`;
+    return;
+  }
+
+  const rows = [
+    { key: 'duplicates', label: t('removeDuplicates'), color: 'var(--red)', tag: 'clean', action: t('willRemove') },
+    { key: 'url_issues', label: t('cleanUrls'), color: 'var(--yellow)', tag: 'clean', action: t('willClean') },
+    { key: 'naming_issues', label: t('fixNames'), color: 'var(--yellow)', tag: 'warn', action: t('willRename') },
+    { key: 'large_folders', label: t('largeFolders'), color: 'var(--blue)', tag: 'info', action: '' },
+    { key: 'uncategorized', label: t('uncategorized'), color: 'var(--purple)', tag: 'info', action: t('willReclassify') },
+  ];
+
+  let html = '';
+  rows.forEach(r => {
+    const count = (issues[r.key] || []).length;
+    if (count === 0) return;
+    html += `<div class="issue-row">
+      <div class="left">
+        <div class="count" style="color:${r.color};">${count}</div>
+        <div><div class="label">${r.label}</div>${r.action ? `<div class="desc">${r.action} ${count} ${_lang === 'zh' ? '项' : 'items'}</div>` : ''}</div>
+      </div>
+      <span class="action-tag ${r.tag}">${r.tag}</span>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+}
+
+// Step 2: AI Classification
+async function runStep2AI() {
+  const body = document.getElementById('wizard-body');
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.disabled = true;
+
+  body.innerHTML = `<div class="loading"><div class="spinner"></div><div style="margin-top:8px;">${t('aiClassifying')}</div></div>`;
+
+  try {
+    const res = await fetch('/api/bookmarks/categorize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: currentBrowser, max_bookmarks: 50 })
+    });
+    const data = await res.json();
+    wizardData.aiCategories = data.result;
+
+    wizardStep = 2;
+    nextBtn.disabled = false;
+    renderStep2Results();
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">${e.message}</div>`;
+    nextBtn.disabled = false;
+  }
+}
+
+function renderStep2Results() {
+  const body = document.getElementById('wizard-body');
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.style.display = '';
+  nextBtn.textContent = t('next');
+  nextBtn.disabled = false;
+
+  document.getElementById('wizard-title').textContent = `${t('wizardStep2')} - ${t('aiClassifyDone')}`;
+
+  // Steps
+  const stepsEl = document.getElementById('wizard-steps');
+  stepsEl.innerHTML = Array.from({length: 4}, (_, i) =>
+    `<div class="step-dot${i === 2 ? ' active' : (i < 2 ? ' done' : '')}"></div>`
+  ).join('');
+  document.getElementById('wizard-back').style.display = '';
+
+  const cats = (wizardData.aiCategories && wizardData.aiCategories.categories) || [];
+  if (cats.length === 0) {
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);">${_lang === 'zh' ? 'AI 未返回分类建议' : 'No AI suggestions returned'}</div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">${_lang === 'zh' ? 'AI 建议将书签整理为以下分类:' : 'AI suggests organizing bookmarks into:'}</div>`;
+  html += '<div style="display:grid;gap:8px;">';
+  cats.forEach(cat => {
+    const count = (cat.bookmarks || []).length;
+    html += `<div class="cat-card">
+      <div class="cat-name">${escapeHtml(cat.name)}</div>
+      <div class="cat-desc">${escapeHtml(cat.description)}</div>
+      <div class="cat-count">${t('contains')} ${count} ${t('items')}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Suggestions
+  const suggestions = (wizardData.aiCategories && wizardData.aiCategories.suggestions) || [];
+  if (suggestions.length) {
+    html += `<div style="margin-top:16px;padding:12px 16px;background:var(--card2);border-radius:8px;font-size:12px;">
+      <div style="font-weight:600;margin-bottom:6px;">${_lang === 'zh' ? '整理建议' : 'Suggestions'}</div>
+      <ul style="margin:0;padding-left:18px;color:var(--muted);list-style:disc;">
+        ${suggestions.map(s => `<li style="margin-bottom:4px;">${escapeHtml(s)}</li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+// Step 3/4: Preview + Export
+function renderPreviewAndExport() {
+  const body = document.getElementById('wizard-body');
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.style.display = 'none';
+
+  const isLastStep = wizardData.aiConfigured ? 3 : 2;
+  document.getElementById('wizard-title').textContent = t('wizardStep4');
+
+  const stepsEl = document.getElementById('wizard-steps');
+  const totalSteps = wizardData.aiConfigured ? 4 : 3;
+  stepsEl.innerHTML = Array.from({length: totalSteps}, (_, i) =>
+    `<div class="step-dot${i === isLastStep ? ' active' : ' done'}"></div>`
+  ).join('');
+
+  const a = wizardData.analysis;
+  const issueCount = a ? a.issue_count : 0;
+
+  let html = `
+    <div class="summary-box">
+      <div class="big">${allBookmarks.length.toLocaleString()}</div>
+      <div class="label">${t('totalBookmarks')}</div>
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px;">
+      ${t('exportDesc')}
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-blue" style="padding:10px 24px;" onclick="exportBookmarks('html');closeWizard()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+        ${t('exportHtml')}
+      </button>
+      <button class="btn" style="padding:10px 24px;" onclick="exportBookmarks('json');closeWizard()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+        ${t('exportJson')}
+      </button>
+      <button class="btn" style="padding:10px 24px;" onclick="exportBookmarks('csv');closeWizard()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
+        ${t('exportCsv')}
+      </button>
+    </div>`;
+
+  if (issueCount > 0) {
+    html += `<div style="margin-top:20px;padding:12px 16px;background:rgba(210,153,34,.06);border:1px solid rgba(210,153,34,.2);border-radius:8px;font-size:12px;color:var(--muted);">
+      ${_lang === 'zh'
+        ? 'AI Guard 目前只能导出书签，不会直接修改浏览器中的书签。导出后可手动导入到浏览器。未来版本将支持直接修改。'
+        : 'AI Guard can only export bookmarks for now. It will not modify your browser bookmarks directly. You can import the exported file manually. Direct modification will be supported in future versions.'}
+    </div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+// Override wizardNext to handle final steps
+const _origWizardNext = wizardNext;
+wizardNext = function() {
+  const maxStep = wizardData.aiConfigured ? 3 : 2;
+
+  if (wizardStep === 0) { runStep1Scan(); return; }
+
+  // After scan results shown (step = 1)
+  if (wizardStep === 1) {
+    if (wizardData.aiConfigured) {
+      runStep2AI();
+    } else {
+      wizardStep = maxStep;
+      renderPreviewAndExport();
+    }
+    return;
+  }
+
+  // After AI results (step = 2, only if AI configured)
+  if (wizardStep === 2 && wizardData.aiConfigured) {
+    wizardStep = maxStep;
+    renderPreviewAndExport();
+    return;
+  }
+};
+
+// Override wizardBack to handle steps correctly
+const _origWizardBack = wizardBack;
+wizardBack = function() {
+  const maxStep = wizardData.aiConfigured ? 3 : 2;
+  if (wizardStep === maxStep) {
+    wizardStep = wizardData.aiConfigured ? 2 : 1;
+    if (wizardStep === 2) { renderStep2Results(); }
+    else { renderStep1Results(); }
+    return;
+  }
+  if (wizardStep === 2) { wizardStep = 1; renderStep1Results(); return; }
+  if (wizardStep > 0) { wizardStep--; renderWizardStep(); }
+};
+
+/* ══════════════════════════════════════════════════
+   Init
+   ══════════════════════════════════════════════════ */
+applyTheme(localStorage.getItem('ai-guard-theme') || 'dark');
+applyLangButtons();
+applyI18n();
 checkAIConfig();
 loadBrowsers();
 </script>
-
 </body>
 </html>
