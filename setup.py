@@ -10,7 +10,11 @@ from setuptools import setup
 APP = ["app_menubar.py"]
 
 DATA_FILES = [
-    ("aigard/ui",    ["aigard/ui/index.html"]),
+    ("aigard/ui",    ["aigard/ui/index.html",
+                      "aigard/ui/bookmarks.html",
+                      "aigard/ui/usage.html"]),
+    ("aigard/ui/css", ["aigard/ui/css/design-system.css",
+                       "aigard/ui/css/components.css"]),
     ("",             ["config.toml"]),
     ("assets",       ["assets/icon.icns"]),
 ]
@@ -37,7 +41,9 @@ OPTIONS = {
     "packages": [
         "aigard",
         "aigard.core",
+        "aigard.core.usage",
         "aigard.api",
+        "aigard.bookmarks",
         "fastapi",
         "hypercorn",
         "psutil",
@@ -56,6 +62,10 @@ OPTIONS = {
         "wsproto",
         "priority",
         "pkg_resources",
+        "requests",
+        "packaging",
+        "httpx",
+        "httpcore",
     ],
     "includes": [
         "hypercorn.asyncio",
@@ -84,7 +94,6 @@ OPTIONS = {
         "cffi",
         "cryptography",
         "dns",
-        "httpx",
         "aiofiles",
         "multipart",
         "jinja2",

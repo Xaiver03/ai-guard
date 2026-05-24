@@ -41,12 +41,6 @@
   .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,color .15s,border-color .15s; flex-shrink:0; }
   .icon-btn:hover { background:var(--card2); color:var(--text); }
 
-  /* Nav */
-  nav { display: flex; gap: 8px; }
-  nav a { padding: 6px 12px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
-  nav a:hover { background: var(--card2); color: var(--text); }
-  nav a.active { background: rgba(59,130,246,.15); color: var(--blue); }
-
   /* Layout */
   main { padding: 20px 24px; display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -121,18 +115,13 @@
 <body>
 
 <header>
-  <div class="logo">AI Guard <span>书签管理</span></div>
-  <nav>
-    <a href="/">监控面板</a>
-    <a href="/bookmarks.html" class="active">书签管理</a>
+  <div class="logo">AI <span>Guard</span></div>
+  <nav style="display:flex;gap:6px;margin-left:16px">
+    <a href="/" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;color:var(--muted);background:var(--btn-muted-bg);">监控面板</a>
+    <a href="/bookmarks.html" style="padding:5px 12px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:600;background:rgba(59,130,246,.15);color:var(--blue);">书签管理</a>
   </nav>
   <div class="header-right">
-    <button class="icon-btn" onclick="toggleTheme()" title="切换主题">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="8" cy="8" r="3.5"/>
-        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.3 3.3l1.4 1.4M11.3 11.3l1.4 1.4M11.3 3.3l-1.4 1.4M4.7 11.3l-1.4 1.4" stroke-linecap="round"/>
-      </svg>
-    </button>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
   </div>
 </header>
 
@@ -206,21 +195,41 @@
 </main>
 
 <script>
+// ── SVG Icons ──────────────────────────────────────────────
+const ICONS = {
+  moon:   `<path d="M12 12.5A5.5 5.5 0 0 1 6.5 4a5.5 5.5 0 1 0 7 7.5c-.5.1-1 .05-1.5 0z" fill="currentColor" stroke="none"/>`,
+  sun:    `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
+};
+
+function icon(name, cls='') {
+  const paths = ICONS[name] || '';
+  return `<svg class="icon${cls?' '+cls:''}" viewBox="0 0 16 16" width="1em" height="1em"
+    fill="none" stroke="currentColor" stroke-width="1.75"
+    stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths}</svg>`;
+}
+
 let currentBrowser = null;
 let allBookmarks = [];
 
-// 主题切换
+// ── 主题 ──────────────────────────────────────────────────
+function _applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const isDark = theme === 'dark';
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.innerHTML = isDark ? icon('moon') : icon('sun');
+}
+
 function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'dark';
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
+  localStorage.setItem('aigard-theme', next);
+  _applyTheme(next);
 }
 
 // 恢复主题
-const savedTheme = localStorage.getItem('theme') || 'dark';
-document.documentElement.setAttribute('data-theme', savedTheme);
+const savedTheme = localStorage.getItem('aigard-theme') || 'dark';
+_applyTheme(savedTheme);
 
 // 检查 AI 配置
 async function checkAIConfig() {
