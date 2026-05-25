@@ -1,7 +1,8 @@
 """tests/unit/core/test_advisor.py -- 进程风险评估规则引擎单元测试"""
 
 import time
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import psutil
 from aigard.core.advisor import advise, advise_list, ProcessAdvice
 
 
@@ -187,3 +188,36 @@ class TestAdviseList:
     @patch("aigard.core.advisor._count_same_name", return_value=1)
     def test_empty_list(self, _):
         assert advise_list([]) == []
+
+
+class TestCountSameName:
+    """直接测试 _count_same_name 函数"""
+    @patch("aigard.core.advisor.psutil.process_iter")
+    def test_counts_matching(self, mock_iter):
+        from aigard.core.advisor import _count_same_name
+        p1 = MagicMock()
+        p1.info = {"name": "node"}
+        p2 = MagicMock()
+        p2.info = {"name": "Node"}  # case insensitive
+        p3 = MagicMock()
+        p3.info = {"name": "python"}
+        mock_iter.return_value = [p1, p2, p3]
+        assert _count_same_name("node") == 2
+
+    @patch("aigard.core.advisor.psutil.process_iter")
+    def test_handles_access_denied(self, mock_iter):
+        from aigard.core.advisor import _count_same_name
+        good = MagicMock()
+        good.info = {"name": "node"}
+        bad = MagicMock()
+        type(bad).info = property(lambda self: (_ for _ in ()).throw(psutil.AccessDenied(2)))
+        mock_iter.return_value = [good, bad]
+        assert _count_same_name("node") == 1
+
+    @patch("aigard.core.advisor.psutil.process_iter")
+    def test_handles_none_name(self, mock_iter):
+        from aigard.core.advisor import _count_same_name
+        p = MagicMock()
+        p.info = {"name": None}
+        mock_iter.return_value = [p]
+        assert _count_same_name("node") == 0

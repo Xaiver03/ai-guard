@@ -173,3 +173,50 @@ class TestMetricsHistory:
         assert isinstance(d, dict)
         assert "mem_percent" in d
         assert "cpu_percent" in d
+
+
+class TestCollectAllProcesses:
+    @patch("aigard.core.monitor.psutil.process_iter")
+    def test_returns_sorted_by_mem(self, mock_iter):
+        def make(pid, name, rss_mb):
+            p = MagicMock()
+            mem = MagicMock()
+            mem.rss = rss_mb * 1024 * 1024
+            p.info = {"pid": pid, "name": name, "cmdline": [name],
+                      "memory_info": mem, "cpu_percent": 1.0,
+                      "status": "running", "create_time": 1000.0}
+            return p
+
+        mock_iter.return_value = [make(1, "a", 50), make(2, "b", 200), make(3, "c", 100)]
+        result = collect_all_processes()
+        assert len(result) == 3
+        assert result[0].mem_mb == 200.0
+        assert result[1].mem_mb == 100.0
+        assert result[2].mem_mb == 50.0
+
+    @patch("aigard.core.monitor.psutil.process_iter")
+    def test_skips_access_denied(self, mock_iter):
+        good = MagicMock()
+        mem = MagicMock()
+        mem.rss = 100 * 1024 * 1024
+        good.info = {"pid": 1, "name": "ok", "cmdline": ["ok"],
+                     "memory_info": mem, "cpu_percent": 0.0,
+                     "status": "running", "create_time": 1000.0}
+        bad = MagicMock()
+        type(bad).info = property(lambda self: (_ for _ in ()).throw(psutil.AccessDenied(2)))
+        mock_iter.return_value = [good, bad]
+        result = collect_all_processes()
+        assert len(result) == 1
+
+    @patch("aigard.core.monitor.psutil.process_iter")
+    def test_handles_none_memory_info(self, mock_iter):
+        p = MagicMock()
+        p.info = {"pid": 1, "name": "test", "cmdline": None,
+                  "memory_info": None, "cpu_percent": None,
+                  "status": None, "create_time": None}
+        mock_iter.return_value = [p]
+        result = collect_all_processes()
+        assert len(result) == 1
+        assert result[0].mem_mb == 0.0
+        assert result[0].cmdline == ""
+        assert result[0].cpu_percent == 0.0

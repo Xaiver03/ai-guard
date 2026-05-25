@@ -116,3 +116,111 @@ class TestUsagePresets:
         with TestClient(app) as client:
             resp = client.get("/api/usage/summary?preset=today")
             assert resp.status_code == 200
+
+    @patch("aigard.api.usage._ensure_cache")
+    @patch("aigard.api.usage.cache")
+    def test_preset_yesterday(self, mock_cache, mock_ensure):
+        mock_cache.get_summary.return_value = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "total_cost": 0, "active_days": 0, "models_count": 0, "total_requests": 0, "cache_creation_tokens": 0, "cache_read_tokens": 0}
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/summary?preset=yesterday")
+            assert resp.status_code == 200
+
+    @patch("aigard.api.usage._ensure_cache")
+    @patch("aigard.api.usage.cache")
+    def test_preset_last_3_days(self, mock_cache, mock_ensure):
+        mock_cache.get_summary.return_value = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "total_cost": 0, "active_days": 0, "models_count": 0, "total_requests": 0, "cache_creation_tokens": 0, "cache_read_tokens": 0}
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/summary?preset=last_3_days")
+            assert resp.status_code == 200
+
+    @patch("aigard.api.usage._ensure_cache")
+    @patch("aigard.api.usage.cache")
+    def test_preset_this_week(self, mock_cache, mock_ensure):
+        mock_cache.get_summary.return_value = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "total_cost": 0, "active_days": 0, "models_count": 0, "total_requests": 0, "cache_creation_tokens": 0, "cache_read_tokens": 0}
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/summary?preset=this_week")
+            assert resp.status_code == 200
+
+    @patch("aigard.api.usage._ensure_cache")
+    @patch("aigard.api.usage.cache")
+    def test_preset_this_month(self, mock_cache, mock_ensure):
+        mock_cache.get_summary.return_value = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "total_cost": 0, "active_days": 0, "models_count": 0, "total_requests": 0, "cache_creation_tokens": 0, "cache_read_tokens": 0}
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/summary?preset=this_month")
+            assert resp.status_code == 200
+
+
+class TestUsageModels:
+    @patch("aigard.api.usage._ensure_cache")
+    @patch("aigard.api.usage.cache")
+    def test_get_models(self, mock_cache, mock_ensure):
+        mock_cache.get_daily.return_value = [
+            {"date": "2026-05-24", "model_breakdowns": [
+                {"model_name": "claude-sonnet-4-6", "input_tokens": 1000, "output_tokens": 500,
+                 "cache_creation_tokens": 0, "cache_read_tokens": 0, "total_tokens": 1500,
+                 "cost": 0.01, "request_count": 5}
+            ]}
+        ]
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/models")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert len(data) == 1
+            assert data[0]["model_name"] == "claude-sonnet-4-6"
+
+
+class TestUsageProjects:
+    @patch("aigard.api.usage.loader")
+    def test_get_projects(self, mock_loader):
+        mock_loader.get_projects.return_value = ["proj-a", "proj-b"]
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.get("/api/usage/projects")
+            assert resp.status_code == 200
+            assert resp.json()["projects"] == ["proj-a", "proj-b"]
+
+
+class TestUsageRefresh:
+    @patch("aigard.api.usage._rebuild_cache")
+    @patch("aigard.api.usage.cache")
+    def test_refresh(self, mock_cache, mock_rebuild):
+        mock_cache.get_last_update_time.return_value = "2026-05-24T14:00:00"
+        from fastapi.testclient import TestClient
+        from aigard.api.usage import router
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(router)
+        with TestClient(app) as c:
+            resp = c.post("/api/usage/refresh")
+            assert resp.status_code == 200
+            assert resp.json()["status"] == "success"
+            mock_rebuild.assert_called_once()

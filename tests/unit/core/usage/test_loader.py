@@ -107,6 +107,45 @@ class TestParseUsageEntry:
         entries = loader.load_all_usage()
         assert len(entries) == 1
 
+    def test_empty_line_skipped(self, tmp_path):
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        content = "\n\n" + _make_jsonl_line() + "\n\n"
+        (proj / "s1.jsonl").write_text(content)
+
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        assert len(entries) == 1
+
+    def test_unreadable_file_skipped(self, tmp_path):
+        """测试无法读取的文件被跳过（line 112-114）"""
+        import os
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        f = proj / "bad.jsonl"
+        f.write_text("data")
+        os.chmod(str(f), 0o000)
+
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        assert entries == []
+
+        os.chmod(str(f), 0o644)  # cleanup
+
+    def test_parse_entry_exception_skipped(self, tmp_path):
+        """测试解析单条异常时跳过（line 109-111）"""
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        # Valid JSON but causes exception during _parse_usage_entry
+        data = json.dumps({"type": "assistant", "message": {"usage": {"input_tokens": "not_int"}, "model": "x"}, "timestamp": "invalid!!!"})
+        content = data + "\n" + _make_jsonl_line() + "\n"
+        (proj / "s1.jsonl").write_text(content)
+
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        # The first entry should fail to parse, second should succeed
+        assert len(entries) >= 1
+
 
 class TestParseTimestamp:
     def test_format_with_milliseconds(self, tmp_path):
@@ -128,6 +167,41 @@ class TestParseTimestamp:
         loader = ClaudeDataLoader(str(tmp_path))
         entries = loader.load_all_usage()
         assert entries[0].timestamp.hour == 14
+
+    def test_format_space_separated(self, tmp_path):
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        (proj / "s1.jsonl").write_text(
+            _make_jsonl_line(timestamp="2026-05-24 14:30:00") + "\n"
+        )
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        assert entries[0].timestamp.hour == 14
+
+    def test_null_timestamp_uses_now(self, tmp_path):
+        """测试 timestamp 为 None 时使用当前时间（line 181）"""
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        data = {"type": "assistant", "message": {"model": "x", "usage": {"input_tokens": 100, "output_tokens": 50}}}
+        # No timestamp field
+        (proj / "s1.jsonl").write_text(json.dumps(data) + "\n")
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        assert len(entries) == 1
+        # Timestamp should be close to now
+        assert (datetime.now() - entries[0].timestamp).total_seconds() < 5
+
+    def test_unparseable_timestamp_uses_now(self, tmp_path):
+        """测试无法解析的 timestamp 使用当前时间（line 198）"""
+        proj = tmp_path / "projects" / "proj"
+        proj.mkdir(parents=True)
+        (proj / "s1.jsonl").write_text(
+            _make_jsonl_line(timestamp="not-a-date-at-all") + "\n"
+        )
+        loader = ClaudeDataLoader(str(tmp_path))
+        entries = loader.load_all_usage()
+        assert len(entries) == 1
+        assert (datetime.now() - entries[0].timestamp).total_seconds() < 5
 
 
 class TestLoadProjectUsage:

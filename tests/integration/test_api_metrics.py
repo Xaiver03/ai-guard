@@ -71,3 +71,43 @@ class TestAlertHistory:
         resp = client.get("/api/alerts/history")
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
+
+
+class TestAutoKill:
+    def test_get_autokill_status(self, client):
+        resp = client.get("/api/autokill/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "enabled" in data
+        assert data["enabled"] is False
+
+    def test_toggle_autokill(self, client, app_state):
+        resp = client.post("/api/autokill/toggle")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["enabled"] is True
+
+        # Toggle back
+        resp2 = client.post("/api/autokill/toggle")
+        assert resp2.json()["enabled"] is False
+
+    def test_get_autokill_log(self, client):
+        resp = client.get("/api/autokill/log")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+
+class TestSettings:
+    def test_get_settings(self, client):
+        resp = client.get("/api/settings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "alert" in data
+        assert "auto_kill" in data
+
+
+class TestUpdateCheck:
+    def test_get_current_version(self, client):
+        resp = client.get("/api/update/current-version")
+        assert resp.status_code == 200
+        assert "version" in resp.json()
