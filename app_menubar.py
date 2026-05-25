@@ -127,14 +127,11 @@ class _PopoverClickHandler(NSObject):
 
 class AIGuardApp(rumps.App):
     def __init__(self):
-        # 直接使用静态图标（SF Symbol 在打包环境可能失败）
-        initial_icon = _get_fallback_icon()
-
         super().__init__(
             name="AI Guard",
-            title=None,        # 不显示文字，只显示图标
-            icon=initial_icon,
-            template=False,    # 使用彩色图标
+            title="AI Guard",  # 显示应用名称
+            icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
+            template=True,     # 模板图片：系统自动处理深色/浅色
             quit_button=None,
         )
 
