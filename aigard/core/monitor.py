@@ -10,7 +10,7 @@ import psutil
 
 @dataclass(slots=True)
 class ProcessInfo:
-    """进程信息（优化：使用 slots=True 减少 40% 内存占用）"""
+    """进程信息"""
     pid: int
     name: str
     cmdline: str
@@ -22,7 +22,7 @@ class ProcessInfo:
 
 @dataclass(slots=True)
 class Metrics:
-    """系统指标（优化：使用 slots=True 减少内存占用）"""
+    """系统指标"""
     ts: float
     # 内存
     mem_total_gb: float
@@ -57,6 +57,9 @@ def collect_metrics() -> Metrics:
     disk = psutil.disk_usage("/")
     cpu = psutil.cpu_percent(interval=0)
 
+    # 修复磁盘百分比：使用 used/total 而非 psutil 的 percent（后者不包括保留空间）
+    disk_percent_corrected = round((disk.used / disk.total) * 100, 1) if disk.total > 0 else 0.0
+
     return Metrics(
         ts=time.time(),
         mem_total_gb=_gb(mem.total),
@@ -69,13 +72,13 @@ def collect_metrics() -> Metrics:
         disk_total_gb=_gb(disk.total),
         disk_used_gb=_gb(disk.used),
         disk_free_gb=_gb(disk.free),
-        disk_percent=disk.percent,
+        disk_percent=disk_percent_corrected,
         cpu_percent=cpu,
     )
 
 
 def collect_ai_processes(watch_keywords: list) -> list:
-    """扫描匹配关键字的进程（优化：限制 cmdline 截取长度，减少内存）"""
+    """扫描匹配关键字的进程"""
     result = []
     keywords_lower = [k.lower() for k in watch_keywords]
 
@@ -94,7 +97,7 @@ def collect_ai_processes(watch_keywords: list) -> list:
             result.append(ProcessInfo(
                 pid=info["pid"],
                 name=info["name"] or "",
-                cmdline=" ".join(cmdline_parts)[:120],  # 优化：120 字符足够，减少内存
+                cmdline=" ".join(cmdline_parts)[:120],
                 mem_mb=round(mem_bytes / (1024 * 1024), 1),
                 cpu_percent=info["cpu_percent"] or 0.0,
                 status=info["status"] or "",
@@ -108,7 +111,7 @@ def collect_ai_processes(watch_keywords: list) -> list:
 
 
 def collect_all_processes() -> list:
-    """获取所有进程（类似活动监视器，优化：限制 cmdline 长度）"""
+    """获取所有进程（类似活动监视器）"""
     result = []
 
     for proc in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "cpu_percent", "status", "create_time"]):
@@ -118,7 +121,7 @@ def collect_all_processes() -> list:
             result.append(ProcessInfo(
                 pid=info["pid"],
                 name=info["name"] or "",
-                cmdline=" ".join(info["cmdline"] or [])[:120],  # 优化：120 字符
+                cmdline=" ".join(info["cmdline"] or [])[:120],
                 mem_mb=round(mem_bytes / (1024 * 1024), 1),
                 cpu_percent=info["cpu_percent"] or 0.0,
                 status=info["status"] or "",
@@ -132,7 +135,7 @@ def collect_all_processes() -> list:
 
 
 class MetricsHistory:
-    """环形缓冲区保存历史数据（优化：减小默认容量）"""
+    """环形缓冲区保存历史数据"""
 
     def __init__(self, maxlen: int = 60):
         self._buf: deque[dict] = deque(maxlen=maxlen)

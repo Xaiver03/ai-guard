@@ -100,7 +100,7 @@ class TestCustomPricing:
         pm = PricingManager()
         all_pricing = pm.get_all_pricing()
         assert "claude-sonnet-4-6" in all_pricing
-        assert "claude-opus-4-6" in all_pricing
+        assert "claude-opus-4" in all_pricing
 
 
 class TestSerialization:

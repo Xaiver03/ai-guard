@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class ModelPricing:
     """模型定价"""
     input_price: float  # 每百万 token 的价格

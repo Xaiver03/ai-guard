@@ -135,7 +135,7 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     对一个进程给出评估结论。
     评分规则详见 SCORING.md。
     proc_info 是 monitor.collect_ai_processes 返回的 dict。
-    name_counts: 可选的进程名计数字典（优化：避免重复扫描）
+    name_counts: 可选的进程名计数字典（避免重复扫描）
     """
     pid = proc_info["pid"]
     name = proc_info["name"].lower()
@@ -189,7 +189,7 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
         action = "kill"
 
     # ── 规则 S3：多个同名进程（冗余实例）────────────────────────
-    # 优化：使用预计算的 name_counts，避免每个进程都扫描一次
+    # 使用预计算的 name_counts，避免每个进程都扫描一次
     if name_counts is not None:
         same_count = name_counts.get(proc_info["name"].lower(), 1)
     else:
@@ -235,7 +235,7 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
 
 
 def _build_name_counts() -> dict:
-    """一次性构建系统进程名计数字典（优化：替代逐进程扫描）"""
+    """一次性构建系统进程名计数字典"""
     counts = {}
     for p in psutil.process_iter(["name"]):
         try:
@@ -249,8 +249,7 @@ def _build_name_counts() -> dict:
 def advise_list(proc_list: list) -> list:
     """批量评估，返回附带 advice 字段的进程列表
 
-    优化：一次性构建进程名计数字典，避免每个进程都做一次全量扫描。
-    将复杂度从 O(N*M) 降为 O(N+M)，N=待评估进程数，M=系统总进程数。
+    一次性构建进程名计数字典，避免每个进程都做一次全量扫描。
     """
     # 一次扫描，所有进程共享
     name_counts = _build_name_counts()

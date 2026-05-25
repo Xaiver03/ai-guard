@@ -34,7 +34,7 @@ class BackgroundThreads:
         self.settings = {}
         self.settings_lock = threading.Lock()
 
-        # JSONL 增量解析：记录每个文件的读取位置（优化：减少 80-95% I/O）
+        # JSONL 增量解析：记录每个文件的读取位置
         self._jsonl_offsets = {}  # {file_path: last_offset}
 
         # 线程对象
@@ -151,8 +151,9 @@ class BackgroundThreads:
 
             with self.lock:
                 blocked_names = set(self.blocked_processes)
+                procs_snapshot = list(self.latest_processes)
 
-            for proc in self.latest_processes:
+            for proc in procs_snapshot:
                 name = proc.get("name", "").lower()
                 if name in blocked_names:
                     pid = proc["pid"]
@@ -209,9 +210,8 @@ class BackgroundThreads:
         """Usage 轮询线程：每 5 分钟增量更新当天的 Claude 使用数据
 
         内存策略：
-        - 不使用 load_all_usage()（全量加载 175MB+）
         - 只扫描今天修改过的 JSONL 文件
-        - 增量解析：记录文件 offset，只读取新增内容（优化：减少 80-95% I/O）
+        - 增量解析：记录文件 offset，只读取新增内容
         - 峰值内存约 5-10MB（仅新增条目）
         """
         import gc
@@ -265,6 +265,10 @@ class BackgroundThreads:
                             try:
                                 with open(jsonl_file, 'r', encoding='utf-8') as f:
                                     # 增量：跳到上次读取位置
+                                    file_size = f.seek(0, 2)  # 先跳到文件末尾获取大小
+                                    if last_offset > file_size:
+                                        # 文件被截断/重写，重置 offset
+                                        last_offset = 0
                                     f.seek(last_offset)
 
                                     for line in f:

@@ -1,5 +1,5 @@
 """
-数据模型定义（优化：使用 slots=True 减少 40% 内存占用）
+数据模型定义
 """
 from dataclasses import dataclass
 from typing import List, Optional

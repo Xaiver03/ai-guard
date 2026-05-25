@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
@@ -18,12 +18,12 @@ from aigard.core import pause_process, resume_process, kill_process
 
 # ── 数据缓存和防抖 ────────────────────────────────────────────
 class DataCache:
-    """数据缓存，支持防抖（优化：90秒 TTL 减少重复扫描）"""
+    """数据缓存，支持防抖（90秒 TTL 减少重复扫描）"""
     def __init__(self, ttl: int = 90):
         self.ttl = ttl
-        self._cache: Dict[str, tuple[float, any]] = {}
+        self._cache: Dict[str, tuple[float, Any]] = {}
 
-    def get(self, key: str) -> Optional[any]:
+    def get(self, key: str) -> Optional[Any]:
         """获取缓存数据，过期返回 None"""
         if key not in self._cache:
             return None
@@ -33,7 +33,7 @@ class DataCache:
             return None
         return data
 
-    def set(self, key: str, data: any):
+    def set(self, key: str, data: Any):
         """设置缓存数据"""
         self._cache[key] = (time.time(), data)
 
@@ -42,7 +42,7 @@ class DataCache:
         self._cache.pop(key, None)
 
 
-# 全局缓存实例（90秒 TTL，优化：减少进程扫描频率）
+# 全局缓存实例（90秒 TTL）
 _data_cache = DataCache(ttl=90)
 
 
@@ -148,8 +148,11 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 "create_time": proc.create_time,
             }
             # 评分和建议
-            advice = _advisor_mod.advise_process(proc)
-            proc_dict.update(advice)
+            advice = _advisor_mod.advise(proc_dict)
+            proc_dict["risk"] = advice.risk
+            proc_dict["risk_label"] = advice.label
+            proc_dict["risk_reasons"] = advice.reasons
+            proc_dict["suggested_action"] = advice.action
             # 白名单标记
             proc_dict["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc_dict)
             result.append(proc_dict)
@@ -303,7 +306,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     # ── SSE 实时流 ────────────────────────────────────────────
     @app.get("/api/stream")
     async def stream():
-        """SSE 实时推流（优化：变化检测 + 缓存序列化结果）"""
+        """SSE 实时推流（变化检测 + 3秒间隔）"""
         async def event_generator():
             _last_payload = None
             while True:
@@ -315,7 +318,9 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
                 # 变化检测：只在数据实际变化时序列化和推送
                 snapshot_key = (
-                    id(latest),
+                    latest.get("ts") if latest else None,
+                    latest.get("cpu_percent") if latest else None,
+                    latest.get("mem_percent") if latest else None,
                     len(procs),
                     tuple(p.get("pid", 0) for p in procs[:20]),
                     len(log),
@@ -324,7 +329,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 )
                 current_hash = hash(snapshot_key)
 
-                if _last_payload is None or hash(snapshot_key) != getattr(event_generator, '_last_hash', None):
+                if _last_payload is None or current_hash != getattr(event_generator, '_last_hash', None):
                     payload = json.dumps({
                         "metrics": latest,
                         "processes": procs,
@@ -339,7 +344,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     # 心跳保持连接
                     yield f": heartbeat\n\n"
 
-                await asyncio.sleep(3)  # 优化：从 1 秒改为 3 秒
+                await asyncio.sleep(3)
 
         return StreamingResponse(
             event_generator(),
