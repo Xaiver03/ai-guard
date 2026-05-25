@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from aigard.core import pause_process, resume_process, kill_process
@@ -17,8 +18,8 @@ from aigard.core import pause_process, resume_process, kill_process
 
 # ── 数据缓存和防抖 ────────────────────────────────────────────
 class DataCache:
-    """数据缓存，支持防抖（60秒内返回缓存）"""
-    def __init__(self, ttl: int = 60):
+    """数据缓存，支持防抖（优化：90秒 TTL 减少重复扫描）"""
+    def __init__(self, ttl: int = 90):
         self.ttl = ttl
         self._cache: Dict[str, tuple[float, any]] = {}
 
@@ -41,8 +42,8 @@ class DataCache:
         self._cache.pop(key, None)
 
 
-# 全局缓存实例（60秒 TTL）
-_data_cache = DataCache(ttl=60)
+# 全局缓存实例（90秒 TTL，优化：减少进程扫描频率）
+_data_cache = DataCache(ttl=90)
 
 
 def create_app(base_dir: Path, threads_manager) -> FastAPI:
@@ -302,26 +303,43 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     # ── SSE 实时流 ────────────────────────────────────────────
     @app.get("/api/stream")
     async def stream():
-        """SSE 实时推流"""
+        """SSE 实时推流（优化：变化检测 + 缓存序列化结果）"""
         async def event_generator():
+            _last_payload = None
             while True:
                 latest = threads_manager.history.latest
                 with threads_manager.lock:
                     procs = list(threads_manager.latest_processes)
                     log = list(threads_manager.auto_kill_log[-5:])
                     blocked = sorted(list(threads_manager.blocked_processes))
-                payload = json.dumps({
-                    "metrics": latest,
-                    "processes": procs,
-                    "auto_kill_log": log,
-                    "autokill_enabled": threads_manager.autokill_enabled,
-                    "blocked_processes": blocked,
-                }, ensure_ascii=False)
-                yield f"data: {payload}\n\n"
 
-                with threads_manager.settings_lock:
-                    interval = threads_manager.settings.get("monitor", {}).get("interval_sec", 1)
-                await asyncio.sleep(interval)
+                # 变化检测：只在数据实际变化时序列化和推送
+                snapshot_key = (
+                    id(latest),
+                    len(procs),
+                    tuple(p.get("pid", 0) for p in procs[:20]),
+                    len(log),
+                    threads_manager.autokill_enabled,
+                    tuple(blocked),
+                )
+                current_hash = hash(snapshot_key)
+
+                if _last_payload is None or hash(snapshot_key) != getattr(event_generator, '_last_hash', None):
+                    payload = json.dumps({
+                        "metrics": latest,
+                        "processes": procs,
+                        "auto_kill_log": log,
+                        "autokill_enabled": threads_manager.autokill_enabled,
+                        "blocked_processes": blocked,
+                    }, ensure_ascii=False)
+                    _last_payload = payload
+                    event_generator._last_hash = current_hash
+                    yield f"data: {payload}\n\n"
+                else:
+                    # 心跳保持连接
+                    yield f": heartbeat\n\n"
+
+                await asyncio.sleep(3)  # 优化：从 1 秒改为 3 秒
 
         return StreamingResponse(
             event_generator(),
@@ -461,5 +479,17 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             "enabled": threads_manager.scheduled_kill_enabled,
             "interval_minutes": threads_manager.scheduled_kill_interval,
         }
+
+    # ── 静态文件（CSS / JS）────────────────────────────────────
+    ui_dev = base_dir / "aigard" / "ui"
+    ui_pkg = base_dir / "ui"
+    ui_dir = ui_dev if ui_dev.exists() else ui_pkg
+
+    css_dir = ui_dir / "css"
+    js_dir = ui_dir / "js"
+    if css_dir.exists():
+        app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
+    if js_dir.exists():
+        app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
 
     return app

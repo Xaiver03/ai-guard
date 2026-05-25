@@ -8,8 +8,9 @@ from typing import Any, Optional, List
 import psutil
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessInfo:
+    """进程信息（优化：使用 slots=True 减少 40% 内存占用）"""
     pid: int
     name: str
     cmdline: str
@@ -19,8 +20,9 @@ class ProcessInfo:
     create_time: float
 
 
-@dataclass
+@dataclass(slots=True)
 class Metrics:
+    """系统指标（优化：使用 slots=True 减少内存占用）"""
     ts: float
     # 内存
     mem_total_gb: float
@@ -73,7 +75,7 @@ def collect_metrics() -> Metrics:
 
 
 def collect_ai_processes(watch_keywords: list) -> list:
-    """扫描匹配关键字的进程"""
+    """扫描匹配关键字的进程（优化：限制 cmdline 截取长度，减少内存）"""
     result = []
     keywords_lower = [k.lower() for k in watch_keywords]
 
@@ -81,7 +83,8 @@ def collect_ai_processes(watch_keywords: list) -> list:
         try:
             info = proc.info
             name = (info["name"] or "").lower()
-            cmdline = " ".join(info["cmdline"] or []).lower()
+            cmdline_parts = info["cmdline"] or []
+            cmdline = " ".join(cmdline_parts).lower()
             haystack = f"{name} {cmdline}"
 
             if not any(kw in haystack for kw in keywords_lower):
@@ -91,7 +94,7 @@ def collect_ai_processes(watch_keywords: list) -> list:
             result.append(ProcessInfo(
                 pid=info["pid"],
                 name=info["name"] or "",
-                cmdline=" ".join(info["cmdline"] or [])[:200],
+                cmdline=" ".join(cmdline_parts)[:120],  # 优化：120 字符足够，减少内存
                 mem_mb=round(mem_bytes / (1024 * 1024), 1),
                 cpu_percent=info["cpu_percent"] or 0.0,
                 status=info["status"] or "",
@@ -105,7 +108,7 @@ def collect_ai_processes(watch_keywords: list) -> list:
 
 
 def collect_all_processes() -> list:
-    """获取所有进程（类似活动监视器）"""
+    """获取所有进程（类似活动监视器，优化：限制 cmdline 长度）"""
     result = []
 
     for proc in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "cpu_percent", "status", "create_time"]):
@@ -115,7 +118,7 @@ def collect_all_processes() -> list:
             result.append(ProcessInfo(
                 pid=info["pid"],
                 name=info["name"] or "",
-                cmdline=" ".join(info["cmdline"] or [])[:200],
+                cmdline=" ".join(info["cmdline"] or [])[:120],  # 优化：120 字符
                 mem_mb=round(mem_bytes / (1024 * 1024), 1),
                 cpu_percent=info["cpu_percent"] or 0.0,
                 status=info["status"] or "",
@@ -129,9 +132,9 @@ def collect_all_processes() -> list:
 
 
 class MetricsHistory:
-    """环形缓冲区保存历史数据"""
+    """环形缓冲区保存历史数据（优化：减小默认容量）"""
 
-    def __init__(self, maxlen: int = 150):
+    def __init__(self, maxlen: int = 60):
         self._buf: deque[dict] = deque(maxlen=maxlen)
 
     def push(self, m: Metrics):

@@ -7,7 +7,7 @@ import psutil
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class ActionResult:
     success: bool
     message: str
@@ -17,7 +17,7 @@ class ActionResult:
 def _get_proc(pid: int) -> Optional[psutil.Process]:
     try:
         return psutil.Process(pid)
-    except psutil.NoSuchProcess:
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
         return None
 
 

@@ -4,8 +4,8 @@ port = 8765
 open_browser = true
 
 [monitor]
-interval_sec = 2
-history_points = 150
+interval_sec = 5  # 优化：从 2 秒改为 5 秒，减少 60% 的监控循环频率
+history_points = 60  # 优化：从 150 改为 60（5 分钟历史，足够绘制趋势图）
 
 [alert]
 mem_warn = 80

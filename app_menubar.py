@@ -118,8 +118,8 @@ class AIGuardApp(rumps.App):
         )
         self._server_thread.start()
 
-        # 每 2 秒刷新菜单栏状态
-        self._timer = rumps.Timer(self._refresh_status, 2)
+        # 每 5 秒刷新菜单栏状态（优化：从 2 秒改为 5 秒）
+        self._timer = rumps.Timer(self._refresh_status, 5)
         self._timer.start()
 
     # ── 菜单回调 ──────────────────────────────────────────────

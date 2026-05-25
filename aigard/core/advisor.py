@@ -11,17 +11,13 @@ CPU_CAUTION_PCT = 20      # CPU > 此值 → caution
 IDLE_MIN_HOURS  = 1.0     # 运行 > 此值（小时）且 CPU<1% 且 mem>200MB → safe
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessAdvice:
     """对单个进程的评估结果"""
     pid: int
-    # safe / caution / danger
     risk: str
-    # 单行结论，显示在表格里
     label: str
-    # 详细原因列表
     reasons: List[str]
-    # 建议操作: kill / pause / leave
     action: str
 
 
@@ -134,11 +130,12 @@ def _uptime_hours(create_time: float) -> float:
     return (time.time() - create_time) / 3600
 
 
-def advise(proc_info: dict) -> ProcessAdvice:
+def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     """
     对一个进程给出评估结论。
     评分规则详见 SCORING.md。
     proc_info 是 monitor.collect_ai_processes 返回的 dict。
+    name_counts: 可选的进程名计数字典（优化：避免重复扫描）
     """
     pid = proc_info["pid"]
     name = proc_info["name"].lower()
@@ -192,7 +189,12 @@ def advise(proc_info: dict) -> ProcessAdvice:
         action = "kill"
 
     # ── 规则 S3：多个同名进程（冗余实例）────────────────────────
-    same_count = _count_same_name(proc_info["name"])
+    # 优化：使用预计算的 name_counts，避免每个进程都扫描一次
+    if name_counts is not None:
+        same_count = name_counts.get(proc_info["name"].lower(), 1)
+    else:
+        same_count = _count_same_name(proc_info["name"])
+
     if same_count >= 3:
         reasons.append(f"同名进程共 {same_count} 个，存在冗余实例，关闭部分通常不影响主流程")
         if risk != "danger":
@@ -232,11 +234,30 @@ def advise(proc_info: dict) -> ProcessAdvice:
     return ProcessAdvice(pid, risk, label, reasons, action)
 
 
+def _build_name_counts() -> dict:
+    """一次性构建系统进程名计数字典（优化：替代逐进程扫描）"""
+    counts = {}
+    for p in psutil.process_iter(["name"]):
+        try:
+            name = (p.info["name"] or "").lower()
+            counts[name] = counts.get(name, 0) + 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return counts
+
+
 def advise_list(proc_list: list) -> list:
-    """批量评估，返回附带 advice 字段的进程列表"""
+    """批量评估，返回附带 advice 字段的进程列表
+
+    优化：一次性构建进程名计数字典，避免每个进程都做一次全量扫描。
+    将复杂度从 O(N*M) 降为 O(N+M)，N=待评估进程数，M=系统总进程数。
+    """
+    # 一次扫描，所有进程共享
+    name_counts = _build_name_counts()
+
     result = []
     for p in proc_list:
-        adv = advise(p)
+        adv = advise(p, name_counts=name_counts)
         enriched = dict(p)
         enriched["risk"] = adv.risk
         enriched["risk_label"] = adv.label
