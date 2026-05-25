@@ -46,6 +46,7 @@ class UsageCache:
                     total_tokens INTEGER DEFAULT 0,
                     total_cost REAL DEFAULT 0,
                     models_used TEXT DEFAULT '[]',
+                    model_breakdowns TEXT DEFAULT '[]',
                     updated_at TEXT
                 )
             """)
@@ -106,8 +107,8 @@ class UsageCache:
                     INSERT OR REPLACE INTO hourly_usage
                     (hour, input_tokens, output_tokens, cache_creation_tokens,
                      cache_read_tokens, total_tokens, total_cost,
-                     models_used, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     models_used, model_breakdowns, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     item['hour'],
                     item.get('input_tokens', 0),
@@ -117,6 +118,7 @@ class UsageCache:
                     item.get('total_tokens', 0),
                     item.get('total_cost', 0),
                     json.dumps(item.get('models_used', [])),
+                    json.dumps(item.get('model_breakdowns', [])),
                     datetime.now().isoformat()
                 ))
             conn.commit()
@@ -206,6 +208,9 @@ class UsageCache:
             # 获取模型数
             models_count = self._count_unique_models(conn, start_date, end_date)
 
+            # 获取 coverage 数据
+            coverage = self.get_coverage()
+
             return {
                 'input_tokens': row[0],
                 'output_tokens': row[1],
@@ -216,6 +221,7 @@ class UsageCache:
                 'active_days': row[6],
                 'models_count': models_count,
                 'total_requests': 0,
+                'coverage': coverage,
             }
 
     def _count_unique_models(self, conn, start_date=None, end_date=None) -> int:
@@ -255,7 +261,7 @@ class UsageCache:
 
     def _row_to_hourly_dict(self, row) -> Dict:
         """将数据库行转为字典"""
-        return {
+        result = {
             'hour': row['hour'],
             'input_tokens': row['input_tokens'],
             'output_tokens': row['output_tokens'],
@@ -265,6 +271,35 @@ class UsageCache:
             'total_cost': round(row['total_cost'], 4),
             'models_used': json.loads(row['models_used']),
         }
+        try:
+            result['model_breakdowns'] = json.loads(row['model_breakdowns'])
+        except (KeyError, IndexError):
+            result['model_breakdowns'] = []
+        return result
+
+    def save_coverage(self, coverage: Dict[str, Any]):
+        """保存 coverage 数据"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO cache_meta (key, value) VALUES (?, ?)",
+                ('coverage', json.dumps(coverage))
+            )
+            conn.commit()
+
+    def get_coverage(self) -> Dict[str, Any]:
+        """获取 coverage 数据"""
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT value FROM cache_meta WHERE key = 'coverage'"
+            ).fetchone()
+            if row:
+                return json.loads(row[0])
+            return {
+                'coverage_percent': 100.0,
+                'total_tokens': 0,
+                'priced_tokens': 0,
+                'unknown_models': [],
+            }
 
     def has_data(self) -> bool:
         """检查是否有缓存数据"""

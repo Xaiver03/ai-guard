@@ -1,33 +1,18 @@
 """
 使用计算器 - 计算 Token 和费用
 """
-from typing import List
+from typing import List, Dict, Set
 from .models import UsageEntry, ModelBreakdown
-from .pricing import PricingManager
+from .pricing import PricingManager, normalize_model_name
 
 
 class UsageCalculator:
     """计算使用统计"""
 
     def __init__(self, pricing_manager: PricingManager):
-        """
-        初始化计算器
-
-        Args:
-            pricing_manager: 定价管理器
-        """
         self.pricing_manager = pricing_manager
 
     def calculate_total_tokens(self, entries: List[UsageEntry]) -> int:
-        """
-        计算总 token 数
-
-        Args:
-            entries: 使用记录列表
-
-        Returns:
-            总 token 数
-        """
         return sum(
             entry.input_tokens +
             entry.output_tokens +
@@ -37,49 +22,71 @@ class UsageCalculator:
         )
 
     def calculate_total_cost(self, entries: List[UsageEntry]) -> float:
-        """
-        计算总费用
-
-        Args:
-            entries: 使用记录列表
-
-        Returns:
-            总费用（美元）
-        """
         total = 0.0
         for entry in entries:
-            # 如果记录中已有费用，使用记录的费用
             if entry.cost > 0:
                 total += entry.cost
             else:
-                # 否则根据定价计算
-                cost = self.pricing_manager.calculate_cost(
+                total += self.pricing_manager.calculate_cost(
                     entry.model,
                     entry.input_tokens,
                     entry.output_tokens,
                     entry.cache_creation_tokens,
-                    entry.cache_read_tokens
+                    entry.cache_read_tokens,
                 )
-                total += cost
-
         return total
 
-    def calculate_model_breakdown(self, entries: List[UsageEntry]) -> List[ModelBreakdown]:
+    def calculate_coverage(self, entries: List[UsageEntry]) -> dict:
         """
-        按模型统计使用情况
-
-        Args:
-            entries: 使用记录列表
+        计算 Token 覆盖率（有定价的 token 占比）
 
         Returns:
-            模型使用明细列表
+            {
+                'coverage_percent': float,    # 0-100
+                'total_tokens': int,
+                'priced_tokens': int,
+                'unknown_models': list[str],  # 归一化后的模型名
+            }
         """
-        model_stats = {}
+        total_tokens = 0
+        priced_tokens = 0
+        unknown_models: Set[str] = set()
 
         for entry in entries:
+            tokens = (
+                entry.input_tokens +
+                entry.output_tokens +
+                entry.cache_creation_tokens +
+                entry.cache_read_tokens
+            )
+            total_tokens += tokens
+
+            if self.pricing_manager.has_pricing(entry.model):
+                priced_tokens += tokens
+            else:
+                unknown_models.add(normalize_model_name(entry.model))
+
+        coverage = (priced_tokens / total_tokens * 100) if total_tokens > 0 else 100.0
+
+        return {
+            'coverage_percent': round(coverage, 1),
+            'total_tokens': total_tokens,
+            'priced_tokens': priced_tokens,
+            'unknown_models': sorted(unknown_models),
+        }
+
+    def calculate_model_breakdown(self, entries: List[UsageEntry]) -> List[ModelBreakdown]:
+        model_stats: Dict[str, dict] = {}
+
+        for entry in entries:
+            # 用归一化名作 key，保留原始名展示
             model = entry.model
-            if model not in model_stats:
-                model_stats[model] = {
+            norm = normalize_model_name(model)
+            key = norm  # 相同归一化名的不同原始名合并
+
+            if key not in model_stats:
+                model_stats[key] = {
+                    'display_name': model,  # 第一个遇到的原始名
                     'input_tokens': 0,
                     'output_tokens': 0,
                     'cache_creation_tokens': 0,
@@ -88,73 +95,57 @@ class UsageCalculator:
                     'request_count': 0,
                 }
 
-            stats = model_stats[model]
-            stats['input_tokens'] += entry.input_tokens
-            stats['output_tokens'] += entry.output_tokens
-            stats['cache_creation_tokens'] += entry.cache_creation_tokens
-            stats['cache_read_tokens'] += entry.cache_read_tokens
-            stats['request_count'] += 1
+            s = model_stats[key]
+            s['input_tokens'] += entry.input_tokens
+            s['output_tokens'] += entry.output_tokens
+            s['cache_creation_tokens'] += entry.cache_creation_tokens
+            s['cache_read_tokens'] += entry.cache_read_tokens
+            s['request_count'] += 1
 
-            # 计算费用
             if entry.cost > 0:
-                stats['cost'] += entry.cost
+                s['cost'] += entry.cost
             else:
-                cost = self.pricing_manager.calculate_cost(
+                s['cost'] += self.pricing_manager.calculate_cost(
                     entry.model,
                     entry.input_tokens,
                     entry.output_tokens,
                     entry.cache_creation_tokens,
-                    entry.cache_read_tokens
+                    entry.cache_read_tokens,
                 )
-                stats['cost'] += cost
 
-        # 转换为 ModelBreakdown 列表
         breakdowns = []
-        for model, stats in model_stats.items():
+        for norm_name, s in model_stats.items():
             total_tokens = (
-                stats['input_tokens'] +
-                stats['output_tokens'] +
-                stats['cache_creation_tokens'] +
-                stats['cache_read_tokens']
+                s['input_tokens'] +
+                s['output_tokens'] +
+                s['cache_creation_tokens'] +
+                s['cache_read_tokens']
             )
-
             breakdowns.append(ModelBreakdown(
-                model_name=model,
-                input_tokens=stats['input_tokens'],
-                output_tokens=stats['output_tokens'],
-                cache_creation_tokens=stats['cache_creation_tokens'],
-                cache_read_tokens=stats['cache_read_tokens'],
+                model_name=norm_name,
+                input_tokens=s['input_tokens'],
+                output_tokens=s['output_tokens'],
+                cache_creation_tokens=s['cache_creation_tokens'],
+                cache_read_tokens=s['cache_read_tokens'],
                 total_tokens=total_tokens,
-                cost=stats['cost'],
-                request_count=stats['request_count']
+                cost=s['cost'],
+                request_count=s['request_count'],
             ))
 
-        # 按费用降序排序
         breakdowns.sort(key=lambda x: x.cost, reverse=True)
-
         return breakdowns
 
     def calculate_token_breakdown(self, entries: List[UsageEntry]) -> dict:
-        """
-        计算 token 类型分布
-
-        Args:
-            entries: 使用记录列表
-
-        Returns:
-            Token 分布字典
-        """
         breakdown = {
             'input_tokens': 0,
             'output_tokens': 0,
             'cache_creation_tokens': 0,
             'cache_read_tokens': 0,
         }
-
         for entry in entries:
             breakdown['input_tokens'] += entry.input_tokens
             breakdown['output_tokens'] += entry.output_tokens
             breakdown['cache_creation_tokens'] += entry.cache_creation_tokens
             breakdown['cache_read_tokens'] += entry.cache_read_tokens
-
         return breakdown
+

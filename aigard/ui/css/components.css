@@ -29,7 +29,7 @@ header {
   transition: background var(--duration-base), border-color var(--duration-base);
 }
 
-.header-left  { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
+.header-left  { display: flex; align-items: center; gap: var(--space-5); flex-shrink: 0; }
 .header-center { flex: 1; display: flex; justify-content: center; }
 .header-right {
   display: flex;
@@ -68,6 +68,9 @@ header {
   color: var(--text-secondary);
   white-space: nowrap;
   transition: background var(--duration-fast), color var(--duration-fast);
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .nav-tab:hover {
@@ -79,8 +82,28 @@ header {
 .nav-tab.active {
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-weight: var(--weight-semibold);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 4px;
+}
+
+/* ── 页面控件栏（二级控件区，位于 main 内部顶部） ────────── */
+.page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  height: 52px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  flex-shrink: 0;
 }
 
 /* ── 语言切换──────────────────────────────────────────────── */

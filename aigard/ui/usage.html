@@ -12,11 +12,11 @@
 </head>
 <body>
 
-<!-- ===== 顶部 Header ===== -->
+<!-- ===== 统一顶部导航 ===== -->
 <header>
   <div class="header-left">
     <h1 class="logo">AI <span>Guard</span></h1>
-    <nav class="nav-tabs" id="main-nav">
+    <nav class="nav-tabs">
       <a href="/" class="nav-tab" data-i18n="navMonitor">监控面板</a>
       <a href="/usage.html" class="nav-tab active" data-i18n="navUsage">Claude 统计</a>
       <a href="/bookmarks.html" class="nav-tab" data-i18n="navBookmarks">书签管理</a>
@@ -31,19 +31,21 @@
   </div>
 </header>
 
+<!-- Toast 通知 -->
+<div id="toast"></div>
+
 <!-- ===== 主内容区 ===== -->
 <main class="app">
-  <!-- 使用统计 Header -->
-  <div class="usage-header">
-    <div class="usage-header-left">
-      <h1 data-i18n="title">Claude Code 综合面板</h1>
-      <p class="subtitle" data-i18n="subtitle">基于 ccusage 的词元使用分析</p>
+
+  <!-- 页面二级导航 + 控件 -->
+  <div class="page-controls">
+    <div class="inner-nav-tabs">
+      <button class="inner-nav-tab active" data-tab="dashboard" data-i18n="navDashboard">数据面板</button>
+      <button class="inner-nav-tab" data-tab="monthly" data-i18n="navMonthly">月视图</button>
+      <button class="inner-nav-tab" data-tab="sessions" data-i18n="navSessions">会话分析</button>
+      <button class="inner-nav-tab" data-tab="pricing" data-i18n="navPricing">定价配置</button>
     </div>
-    <div class="usage-header-right">
-      <div class="inner-nav-tabs">
-        <button class="inner-nav-tab active" data-tab="dashboard" data-i18n="navDashboard">数据面板</button>
-        <button class="inner-nav-tab" data-tab="pricing" data-i18n="navPricing">定价配置</button>
-      </div>
+    <div class="page-actions">
       <div class="format-toggle">
         <button class="active" data-format="compact" title="紧凑格式">1.2M</button>
         <button data-format="full" title="完整格式">1,234</button>
@@ -57,12 +59,13 @@
     </div>
   </div>
 
-  <!-- 数据面板内容 -->
-  <div id="dashboard-content">
+  <!-- 全局筛选区（时间范围 + 项目筛选） -->
+  <div class="global-filters">
     <!-- 时间范围选择器 -->
     <div class="time-range">
       <label data-i18n="timeRange">时间范围:</label>
       <button class="active" data-range="today" data-i18n="today">今日</button>
+      <button data-range="24h" data-i18n="24h">24H</button>
       <button data-range="yesterday" data-i18n="yesterday">昨天</button>
       <button data-range="last_3_days" data-i18n="threeDays">近三天</button>
       <button data-range="this_week" data-i18n="week">本周</button>
@@ -76,8 +79,22 @@
       </div>
     </div>
 
+    <!-- 项目筛选 -->
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-item">
+        <label class="filter-label" data-i18n="filterProject">项目:</label>
+        <select class="filter-select" id="project-filter">
+          <option value="" data-i18n="allProjects">全部项目</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据面板内容 -->
+  <div id="dashboard-content">
+
     <!-- 主要统计卡片 -->
-    <div class="stats-grid">
+    <div class="stats-grid stats-grid-5">
       <div class="stat-card">
         <div class="stat-label" style="justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -114,10 +131,24 @@
         </div>
         <div class="stat-value"><span id="models-count">—</span><span class="stat-unit" data-i18n="count"> 个</span></div>
       </div>
+      <div class="stat-card coverage-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-coverage"></span>
+          <span data-i18n="coverage">定价覆盖率</span>
+        </div>
+        <div class="stat-value" id="coverage-percent">—</div>
+        <div class="stat-detail" id="coverage-detail">
+          <span id="priced-tokens">—</span> / <span id="total-tokens-coverage">—</span>
+        </div>
+        <div class="coverage-bar">
+          <div class="coverage-fill" id="coverage-fill" style="width: 0%"></div>
+        </div>
+        <div class="coverage-tooltip" id="coverage-tooltip" style="display:none;"></div>
+      </div>
     </div>
 
     <!-- 分类统计卡片 -->
-    <div class="stats-grid stats-grid-5" style="margin-bottom:24px;">
+    <div class="stats-grid stats-grid-5">
       <div class="stat-card">
         <div class="stat-label">
           <span class="stat-icon" id="icon-input" style="color:#58a6ff;"></span>
@@ -221,6 +252,149 @@
     </div>
   </div><!-- /dashboard-content -->
 
+  <!-- 月视图内容 -->
+  <div id="monthly-content" style="display:none;">
+
+    <!-- 月度汇总卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-monthly-tokens"></span>
+          <span data-i18n="totalTokens">词元总量</span>
+        </div>
+        <div class="stat-value" id="monthly-total-tokens">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-monthly-cost"></span>
+          <span data-i18n="totalCost">总费用</span>
+        </div>
+        <div class="stat-value" id="monthly-total-cost">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-monthly-calendar"></span>
+          <span data-i18n="activeDays">活跃月数</span>
+        </div>
+        <div class="stat-value"><span id="monthly-active-months">—</span><span class="stat-unit" data-i18n="count"> 个</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-monthly-avg"></span>
+          <span id="monthly-avg-label">月均费用</span>
+        </div>
+        <div class="stat-value" id="monthly-avg-cost">—</div>
+      </div>
+    </div>
+
+    <!-- 月度图表 -->
+    <div class="charts-container">
+      <div class="chart-card">
+        <h3 data-i18n="monthlyTokenTrend">月度词元趋势</h3>
+        <div class="chart-wrapper">
+          <canvas id="chart-monthly-tokens"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3 data-i18n="monthlyCostTrend">月度费用趋势</h3>
+        <div class="chart-wrapper">
+          <canvas id="chart-monthly-cost"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 月度明细表 -->
+    <div class="recent-card">
+      <h3 data-i18n="monthlyStats">月度使用详细记录</h3>
+      <table class="recent-table">
+        <thead>
+          <tr>
+            <th data-i18n="monthLabel">月份</th>
+            <th data-i18n="tokenCount">词元数</th>
+            <th data-i18n="inputTokens">输入</th>
+            <th data-i18n="outputTokens">输出</th>
+            <th data-i18n="cacheWriteShort">缓存写</th>
+            <th data-i18n="cacheReadShort">缓存读</th>
+            <th data-i18n="cost">费用</th>
+          </tr>
+        </thead>
+        <tbody id="monthly-table-body">
+          <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /monthly-content -->
+
+  <!-- 会话分析内容 -->
+  <div id="sessions-content" style="display:none;">
+
+    <!-- 会话汇总卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-sessions-total"></span>
+          <span data-i18n="totalSessions">会话总数</span>
+        </div>
+        <div class="stat-value"><span id="sessions-total">—</span><span class="stat-unit" data-i18n="count"> 个</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-sessions-tokens"></span>
+          <span data-i18n="totalTokens">词元总量</span>
+        </div>
+        <div class="stat-value" id="sessions-total-tokens">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-sessions-cost"></span>
+          <span data-i18n="totalCost">总费用</span>
+        </div>
+        <div class="stat-value" id="sessions-total-cost">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-sessions-avg"></span>
+          <span data-i18n="avgSessionDuration">平均时长</span>
+        </div>
+        <div class="stat-value" id="sessions-avg-duration">—</div>
+      </div>
+    </div>
+
+    <!-- 会话列表表格 -->
+    <div class="recent-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">
+        <h3 data-i18n="sessionsTitle">会话分析</h3>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+          <select class="filter-select" id="sessions-project-filter" style="min-width:140px;">
+            <option value="" data-i18n="allProjects">全部项目</option>
+          </select>
+          <span style="font-size:0.78rem;color:var(--text-secondary);" id="sessions-count-label"></span>
+        </div>
+      </div>
+      <table class="recent-table">
+        <thead>
+          <tr>
+            <th data-i18n="sessionStartTime">开始时间</th>
+            <th data-i18n="sessionProject">项目</th>
+            <th data-i18n="sessionDuration">持续时长</th>
+            <th data-i18n="sessionMessages">消息数</th>
+            <th data-i18n="sessionTokens">词元数</th>
+            <th data-i18n="sessionCost">费用</th>
+            <th data-i18n="sessionModels">使用模型</th>
+            <th data-i18n="sessionId">会话 ID</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-table-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">—</td></tr>
+        </tbody>
+      </table>
+      <div style="text-align:center;margin-top:var(--space-4);" id="sessions-load-more-wrap">
+        <button class="btn btn-muted" id="sessions-load-more" onclick="loadMoreSessions()" style="display:none;" data-i18n="loadMore">加载更多</button>
+        <span id="sessions-no-more" style="display:none;font-size:0.78rem;color:var(--text-secondary);" data-i18n="noMoreSessions">没有更多会话</span>
+      </div>
+    </div>
+  </div><!-- /sessions-content -->
+
   <!-- 定价配置内容 -->
   <div id="pricing-content" style="display:none;">
     <div class="pricing-config">
@@ -252,8 +426,8 @@
 import { translations } from './js/usage-i18n.js';
 import { loadAllData, loadHourlyData, isHourlyRange, buildHourlyBuckets, aggregateModelStats, calculateTotals, formatNumber, shortenModelName, MODEL_COLORS } from './js/usage-data.js';
 import { getChartColors, createTokenChart, createCostChart, createPieChart } from './js/usage-charts.js';
-import { DEFAULT_PRICES, loadPricingOverrides, savePricingOverrides, getEffectivePrice, mergeDetectedModels } from './js/usage-pricing.js';
-import { IconTokens, IconCost, IconCalendar, IconCpu, IconRefresh, IconInput, IconOutput, IconCacheWrite, IconCacheRead, IconRequests } from './js/usage-icons.js';
+import { DEFAULT_PRICES, getEffectivePrice, mergeDetectedModels } from './js/usage-pricing.js';
+import { IconTokens, IconCost, IconCalendar, IconCpu, IconRefresh, IconInput, IconOutput, IconCacheWrite, IconCacheRead, IconRequests, IconCoverage } from './js/usage-icons.js';
 
 // ===== 全局状态 =====
 let _lang = localStorage.getItem('ai-guard-lang') || 'zh';
@@ -262,15 +436,52 @@ let _timeRange = 'today';
 let _activeTab = 'dashboard';
 let _tokenViewMode = 'total';
 let _refreshing = false;
+let _selectedProject = '';
 let _dailyData = [];
+
+// ── SVG 图标库（与 index.html 保持一致）────────────────────
+const ICONS = {
+  bolt:   `<path d="M9.5 2L4 9h4.5L7 14l6-7H9.5z" fill="currentColor" stroke="none"/>`,
+  check:  `<polyline points="2.5,8.5 6,12.5 13.5,4" stroke-width="2"/>`,
+  warn:   `<path d="M8 2.5L14.5 14H1.5z" stroke-width="1.75"/><line x1="8" y1="7" x2="8" y2="10.5" stroke-width="2"/><circle cx="8" cy="12.5" r="0.85" fill="currentColor" stroke="none"/>`,
+  cross:  `<line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke-width="2"/>`,
+};
+function icon(name, cls='') {
+  const paths = ICONS[name] || '';
+  return `<svg class="icon${cls?' '+cls:''}" viewBox="0 0 16 16" width="1em" height="1em"
+    fill="none" stroke="currentColor" stroke-width="1.75"
+    stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths}</svg>`;
+}
+
+// ── Toast 通知（与 index.html 保持一致）────────────────────
+let _toastTimer;
+function showToast(iconName, msg, isErr = false) {
+  const el = document.getElementById('toast');
+  const cls = isErr ? 'icon-red' : (iconName === 'bolt' ? 'icon-yellow' : 'icon-green');
+  el.innerHTML = icon(iconName, cls) + `<span>${msg}</span>`;
+  el.style.borderColor = isErr ? 'var(--red)' : 'var(--green)';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
 let _hourlyData = [];
+let _monthlyData = [];
+let _sessionData = [];
+let _sessionOffset = 0;
+let _sessionTotal = 0;
+let _sessionProject = '';
+const SESSION_PAGE_SIZE = 30;
 let _modelData = [];
 let _summaryData = null;
 let _chartTokens = null;
 let _chartCost = null;
 let _chartPie = null;
+let _chartMonthlyTokens = null;
+let _chartMonthlyCost = null;
 let _detectedModels = [];
-let _pricingOverrides = loadPricingOverrides();
+let _backendPricing = {}; // 从后端 API 加载的完整定价
 let _editingModel = null;
 let _editValues = {};
 let _savedModels = {};
@@ -284,6 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initIcons();
   initLangButtons();
   initTimeRangeButtons();
+  initProjectFilter();
   initFormatToggle();
   initTokenViewToggle();
   initInnerNavTabs();
@@ -323,6 +535,11 @@ function initIcons() {
     'icon-input': IconInput(14), 'icon-output': IconOutput(14),
     'icon-cache-write': IconCacheWrite(14), 'icon-cache-read': IconCacheRead(14),
     'icon-requests': IconRequests(14), 'refresh-icon': IconRefresh(14),
+    'icon-coverage': IconCoverage(14),
+    'icon-monthly-tokens': IconTokens(14), 'icon-monthly-cost': IconCost(14),
+    'icon-monthly-calendar': IconCalendar(14), 'icon-monthly-avg': IconCost(14),
+    'icon-sessions-total': IconCalendar(14), 'icon-sessions-tokens': IconTokens(14),
+    'icon-sessions-cost': IconCost(14), 'icon-sessions-avg': IconCalendar(14),
   };
   for (const [id, svg] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -384,17 +601,92 @@ function initTimeRangeButtons() {
   });
 }
 
+// ===== 项目筛选 =====
+async function initProjectFilter() {
+  try {
+    const resp = await fetch('/api/usage/projects');
+    const data = await resp.json();
+    const projects = data.projects || [];
+
+    // 计算公共前缀（只用有效的项目名，排除长度太短的）
+    const validProjects = projects.filter(p => p.length > 5);
+    _projectCommonPrefix = _computeCommonPrefix(validProjects);
+
+    const select = document.getElementById('project-filter');
+    select.innerHTML = `<option value="">${t().allProjects}</option>`;
+    for (const p of projects) {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = _shortenProjectName(p);
+      opt.title = p;
+      select.appendChild(opt);
+    }
+
+    const filterBar = document.getElementById('filter-bar');
+    filterBar.style.display = projects.length > 0 ? 'flex' : 'none';
+
+    select.addEventListener('change', () => {
+      _selectedProject = select.value;
+      loadData();
+    });
+  } catch (e) {
+    console.error('加载项目列表失败:', e);
+    showToast('cross', t().loadProjectsFailed, true);
+    document.getElementById('filter-bar').style.display = 'none';
+  }
+}
+
+// ===== 项目名称处理 =====
+// 存储所有项目的公共前缀（加载后计算一次）
+let _projectCommonPrefix = '';
+
+function _computeCommonPrefix(projects) {
+  if (!projects || projects.length === 0) return '';
+  if (projects.length === 1) {
+    // 单个项目：去掉最后一个 - 分段之后的所有内容作为前缀
+    const parts = projects[0].split('-');
+    return parts.slice(0, -1).join('-');
+  }
+  // 多个项目：逐字符找公共前缀
+  let prefix = projects[0];
+  for (const p of projects.slice(1)) {
+    while (!p.startsWith(prefix)) {
+      prefix = prefix.slice(0, prefix.lastIndexOf('-'));
+      if (!prefix) return '';
+    }
+  }
+  // 确保前缀在 - 边界处截断
+  return prefix;
+}
+
+function _shortenProjectName(name) {
+  // 先去掉公共前缀
+  let display = name;
+  if (_projectCommonPrefix && name.startsWith(_projectCommonPrefix)) {
+    display = name.slice(_projectCommonPrefix.length).replace(/^-+/, '');
+  }
+  // 如果 display 为空（完全匹配前缀），用最后一段
+  if (!display) {
+    const parts = name.split('-').filter(Boolean);
+    display = parts[parts.length - 1] || name;
+  }
+  // 把 - 转为 / 以便可读（只在非 -- 序列处）
+  display = display.replace(/-{2,}/g, '/…/').replace(/-/g, '/');
+  return display.length > 36 ? display.slice(0, 33) + '...' : display;
+}
+
 // ===== 数字格式切换 =====
 function initFormatToggle() {
-  document.querySelectorAll('.usage-header-right .format-toggle button[data-format]').forEach(btn => {
+  document.querySelectorAll('.page-actions .format-toggle button[data-format]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.usage-header-right .format-toggle button[data-format]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.page-actions .format-toggle button[data-format]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _numberFormat = btn.getAttribute('data-format');
       updateMetrics();
       updateCharts();
       updateModelTable();
       updateRecentTable();
+      if (_activeTab === 'monthly' && _monthlyData.length > 0) renderMonthlyView();
     });
   });
 }
@@ -411,16 +703,20 @@ function initTokenViewToggle() {
   });
 }
 
-// ===== 内部导航（数据面板/定价） =====
+// ===== 内部导航（数据面板/月视图/会话分析/定价） =====
 function initInnerNavTabs() {
   document.querySelectorAll('.inner-nav-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.inner-nav-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _activeTab = btn.getAttribute('data-tab');
-      document.getElementById('dashboard-content').style.display = _activeTab === 'dashboard' ? 'block' : 'none';
-      document.getElementById('pricing-content').style.display = _activeTab === 'pricing' ? 'block' : 'none';
+      document.getElementById('dashboard-content').style.display = _activeTab === 'dashboard' ? 'grid' : 'none';
+      document.getElementById('monthly-content').style.display = _activeTab === 'monthly' ? 'grid' : 'none';
+      document.getElementById('sessions-content').style.display = _activeTab === 'sessions' ? 'grid' : 'none';
+      document.getElementById('pricing-content').style.display = _activeTab === 'pricing' ? 'grid' : 'none';
       if (_activeTab === 'pricing') renderPricingTables();
+      if (_activeTab === 'monthly') loadMonthlyData();
+      if (_activeTab === 'sessions' && _sessionData.length === 0) loadSessionsData();
     });
   });
 }
@@ -438,14 +734,32 @@ window.toggleAddForm = function(show) {
   if (show) document.getElementById('new-model-name').focus();
 };
 
-window.addCustomModel = function() {
+window.addCustomModel = async function() {
   const name = document.getElementById('new-model-name').value.trim();
   if (!name) return;
-  _pricingOverrides[name] = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.3 };
-  savePricingOverrides(_pricingOverrides);
-  document.getElementById('new-model-name').value = '';
-  toggleAddForm(false);
-  renderPricingTables();
+
+  try {
+    const response = await fetch('/api/usage/pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: name,
+        input: 3.0,
+        output: 15.0,
+        cache_write: 3.75,
+        cache_read: 0.3
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to add model');
+
+    document.getElementById('new-model-name').value = '';
+    toggleAddForm(false);
+    await renderPricingTables();
+  } catch (err) {
+    console.error('Error adding custom model:', err);
+    showToast('cross', t().errorAddingModel || 'Failed to add model', true);
+  }
 };
 
 // ===== 数据加载 =====
@@ -454,22 +768,35 @@ async function loadData() {
     const preset = _timeRange || undefined;
     const isHourly = isHourlyRange(_timeRange);
 
+    // 构建查询参数
+    const buildParams = (base = {}) => {
+      const p = { ...base };
+      if (preset) p.preset = preset;
+      if (_selectedProject) p.project = _selectedProject;
+      const qs = new URLSearchParams(p).toString();
+      return qs ? '?' + qs : '';
+    };
+
     if (isHourly) {
       const [summary, hourly, models] = await Promise.all([
-        fetch(`/api/usage/summary${preset ? '?preset=' + preset : ''}`).then(r => r.json()),
-        loadHourlyData(preset),
-        fetch(`/api/usage/models${preset ? '?preset=' + preset : ''}`).then(r => r.json()),
+        fetch(`/api/usage/summary${buildParams()}`).then(r => r.json()),
+        fetch(`/api/usage/hourly${buildParams()}`).then(r => r.json()),
+        fetch(`/api/usage/models${buildParams()}`).then(r => r.json()),
       ]);
       _summaryData = summary;
       _hourlyData = buildHourlyBuckets(hourly);
       _dailyData = [];
       _modelData = models;
     } else {
-      const data = await loadAllData(preset);
-      _summaryData = data.summary;
-      _dailyData = data.daily;
+      const [summary, daily, models] = await Promise.all([
+        fetch(`/api/usage/summary${buildParams()}`).then(r => r.json()),
+        fetch(`/api/usage/daily${buildParams()}`).then(r => r.json()),
+        fetch(`/api/usage/models${buildParams()}`).then(r => r.json()),
+      ]);
+      _summaryData = summary;
+      _dailyData = daily;
       _hourlyData = [];
-      _modelData = data.models;
+      _modelData = models;
     }
 
     _detectedModels = _modelData.map(m => m.model_name);
@@ -478,9 +805,17 @@ async function loadData() {
     updateModelTable();
     updateRecentTable();
     updateAllText();
+    updateDataTime();
   } catch (error) {
     console.error('加载数据失败:', error);
+    showToast('cross', t().loadDataFailed, true);
   }
+}
+
+function updateDataTime() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString(_lang === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('data-time').textContent = `${_lang === 'zh' ? '更新于' : 'Updated at'} ${timeStr}`;
 }
 
 window.refreshData = async function() {
@@ -499,15 +834,16 @@ window.refreshData = async function() {
   try {
     await fetch('/api/usage/refresh', { method: 'POST' });
     await loadData();
-    msg.textContent = _lang === 'zh' ? '刷新成功' : 'Success';
+    msg.textContent = '';
+    showToast('check', t().refreshSuccess);
   } catch (error) {
-    msg.textContent = _lang === 'zh' ? '刷新失败' : 'Failed';
+    msg.textContent = '';
+    showToast('cross', t().refreshFailed, true);
   } finally {
     _refreshing = false;
     btn.disabled = false;
     icon.style.animation = '';
     text.textContent = t().refresh;
-    setTimeout(() => msg.textContent = '', 3000);
   }
 };
 
@@ -531,6 +867,8 @@ function updateMetrics() {
 
   const sortedModels = aggregateModelStats(isHourly ? _hourlyData : _dailyData);
   document.getElementById('models-count').textContent = sortedModels.length;
+
+  updateCoverageCard(_summaryData.coverage);
 }
 
 function updateTokenCard() {
@@ -557,6 +895,60 @@ function updateTokenCard() {
   }
 }
 
+function updateCoverageCard(coverage) {
+  if (!coverage) {
+    coverage = {
+      coverage_percent: 100.0,
+      total_tokens: 0,
+      priced_tokens: 0,
+      unknown_models: []
+    };
+  }
+
+  const percent = coverage.coverage_percent || 100.0;
+  const pricedTokens = coverage.priced_tokens || 0;
+  const totalTokens = coverage.total_tokens || 0;
+  const unknownModels = coverage.unknown_models || [];
+
+  // 更新百分比
+  const percentEl = document.getElementById('coverage-percent');
+  percentEl.textContent = `${percent.toFixed(1)}%`;
+
+  // 根据覆盖率设置颜色等级
+  let level = 'high';
+  if (percent < 80) level = 'low';
+  else if (percent < 95) level = 'medium';
+  percentEl.setAttribute('data-level', level);
+
+  // 更新 token 数量
+  document.getElementById('priced-tokens').textContent = fmt(pricedTokens);
+  document.getElementById('total-tokens-coverage').textContent = fmt(totalTokens);
+
+  // 更新进度条
+  const fill = document.getElementById('coverage-fill');
+  fill.style.width = `${percent}%`;
+  fill.setAttribute('data-level', level);
+
+  // 更新 tooltip
+  const tooltip = document.getElementById('coverage-tooltip');
+  const card = document.querySelector('.coverage-card');
+
+  if (unknownModels.length > 0) {
+    tooltip.innerHTML = `
+      <strong>${_lang === 'zh' ? '未识别模型' : 'Unknown Models'}:</strong><br>
+      ${unknownModels.map(m => `<span class="unknown-model-tag">${m}</span>`).join('')}
+    `;
+    tooltip.style.display = 'block';
+
+    // 鼠标悬停显示/隐藏
+    card.addEventListener('mouseenter', () => tooltip.style.display = 'block');
+    card.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+    tooltip.style.display = 'none'; // 默认隐藏
+  } else {
+    tooltip.style.display = 'none';
+  }
+}
+
 // ===== 更新图表 =====
 function updateCharts() {
   const isHourly = isHourlyRange(_timeRange);
@@ -573,10 +965,10 @@ function updateCharts() {
     tokenData = {
       labels: _hourlyData.map(h => { const p = h.hour.split('T'); return `${p[0]} ${p[1]}:00`; }),
       datasets: [
-        { label: t().inputTokens, data: _hourlyData.map(h => h.input_tokens || h.inputTokens || 0), backgroundColor: 'rgba(88,166,255,0.8)', borderColor: '#58a6ff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
-        { label: t().outputTokens, data: _hourlyData.map(h => h.output_tokens || h.outputTokens || 0), backgroundColor: 'rgba(63,185,80,0.8)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
-        { label: t().cacheWrite, data: _hourlyData.map(h => h.cache_creation_tokens || h.cacheCreationTokens || 0), backgroundColor: 'rgba(210,153,34,0.8)', borderColor: '#d29922', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
-        { label: t().cacheRead, data: _hourlyData.map(h => h.cache_read_tokens || h.cacheReadTokens || 0), backgroundColor: 'rgba(188,140,255,0.8)', borderColor: '#bc8cff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().inputTokens, data: _hourlyData.map(h => h.inputTokens || 0), backgroundColor: 'rgba(88,166,255,0.8)', borderColor: '#58a6ff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().outputTokens, data: _hourlyData.map(h => h.outputTokens || 0), backgroundColor: 'rgba(63,185,80,0.8)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().cacheWrite, data: _hourlyData.map(h => h.cacheCreationTokens || 0), backgroundColor: 'rgba(210,153,34,0.8)', borderColor: '#d29922', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().cacheRead, data: _hourlyData.map(h => h.cacheReadTokens || 0), backgroundColor: 'rgba(188,140,255,0.8)', borderColor: '#bc8cff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
       ],
     };
   } else {
@@ -599,7 +991,7 @@ function updateCharts() {
     costData = {
       labels: _hourlyData.map(h => { const p = h.hour.split('T'); return `${p[0]} ${p[1]}:00`; }),
       datasets: [{
-        label: t().totalCost, data: _hourlyData.map(h => h.total_cost || h.totalCost || 0),
+        label: t().totalCost, data: _hourlyData.map(h => h.totalCost || 0),
         backgroundColor: 'rgba(63,185,80,0.6)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 4,
       }],
     };
@@ -686,9 +1078,9 @@ function updateRecentTable() {
     tbody.innerHTML = recent.map(h => `
       <tr>
         <td>${h.hour.replace('T', ' ')}</td>
-        <td>${fmt(h.total_tokens || h.totalTokens || 0)}</td>
-        <td>$${(h.total_cost || h.totalCost || 0).toFixed(4)}</td>
-        <td title="${(h.models_used || h.modelsUsed || []).join(', ')}">${(h.models_used || h.modelsUsed || []).map(shortenModelName).join(', ') || '-'}</td>
+        <td>${fmt(h.totalTokens || 0)}</td>
+        <td>$${(h.totalCost || 0).toFixed(4)}</td>
+        <td title="${(h.modelsUsed || []).join(', ')}">${(h.modelsUsed || []).map(shortenModelName).join(', ') || '-'}</td>
       </tr>
     `).join('');
   } else {
@@ -709,17 +1101,37 @@ function updateRecentTable() {
 }
 
 // ===== 定价配置 =====
-function renderPricingTables() {
+async function renderPricingTables() {
+  try {
+    // 从后端加载完整定价
+    const response = await fetch('/api/usage/pricing');
+    if (!response.ok) throw new Error('Failed to load pricing');
+    _backendPricing = await response.json();
+  } catch (err) {
+    console.error('Error loading pricing:', err);
+    _backendPricing = {};
+  }
+
   const allModels = mergeDetectedModels(_detectedModels);
   const container = document.getElementById('pricing-tables');
-  const customKeys = Object.keys(_pricingOverrides).filter(k => !DEFAULT_PRICES[k] && !_detectedModels.includes(k));
+
+  // 从后端定价中提取自定义模型（不在 DEFAULT_PRICES 中且不在检测列表中）
+  const customKeys = Object.keys(_backendPricing).filter(k => !DEFAULT_PRICES[k] && !_detectedModels.includes(k));
   const detectedOnlyKeys = _detectedModels.filter(m => !DEFAULT_PRICES[m]);
 
-  document.getElementById('reset-all-btn').style.display = Object.keys(_pricingOverrides).length > 0 ? 'inline-block' : 'none';
-  document.getElementById('reset-all-btn').onclick = () => {
-    _pricingOverrides = {};
-    savePricingOverrides(_pricingOverrides);
-    renderPricingTables();
+  // 显示/隐藏重置按钮（如果有任何覆盖）
+  const hasOverrides = Object.keys(_backendPricing).some(k => _backendPricing[k]);
+  document.getElementById('reset-all-btn').style.display = hasOverrides ? 'inline-block' : 'none';
+  document.getElementById('reset-all-btn').onclick = async () => {
+    if (!confirm(t().confirmResetAll || 'Reset all pricing overrides?')) return;
+    try {
+      const response = await fetch('/api/usage/pricing/reset', { method: 'POST' });
+      if (!response.ok) throw new Error('Failed to reset pricing');
+      await renderPricingTables();
+    } catch (err) {
+      console.error('Error resetting pricing:', err);
+      alert(t().errorResetting || 'Failed to reset pricing');
+    }
   };
 
   let html = '';
@@ -745,8 +1157,8 @@ function renderPricingSection(title, keys, isCustom) {
   </tr></thead><tbody>`;
 
   for (const key of keys) {
-    const price = getEffectivePrice(key, _pricingOverrides);
-    const hasOverride = !!_pricingOverrides[key];
+    const price = getEffectivePrice(key, _backendPricing);
+    const hasOverride = !!_backendPricing[key];
     const isEditing = _editingModel === key;
     const isSaved = _savedModels[key];
     const tt = t();
@@ -786,7 +1198,7 @@ function renderPricingSection(title, keys, isCustom) {
 // 定价编辑操作（全局函数）
 window._editValues = _editValues;
 window.startPricingEdit = function(key) {
-  const price = getEffectivePrice(key, _pricingOverrides);
+  const price = getEffectivePrice(key, _backendPricing);
   _editingModel = key;
   _editValues = { ...price };
   window._editValues = _editValues;
@@ -797,25 +1209,283 @@ window.cancelPricingEdit = function() {
   _editValues = {};
   renderPricingTables();
 };
-window.savePricingEdit = function(key) {
-  _pricingOverrides[key] = { ...window._editValues };
-  savePricingOverrides(_pricingOverrides);
-  _editingModel = null;
-  _savedModels[key] = true;
-  setTimeout(() => { _savedModels[key] = false; renderPricingTables(); }, 2000);
-  renderPricingTables();
+window.savePricingEdit = async function(key) {
+  try {
+    const response = await fetch('/api/usage/pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: key,
+        input: window._editValues.input,
+        output: window._editValues.output,
+        cache_write: window._editValues.cacheWrite,
+        cache_read: window._editValues.cacheRead
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to save pricing');
+
+    _editingModel = null;
+    _savedModels[key] = true;
+    setTimeout(() => { _savedModels[key] = false; renderPricingTables(); }, 2000);
+    await renderPricingTables();
+  } catch (err) {
+    console.error('Error saving pricing:', err);
+    alert(t().errorSaving || 'Failed to save pricing');
+  }
 };
-window.resetPricingModel = function(key) {
-  delete _pricingOverrides[key];
-  savePricingOverrides(_pricingOverrides);
-  if (_editingModel === key) _editingModel = null;
-  renderPricingTables();
+window.resetPricingModel = async function(key) {
+  try {
+    const response = await fetch(`/api/usage/pricing/${encodeURIComponent(key)}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) throw new Error('Failed to reset pricing');
+
+    if (_editingModel === key) _editingModel = null;
+    await renderPricingTables();
+  } catch (err) {
+    console.error('Error resetting pricing:', err);
+    alert(t().errorResetting || 'Failed to reset pricing');
+  }
 };
-window.deletePricingModel = function(key) {
-  delete _pricingOverrides[key];
-  savePricingOverrides(_pricingOverrides);
-  renderPricingTables();
+window.deletePricingModel = async function(key) {
+  if (!confirm(t().confirmDelete || `Delete model ${key}?`)) return;
+
+  try {
+    const response = await fetch(`/api/usage/pricing/${encodeURIComponent(key)}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) throw new Error('Failed to delete model');
+
+    await renderPricingTables();
+  } catch (err) {
+    console.error('Error deleting model:', err);
+    alert(t().errorDeleting || 'Failed to delete model');
+  }
 };
+
+// ===== 会话分析 =====
+async function loadSessionsData(reset = true) {
+  if (reset) {
+    _sessionOffset = 0;
+    _sessionData = [];
+  }
+
+  const tbody = document.getElementById('sessions-table-body');
+  if (reset) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">${_lang === 'zh' ? '加载中...' : 'Loading...'}</td></tr>`;
+  }
+
+  try {
+    const params = new URLSearchParams({ limit: SESSION_PAGE_SIZE, offset: _sessionOffset });
+    if (_sessionProject) params.set('project', _sessionProject);
+
+    const data = await fetch(`/api/usage/sessions?${params}`).then(r => r.json());
+    _sessionTotal = data.total || 0;
+    const newSessions = data.sessions || [];
+
+    if (reset) {
+      _sessionData = newSessions;
+    } else {
+      _sessionData = [..._sessionData, ...newSessions];
+    }
+    _sessionOffset += newSessions.length;
+
+    renderSessionsView();
+  } catch (e) {
+    console.error('加载会话数据失败:', e);
+    showToast('cross', t().loadSessionsFailed, true);
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--accent-red);">${_lang === 'zh' ? '加载失败' : 'Failed to load'}</td></tr>`;
+  }
+}
+
+function _formatDuration(seconds) {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function _shortenSessionId(id) {
+  return id.length > 12 ? id.substring(0, 8) + '...' : id;
+}
+
+function renderSessionsView() {
+  const tt = t();
+
+  // 汇总卡片
+  const totalCost = _sessionData.reduce((s, sess) => s + (sess.total_cost || 0), 0);
+  const totalTokens = _sessionData.reduce((s, sess) => s + (sess.total_tokens || 0), 0);
+  const avgDuration = _sessionData.length > 0
+    ? Math.round(_sessionData.reduce((s, sess) => s + (sess.duration_seconds || 0), 0) / _sessionData.length)
+    : 0;
+
+  document.getElementById('sessions-total').textContent = _sessionTotal;
+  document.getElementById('sessions-total-tokens').textContent = fmt(totalTokens);
+  document.getElementById('sessions-total-cost').textContent = '$' + totalCost.toFixed(2);
+  document.getElementById('sessions-avg-duration').textContent = _formatDuration(avgDuration);
+
+  // 已加载数量
+  const countLabel = document.getElementById('sessions-count-label');
+  if (countLabel) {
+    countLabel.textContent = _lang === 'zh'
+      ? `显示 ${_sessionData.length} / ${_sessionTotal} 条`
+      : `Showing ${_sessionData.length} / ${_sessionTotal}`;
+  }
+
+  // 加载更多按钮
+  const loadMoreBtn = document.getElementById('sessions-load-more');
+  const noMoreEl = document.getElementById('sessions-no-more');
+  if (_sessionData.length >= _sessionTotal) {
+    loadMoreBtn.style.display = 'none';
+    noMoreEl.style.display = _sessionTotal > 0 ? 'inline' : 'none';
+  } else {
+    loadMoreBtn.style.display = 'inline-block';
+    noMoreEl.style.display = 'none';
+  }
+
+  // 填充项目下拉（只在首次加载时）
+  const sessProj = document.getElementById('sessions-project-filter');
+  if (sessProj && sessProj.options.length === 1) {
+    fetch('/api/usage/projects').then(r => r.json()).then(data => {
+      const projects = data.projects || [];
+      // 如果公共前缀还没计算，现在计算
+      if (!_projectCommonPrefix && projects.length > 0) {
+        _projectCommonPrefix = _computeCommonPrefix(projects.filter(p => p.length > 5));
+      }
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = _shortenProjectName(p);
+        opt.title = p;
+        sessProj.appendChild(opt);
+      });
+      sessProj.addEventListener('change', () => {
+        _sessionProject = sessProj.value;
+        loadSessionsData(true);
+      });
+    }).catch((e) => {
+      console.error('加载项目列表失败:', e);
+      showToast('cross', t().loadProjectsFailed, true);
+    });
+  }
+
+  // 表格
+  const tbody = document.getElementById('sessions-table-body');
+  if (_sessionData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">${tt.noData}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = _sessionData.map(s => {
+    const startDt = new Date(s.start_time);
+    const startStr = startDt.toLocaleString(_lang === 'zh' ? 'zh-CN' : 'en-US', {
+      month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    const models = (s.models_used || []).map(m => shortenModelName(m)).join(', ') || '-';
+    const projShort = _shortenProjectName(s.project);
+    return `<tr>
+      <td style="white-space:nowrap;">${startStr}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.project}">${projShort}</td>
+      <td style="font-family:var(--font-mono);white-space:nowrap;">${_formatDuration(s.duration_seconds)}</td>
+      <td style="text-align:center;">${s.message_count}</td>
+      <td style="font-weight:600;">${fmt(s.total_tokens)}</td>
+      <td style="color:var(--accent-green);">$${(s.total_cost || 0).toFixed(3)}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(s.models_used||[]).join(', ')}">${models}</td>
+      <td style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-secondary);" title="${s.session_id}">${_shortenSessionId(s.session_id)}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.loadMoreSessions = function() {
+  loadSessionsData(false);
+};
+
+// ===== 月视图 =====
+async function loadMonthlyData() {
+  try {
+    const data = await fetch('/api/usage/monthly').then(r => r.json());
+    _monthlyData = data;
+    renderMonthlyView();
+  } catch (e) {
+    console.error('加载月度数据失败:', e);
+    showToast('cross', t().loadMonthlyFailed, true);
+  }
+}
+
+function renderMonthlyView() {
+  if (!_monthlyData || _monthlyData.length === 0) {
+    document.getElementById('monthly-table-body').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
+    return;
+  }
+
+  // 汇总卡片
+  const totalTokens = _monthlyData.reduce((s, m) => s + (m.total_tokens || 0), 0);
+  const totalCost = _monthlyData.reduce((s, m) => s + (m.total_cost || 0), 0);
+  const activeMonths = _monthlyData.length;
+  const avgCost = activeMonths > 0 ? totalCost / activeMonths : 0;
+
+  document.getElementById('monthly-total-tokens').textContent = fmt(totalTokens);
+  document.getElementById('monthly-total-cost').textContent = '$' + totalCost.toFixed(2);
+  document.getElementById('monthly-active-months').textContent = activeMonths;
+  document.getElementById('monthly-avg-cost').textContent = '$' + avgCost.toFixed(2);
+
+  const tt = t();
+  const el = document.getElementById('monthly-avg-label');
+  if (el) el.textContent = _lang === 'zh' ? '月均费用' : 'Avg Monthly Cost';
+
+  // 图表
+  const c = getChartColors();
+  const labels = _monthlyData.map(m => m.month);
+  const tokenValues = _monthlyData.map(m => m.total_tokens || 0);
+  const inputValues = _monthlyData.map(m => m.input_tokens || 0);
+  const outputValues = _monthlyData.map(m => m.output_tokens || 0);
+  const costValues = _monthlyData.map(m => m.total_cost || 0);
+
+  // Token 趋势图（堆叠柱状图）
+  const ctxMT = document.getElementById('chart-monthly-tokens').getContext('2d');
+  if (_chartMonthlyTokens) _chartMonthlyTokens.destroy();
+  _chartMonthlyTokens = createTokenChart(ctxMT, {
+    labels,
+    datasets: [
+      { label: tt.inputTokens, data: inputValues, backgroundColor: 'rgba(88,166,255,0.75)', borderColor: '#58a6ff', borderWidth: 1, borderRadius: 3, stack: 'stack1' },
+      { label: tt.outputTokens, data: outputValues, backgroundColor: 'rgba(63,185,80,0.75)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 3, stack: 'stack1' },
+      { label: tt.cacheWrite, data: _monthlyData.map(m => m.cache_creation_tokens || 0), backgroundColor: 'rgba(210,153,34,0.75)', borderColor: '#d29922', borderWidth: 1, borderRadius: 3, stack: 'stack1' },
+      { label: tt.cacheRead, data: _monthlyData.map(m => m.cache_read_tokens || 0), backgroundColor: 'rgba(188,140,255,0.75)', borderColor: '#bc8cff', borderWidth: 1, borderRadius: 3, stack: 'stack1' },
+    ],
+  }, true, fmt);
+
+  // 费用趋势图
+  const ctxMC = document.getElementById('chart-monthly-cost').getContext('2d');
+  if (_chartMonthlyCost) _chartMonthlyCost.destroy();
+  _chartMonthlyCost = createCostChart(ctxMC, {
+    labels,
+    datasets: [{
+      label: tt.totalCost, data: costValues,
+      borderColor: c.green, backgroundColor: c.green + '1a', tension: 0.3, fill: true,
+      pointBackgroundColor: c.green, pointBorderColor: c.green, pointRadius: 4, pointHoverRadius: 7,
+    }],
+  }, false);
+
+  // 明细表格（最新月份在前）
+  const tbody = document.getElementById('monthly-table-body');
+  const rows = [..._monthlyData].reverse();
+  tbody.innerHTML = rows.map(m => `
+    <tr>
+      <td style="font-weight:500;">${m.month}</td>
+      <td style="font-weight:600;">${fmt(m.total_tokens || 0)}</td>
+      <td style="color:var(--accent-blue);">${fmt(m.input_tokens || 0)}</td>
+      <td style="color:var(--accent-green);">${fmt(m.output_tokens || 0)}</td>
+      <td style="color:var(--accent-yellow);">${fmt(m.cache_creation_tokens || 0)}</td>
+      <td style="color:#bc8cff;">${fmt(m.cache_read_tokens || 0)}</td>
+      <td style="font-weight:600;">$${(m.total_cost || 0).toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
 
 </script>
 
