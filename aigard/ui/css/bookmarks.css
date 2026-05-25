@@ -1,0 +1,714 @@
+/**
+ * AI Guard — 书签页面专属样式
+ * ============================================================
+ * Source of Truth: design-system/pages/bookmarks.md
+ * 此文件仅供 bookmarks.html 使用，包含书签页面特有组件。
+ * ============================================================
+ */
+
+/* ── Browser Selector ───────────────────────────────────── */
+.browser-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.browser-card {
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  text-align: center;
+  background: var(--bg-tertiary);
+}
+
+.browser-card:hover { border-color: var(--accent-blue); }
+.browser-card.active {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, .08);
+}
+
+.browser-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.browser-card.active .browser-icon { color: var(--accent-blue); }
+
+.browser-name {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  margin-bottom: 2px;
+}
+
+.browser-type {
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+}
+
+
+/* ── Stat Cards ─────────────────────────────────────────── */
+.stat-card {
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  transition: all var(--duration-fast);
+}
+
+.stat-card:hover { border-color: var(--accent-blue); }
+
+.stat-label {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+}
+
+.stat-value.blue   { color: var(--accent-blue); }
+.stat-value.green  { color: var(--accent-green); }
+.stat-value.purple { color: var(--accent-purple); }
+.stat-value.orange { color: var(--accent-yellow); }
+
+.stat-sub {
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+
+/* ── Folder Distribution ────────────────────────────────── */
+.folder-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+
+.folder-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast);
+}
+
+.folder-bar-row:hover   { background: var(--row-hover); }
+.folder-bar-row.active  { background: var(--row-selected); }
+
+.folder-bar-name {
+  width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.folder-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.folder-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow);
+}
+
+.folder-bar-count {
+  width: 40px;
+  text-align: right;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+
+/* ── Bookmark Table ─────────────────────────────────────── */
+.bookmark-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 420px);
+  min-height: 300px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.bookmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.bookmark-table thead { position: sticky; top: 0; z-index: 1; }
+
+.bookmark-table th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bookmark-table th:hover { color: var(--text-primary); }
+
+.bookmark-table th .sort-arrow {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: .4;
+}
+
+.bookmark-table th.sorted .sort-arrow {
+  opacity: 1;
+  color: var(--accent-blue);
+}
+
+.bookmark-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+  vertical-align: middle;
+}
+
+.bookmark-table tr:hover td { background: var(--row-hover); }
+.bookmark-table tr:last-child td { border-bottom: none; }
+
+.bm-name {
+  font-weight: var(--weight-medium);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm-name a { color: var(--text-primary); text-decoration: none; }
+.bm-name a:hover { color: var(--accent-blue); text-decoration: underline; }
+
+.bm-url {
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.bm-folder {
+  font-size: var(--text-2xs);
+  padding: 2px var(--space-2);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  display: inline-block;
+}
+
+
+/* ── Search & Filter Toolbar ────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 7px 12px 7px 32px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.filter-select {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+
+/* ── AI Notice ──────────────────────────────────────────── */
+.ai-notice {
+  padding: 12px 16px;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--text-sm);
+}
+
+.ai-notice.success {
+  background: rgba(63, 185, 80, .06);
+  border-color: rgba(63, 185, 80, .3);
+}
+
+.ai-notice.warning {
+  background: rgba(210, 153, 34, .06);
+  border-color: rgba(210, 153, 34, .3);
+}
+
+.ai-notice svg { flex-shrink: 0; margin-top: 2px; }
+.ai-notice-body { flex: 1; }
+
+.ai-notice-title {
+  font-weight: var(--weight-semibold);
+  margin-bottom: 2px;
+}
+
+.ai-notice-text {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+
+/* ── AI Category Cards ──────────────────────────────────── */
+.cat-card {
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  transition: border-color var(--duration-fast);
+}
+
+.cat-card:hover { border-color: var(--accent-blue); }
+
+.cat-name {
+  font-weight: var(--weight-semibold);
+  margin-bottom: 4px;
+}
+
+.cat-desc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.cat-count {
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+}
+
+
+/* ── Footer Bar ─────────────────────────────────────────── */
+.footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+}
+
+
+/* ── Modal / Wizard ─────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base);
+}
+
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  width: 680px;
+  max-width: 92vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-modal);
+  transform: translateY(12px) scale(.97);
+  transition: transform var(--duration-base);
+}
+
+.modal-overlay.open .modal { transform: translateY(0) scale(1); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.modal-close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+/* ── Steps Indicator ────────────────────────────────────── */
+.steps { display: flex; gap: 4px; }
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-default);
+  transition: background var(--duration-base);
+}
+
+.step-dot.active {
+  background: var(--accent-blue);
+  width: 20px;
+  border-radius: 4px;
+}
+
+.step-dot.done { background: var(--accent-green); }
+
+
+/* ── Wizard Issue Rows ──────────────────────────────────── */
+.issue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  transition: border-color var(--duration-fast);
+}
+
+.issue-row:hover { border-color: var(--accent-blue); }
+.issue-row .left { display: flex; align-items: center; gap: 10px; }
+
+.issue-row .count {
+  font-size: 18px;
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  min-width: 36px;
+}
+
+.issue-row .label { font-size: var(--text-sm); }
+.issue-row .desc  { font-size: var(--text-2xs); color: var(--text-tertiary); }
+
+.action-tag {
+  font-size: 10px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.action-tag.clean  { background: rgba(63,185,80,.1);  color: var(--accent-green); }
+.action-tag.warn   { background: rgba(210,153,34,.1); color: var(--accent-yellow); }
+.action-tag.info   { background: rgba(88,166,255,.1); color: var(--accent-blue); }
+
+
+/* ── Summary Box ────────────────────────────────────────── */
+.summary-box {
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.summary-box .big {
+  font-size: 32px;
+  font-weight: var(--weight-bold);
+  color: var(--accent-green);
+}
+
+.summary-box .label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+
+/* ── AI Organize Button ─────────────────────────────────── */
+.btn-ai {
+  background: linear-gradient(135deg, rgba(88,166,255,.15), rgba(188,140,255,.15));
+  border: 1px solid rgba(88,166,255,.3);
+  color: var(--accent-blue);
+  padding: var(--space-2) 18px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: all var(--duration-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ai:hover {
+  background: linear-gradient(135deg, rgba(88,166,255,.25), rgba(188,140,255,.25));
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 166, 255, .2);
+}
+
+.btn-ai:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+
+/* ── Badge 颜色变体 (书签页专用) ────────────────────────── */
+.badge-red    { background: rgba(248,81,73,.12);  color: var(--accent-red); }
+.badge-yellow { background: rgba(210,153,34,.12); color: var(--accent-yellow); }
+.badge-blue   { background: rgba(88,166,255,.12); color: var(--accent-blue); }
+.badge-green  { background: rgba(63,185,80,.12);  color: var(--accent-green); }
+.badge-purple { background: rgba(188,140,255,.12);color: var(--accent-purple); }
+
+
+/* ── 工具类（书签页专用） ───────────────────────────────── */
+.mt-2  { margin-top: var(--space-2); }
+.mt-6  { margin-top: 6px; }
+.ml-2  { margin-left: var(--space-2); }
+.ml-6  { margin-left: 6px; }
+.p-0   { padding: 0; }
+.p-4-0 { padding: 4px 0; }
+.py-5  { padding-top: var(--space-5); padding-bottom: var(--space-5); }
+.px-6  { padding-left: var(--space-6); padding-right: var(--space-6); }
+
+.text-center { text-align: center; }
+.text-11px   { font-size: 11px; }
+.text-muted2 { color: var(--text-tertiary); }
+
+.flex-row    { display: flex; }
+.flex-gap-2  { gap: var(--space-2); }
+.flex-gap-3  { gap: var(--space-3); }
+
+.w-36px { width: 36px; }
+
+.max-h-200  { max-height: 200px; }
+.max-h-320  { max-height: 320px; }
+.overflow-y { overflow-y: auto; }
+
+.hidden { display: none; }
+
+/* 加载状态中的 margin-top */
+.loading-text { margin-top: var(--space-2); }
+
+/* 空状态 padding 变体 */
+.empty-state-lg { padding: var(--space-6); }
+
+/* 错误状态 */
+.error-text {
+  color: var(--accent-red);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+/* Wizard 特定样式 */
+.wizard-intro {
+  text-align: center;
+  padding: var(--space-5) 0;
+}
+
+.wizard-title {
+  font-size: 16px;
+  font-weight: var(--weight-bold);
+  margin: var(--space-3) 0 6px;
+}
+
+.wizard-desc {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.wizard-notice {
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(210, 153, 34, .06);
+  border: 1px solid rgba(210, 153, 34, .2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* AI 分类建议容器 */
+.ai-suggestions {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.ai-suggestions-grid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ai-suggestion-box {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+
+.ai-suggestion-title {
+  font-weight: var(--weight-semibold);
+  margin-bottom: 6px;
+}
+
+.ai-suggestion-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  list-style: disc;
+}
+
+.ai-suggestion-list li {
+  margin-bottom: 4px;
+}
+
+/* 导出按钮容器 */
+.export-buttons {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.export-desc {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-5);
+}
+
+/* 问题详情列表 */
+.issue-details {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.issue-detail-item {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.issue-more {
+  padding: 4px 0;
+  color: var(--text-tertiary);
+}
+
+/* 表格序号列 */
+.table-index {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+/* 按钮 padding 变体 */
+.btn-lg { padding: 10px 24px; }

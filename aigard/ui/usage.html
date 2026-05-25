@@ -5,599 +5,818 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude 使用统计 — AI Guard</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='2.5' fill='none' stroke='%233b82f6' stroke-width='1.75'/><path d='M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4' stroke='%233b82f6' stroke-width='1.75' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/usage.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-<style>
-  /* 暗色主题（默认） */
-  :root, [data-theme="dark"] {
-    --bg: #0d1117; --card: #161b22; --card2: #1c2128; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
-    --green: #3fb950; --yellow: #d29922; --red: #f85149;
-    --blue: #58a6ff; --purple: #bc8cff;
-    --btn-muted-bg: #21262d;
-    --shadow: 0 2px 8px rgba(0,0,0,.3);
-  }
-  /* 亮色主题 */
-  [data-theme="light"] {
-    --bg: #f6f8fa; --card: #ffffff; --card2: #f6f8fa; --border: #d0d7de;
-    --text: #1f2328; --muted: #656d76; --muted2: #8b949e;
-    --green: #1a7f37; --yellow: #9a6700; --red: #cf222e;
-    --blue: #0969da; --purple: #8250df;
-    --btn-muted-bg: #eaeef2;
-    --shadow: 0 1px 3px rgba(31,35,40,.12), 0 8px 24px rgba(66,74,83,.12);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.5;
-    transition: background .2s, color .2s;
-  }
-
-  /* Header */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    border-bottom: 1px solid var(--border);
-    gap: 12px;
-  }
-  .logo {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-  .logo span { color: var(--blue); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .15s,color .15s; }
-  .icon-btn:hover { background:var(--card2); color:var(--text); }
-  nav {
-    display: flex;
-    gap: 6px;
-    margin-left: 16px;
-  }
-  nav a {
-    padding: 5px 12px;
-    border-radius: 7px;
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-  nav a.active {
-    background: rgba(88,166,255,0.15);
-    color: var(--blue);
-  }
-  nav a:not(.active) {
-    background: var(--btn-muted-bg);
-    color: var(--muted);
-  }
-
-  /* Main */
-  main {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px 24px;
-  }
-
-  /* 顶部控制栏 */
-  .controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .time-range {
-    display: flex;
-    gap: 6px;
-  }
-  .btn {
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    background: var(--card);
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn:hover {
-    background: var(--card2);
-    color: var(--text);
-  }
-  .btn.active {
-    background: var(--blue);
-    border-color: var(--blue);
-    color: #fff;
-  }
-  .btn-refresh {
-    background: rgba(88,166,255,0.1);
-    color: var(--blue);
-    border-color: rgba(88,166,255,0.3);
-  }
-  .btn-refresh:hover { background: rgba(88,166,255,0.2); }
-
-  /* 指标卡片网格 */
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  @media (max-width: 1024px) {
-    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .metrics-grid { grid-template-columns: 1fr; }
-  }
-
-  .metric-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.2s;
-  }
-  .metric-card:hover {
-    border-color: var(--blue);
-  }
-  .metric-label {
-    font-size: 12px;
-    color: var(--muted);
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .metric-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .metric-subtitle {
-    font-size: 11px;
-    color: var(--muted2);
-  }
-
-  /* 卡片 */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 16px;
-  }
-
-  /* 图表容器 */
-  .chart-container {
-    position: relative;
-    height: 300px;
-  }
-
-  /* 表格 */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  th {
-    padding: 8px 10px;
-    text-align: left;
-    font-weight: 600;
-    color: var(--muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border);
-    background: var(--card2);
-  }
-  td {
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-  tbody tr:hover {
-    background: var(--card2);
-  }
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
-  .text-right { text-align: right; }
-  .text-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
-
-  /* 加载状态 */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    color: var(--muted);
-  }
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 3px solid var(--border);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty-state { text-align: center; padding: 24px; color: var(--muted); }
-</style>
 </head>
 <body>
 
+<!-- ===== 顶部 Header ===== -->
 <header>
-  <div class="logo">AI <span>Guard</span></div>
-  <nav>
-    <a href="/">监控面板</a>
-    <a href="/bookmarks.html">书签管理</a>
-    <a href="/usage.html" class="active">Claude 统计</a>
-  </nav>
+  <div class="header-left">
+    <h1 class="logo">AI <span>Guard</span></h1>
+    <nav class="nav-tabs" id="main-nav">
+      <a href="/" class="nav-tab" data-i18n="navMonitor">监控面板</a>
+      <a href="/usage.html" class="nav-tab active" data-i18n="navUsage">Claude 统计</a>
+      <a href="/bookmarks.html" class="nav-tab" data-i18n="navBookmarks">书签管理</a>
+    </nav>
+  </div>
   <div class="header-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('zh')">中</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换主题"></button>
   </div>
 </header>
 
-<main>
-  <!-- 控制栏 -->
-  <div class="controls">
+<!-- ===== 主内容区 ===== -->
+<main class="app">
+  <!-- 使用统计 Header -->
+  <div class="usage-header">
+    <div class="usage-header-left">
+      <h1 data-i18n="title">Claude Code 综合面板</h1>
+      <p class="subtitle" data-i18n="subtitle">基于 ccusage 的词元使用分析</p>
+    </div>
+    <div class="usage-header-right">
+      <div class="inner-nav-tabs">
+        <button class="inner-nav-tab active" data-tab="dashboard" data-i18n="navDashboard">数据面板</button>
+        <button class="inner-nav-tab" data-tab="pricing" data-i18n="navPricing">定价配置</button>
+      </div>
+      <div class="format-toggle">
+        <button class="active" data-format="compact" title="紧凑格式">1.2M</button>
+        <button data-format="full" title="完整格式">1,234</button>
+      </div>
+      <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">
+        <span id="refresh-icon"></span>
+        <span id="refresh-text" data-i18n="refresh">刷新数据</span>
+      </button>
+      <span class="refresh-msg" id="refresh-msg"></span>
+      <span class="data-time" id="data-time"></span>
+    </div>
+  </div>
+
+  <!-- 数据面板内容 -->
+  <div id="dashboard-content">
+    <!-- 时间范围选择器 -->
     <div class="time-range">
-      <button class="btn active" data-preset="today">今日</button>
-      <button class="btn" data-preset="yesterday">昨天</button>
-      <button class="btn" data-preset="last_3_days">近三天</button>
-      <button class="btn" data-preset="this_week">本周</button>
-      <button class="btn" data-preset="this_month">本月</button>
-      <button class="btn" data-preset="">全部</button>
+      <label data-i18n="timeRange">时间范围:</label>
+      <button class="active" data-range="today" data-i18n="today">今日</button>
+      <button data-range="yesterday" data-i18n="yesterday">昨天</button>
+      <button data-range="last_3_days" data-i18n="threeDays">近三天</button>
+      <button data-range="this_week" data-i18n="week">本周</button>
+      <button data-range="this_month" data-i18n="month">本月</button>
+      <button data-range="" data-i18n="all">全部</button>
+      <div class="custom-range">
+        <button data-range="custom" data-i18n="custom">自定义</button>
+        <input type="date" id="start-date" style="display:none;">
+        <span style="color:var(--text-secondary);display:none;" data-i18n="to">至</span>
+        <input type="date" id="end-date" style="display:none;">
+      </div>
     </div>
-    <button class="btn btn-refresh" onclick="refreshData()">刷新数据</button>
-  </div>
 
-  <!-- 指标卡片 -->
-  <div class="metrics-grid">
-    <div class="metric-card">
-      <div class="metric-label">总 Token 数</div>
-      <div class="metric-value" id="total-tokens">—</div>
-      <div class="metric-subtitle">输入 + 输出 + 缓存</div>
+    <!-- 主要统计卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="stat-icon" id="icon-tokens"></span>
+            <span data-i18n="totalTokens">词元总量</span>
+          </div>
+          <div class="format-toggle" style="margin:0;">
+            <button class="active" data-view="total" title="总计视图" style="padding:4px 8px;font-size:0.7rem;">∑</button>
+            <button data-view="breakdown" title="分类视图" style="padding:4px 8px;font-size:0.7rem;">≡</button>
+          </div>
+        </div>
+        <div id="token-view-total" class="stat-value">—</div>
+        <div id="token-view-breakdown" style="display:none;margin-top:4px;"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-cost"></span>
+          <span data-i18n="totalCost">总费用</span>
+          <span style="font-size:0.7rem;color:var(--text-secondary);margin-left:4px;" data-i18n="estimated">(估算)</span>
+        </div>
+        <div class="stat-value" id="total-cost">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-calendar"></span>
+          <span data-i18n="activeDays">活跃天数</span>
+        </div>
+        <div class="stat-value"><span id="active-days">—</span><span class="stat-unit" data-i18n="days"> 天</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-cpu"></span>
+          <span data-i18n="modelsUsed">使用模型数</span>
+        </div>
+        <div class="stat-value"><span id="models-count">—</span><span class="stat-unit" data-i18n="count"> 个</span></div>
+      </div>
     </div>
-    <div class="metric-card">
-      <div class="metric-label">总费用</div>
-      <div class="metric-value" id="total-cost">—</div>
-      <div class="metric-subtitle">估算费用（美元）</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">活跃天数</div>
-      <div class="metric-value" id="active-days">—</div>
-      <div class="metric-subtitle">有使用记录的天数</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">使用模型数</div>
-      <div class="metric-value" id="models-count">—</div>
-      <div class="metric-subtitle">不同模型的数量</div>
-    </div>
-  </div>
 
-  <!-- Token 使用趋势 -->
-  <div class="card">
-    <div class="card-title">Token 使用趋势</div>
-    <div class="chart-container">
-      <canvas id="chart-tokens"></canvas>
+    <!-- 分类统计卡片 -->
+    <div class="stats-grid stats-grid-5" style="margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-input" style="color:#58a6ff;"></span>
+          <span data-i18n="inputTokens">输入词元</span>
+        </div>
+        <div class="stat-value" id="total-input" style="font-size:1.5rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-output" style="color:#3fb950;"></span>
+          <span data-i18n="outputTokens">输出词元</span>
+        </div>
+        <div class="stat-value" id="total-output" style="font-size:1.5rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-cache-write" style="color:#d29922;"></span>
+          <span data-i18n="cacheWrite">缓存写入</span>
+        </div>
+        <div class="stat-value" id="total-cache-write" style="font-size:1.5rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-cache-read" style="color:#bc8cff;"></span>
+          <span data-i18n="cacheRead">缓存读取</span>
+        </div>
+        <div class="stat-value" id="total-cache-read" style="font-size:1.5rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <span class="stat-icon" id="icon-requests" style="color:#58a6ff;"></span>
+          <span data-i18n="totalRequests">总请求数</span>
+        </div>
+        <div class="stat-value" id="total-requests" style="font-size:1.5rem;">—</div>
+      </div>
     </div>
-  </div>
 
-  <!-- 费用趋势 -->
-  <div class="card">
-    <div class="card-title">费用趋势</div>
-    <div class="chart-container">
-      <canvas id="chart-cost"></canvas>
+    <!-- 图表区域 -->
+    <div class="charts-container">
+      <div class="chart-card">
+        <h3 id="chart-token-title" data-i18n="tokenTrend">词元使用趋势</h3>
+        <div class="chart-wrapper">
+          <canvas id="chart-tokens"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3 id="chart-cost-title" data-i18n="costTrend">费用趋势</h3>
+        <div class="chart-wrapper">
+          <canvas id="chart-cost"></canvas>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- 模型使用统计 -->
-  <div class="card">
-    <div class="card-title">模型使用统计</div>
-    <table id="model-stats-table">
-      <thead>
-        <tr>
-          <th>模型</th>
-          <th class="text-right">输入 Token</th>
-          <th class="text-right">输出 Token</th>
-          <th class="text-right">缓存写入</th>
-          <th class="text-right">缓存读取</th>
-          <th class="text-right">总计</th>
-          <th class="text-right">费用</th>
-          <th class="text-right">请求次数</th>
-        </tr>
-      </thead>
-      <tbody id="model-stats-body">
-        <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
-      </tbody>
-    </table>
-  </div>
+    <!-- 底部区域：模型分布 + 统计表 -->
+    <div class="bottom-section">
+      <div class="model-card">
+        <h3 data-i18n="modelDistribution">模型使用分布</h3>
+        <div class="pie-wrapper">
+          <canvas id="chart-pie"></canvas>
+        </div>
+        <div class="model-legend" id="model-legend"></div>
+      </div>
+      <div class="recent-card">
+        <h3 data-i18n="modelStats">模型使用详细统计</h3>
+        <table class="recent-table">
+          <thead>
+            <tr>
+              <th data-i18n="model">模型</th>
+              <th data-i18n="requestsShort">请求</th>
+              <th data-i18n="input">输入</th>
+              <th data-i18n="output">输出</th>
+              <th data-i18n="cacheWriteShort">缓存写</th>
+              <th data-i18n="cacheReadShort">缓存读</th>
+              <th data-i18n="total">合计</th>
+              <th data-i18n="cost">费用</th>
+            </tr>
+          </thead>
+          <tbody id="model-stats-body">
+            <tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-  <!-- 每日使用记录 -->
-  <div class="card">
-    <div class="card-title">每日使用记录</div>
-    <table id="daily-usage-table">
-      <thead>
-        <tr>
-          <th>日期</th>
-          <th class="text-right">总 Token</th>
-          <th class="text-right">费用</th>
-          <th>使用模型</th>
-        </tr>
-      </thead>
-      <tbody id="daily-usage-body">
-        <tr><td colspan="4" class="loading"><div class="spinner"></div></td></tr>
-      </tbody>
-    </table>
-  </div>
+    <!-- 最近使用记录 -->
+    <div class="recent-card" style="margin-bottom:24px;">
+      <h3 id="recent-title" data-i18n="recentUsage">最近每日使用记录</h3>
+      <table class="recent-table">
+        <thead>
+          <tr>
+            <th id="recent-col-date" data-i18n="date">日期</th>
+            <th data-i18n="tokenCount">词元数</th>
+            <th data-i18n="cost">费用</th>
+            <th data-i18n="models">使用模型</th>
+          </tr>
+        </thead>
+        <tbody id="recent-body">
+          <tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /dashboard-content -->
+
+  <!-- 定价配置内容 -->
+  <div id="pricing-content" style="display:none;">
+    <div class="pricing-config">
+      <div class="pricing-header">
+        <div>
+          <h2 data-i18n="pricingTitle">模型定价配置</h2>
+          <p class="pricing-subtitle" data-i18n="pricingSubtitle">自定义各模型的 token 价格（每百万 token，USD）</p>
+        </div>
+        <div class="pricing-header-actions">
+          <button class="btn-reset-all" id="reset-all-btn" style="display:none;" data-i18n="resetAll">全部重置</button>
+          <button class="btn-add-model" id="add-model-toggle" data-i18n="addCustom">+ 添加自定义模型</button>
+        </div>
+      </div>
+      <div class="pricing-info-banner" data-i18n="pricingInfo">
+        价格覆盖将用于仪表盘的费用估算。未配置的模型使用 claude-sonnet-4-6 价格估算。
+      </div>
+      <div class="add-model-form" id="add-model-form" style="display:none;">
+        <input type="text" class="model-name-input" id="new-model-name" placeholder="模型名称">
+        <button class="btn-save" onclick="addCustomModel()" data-i18n="addBtn">添加</button>
+        <button class="btn-cancel" onclick="toggleAddForm(false)" data-i18n="cancel">取消</button>
+      </div>
+      <!-- 定价表格容器（动态渲染） -->
+      <div id="pricing-tables"></div>
+    </div>
+  </div><!-- /pricing-content -->
 </main>
 
-<script>
-// 全局状态
-let currentPreset = 'today';
-let summaryData = null;
-let dailyData = [];
-let modelData = [];
-let chartTokens = null;
-let chartCost = null;
+<script type="module">
+import { translations } from './js/usage-i18n.js';
+import { loadAllData, loadHourlyData, isHourlyRange, buildHourlyBuckets, aggregateModelStats, calculateTotals, formatNumber, shortenModelName, MODEL_COLORS } from './js/usage-data.js';
+import { getChartColors, createTokenChart, createCostChart, createPieChart } from './js/usage-charts.js';
+import { DEFAULT_PRICES, loadPricingOverrides, savePricingOverrides, getEffectivePrice, mergeDetectedModels } from './js/usage-pricing.js';
+import { IconTokens, IconCost, IconCalendar, IconCpu, IconRefresh, IconInput, IconOutput, IconCacheWrite, IconCacheRead, IconRequests } from './js/usage-icons.js';
 
-// 主题切换
-function _applyTheme(theme) {
+// ===== 全局状态 =====
+let _lang = localStorage.getItem('ai-guard-lang') || 'zh';
+let _numberFormat = 'compact';
+let _timeRange = 'today';
+let _activeTab = 'dashboard';
+let _tokenViewMode = 'total';
+let _refreshing = false;
+let _dailyData = [];
+let _hourlyData = [];
+let _modelData = [];
+let _summaryData = null;
+let _chartTokens = null;
+let _chartCost = null;
+let _chartPie = null;
+let _detectedModels = [];
+let _pricingOverrides = loadPricingOverrides();
+let _editingModel = null;
+let _editValues = {};
+let _savedModels = {};
+
+const t = () => translations[_lang];
+const fmt = (n) => formatNumber(n, _numberFormat);
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initIcons();
+  initLangButtons();
+  initTimeRangeButtons();
+  initFormatToggle();
+  initTokenViewToggle();
+  initInnerNavTabs();
+  initAddModelForm();
+  updateAllText();
+  loadData();
+});
+
+// ===== 主题 =====
+function initTheme() {
+  const saved = localStorage.getItem('ai-guard-theme') || 'dark';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   const isDark = theme === 'dark';
   const btn = document.getElementById('theme-btn');
   if (btn) btn.innerHTML = isDark
     ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M13.5 8.3A5.5 5.5 0 1 1 7.7 2.5 4 4 0 0 0 13.5 8.3z"/></svg>'
     : '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.6 3.6l1 1M11.4 11.4l1 1M11.4 3.6l-1 1M3.6 11.4l-1 1"/></svg>';
-  // 重新渲染图表（颜色跟随主题）
-  if (dailyData.length > 0) updateCharts();
+  setTimeout(() => updateCharts(), 50);
 }
-function toggleTheme() {
+
+window.toggleTheme = function() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = cur === 'dark' ? 'light' : 'dark';
   localStorage.setItem('ai-guard-theme', next);
-  _applyTheme(next);
-}
+  applyTheme(next);
+};
 
-// 获取当前主题下的图表颜色
-function chartColors() {
-  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
-  return {
-    grid: isDark ? '#30363d' : '#d0d7de',
-    tick: isDark ? '#8b949e' : '#656d76',
-    tooltipBg: isDark ? '#1c2128' : '#ffffff',
-    tooltipTitle: isDark ? '#e6edf3' : '#1f2328',
-    tooltipBody: isDark ? '#8b949e' : '#656d76',
-    tooltipBorder: isDark ? '#30363d' : '#d0d7de',
-    blue: isDark ? '#58a6ff' : '#0969da',
-    green: isDark ? '#3fb950' : '#1a7f37',
-    orange: isDark ? '#d29922' : '#9a6700',
-    purple: isDark ? '#bc8cff' : '#8250df',
+// ===== SVG 图标注入 =====
+function initIcons() {
+  const map = {
+    'icon-tokens': IconTokens(14), 'icon-cost': IconCost(14),
+    'icon-calendar': IconCalendar(14), 'icon-cpu': IconCpu(14),
+    'icon-input': IconInput(14), 'icon-output': IconOutput(14),
+    'icon-cache-write': IconCacheWrite(14), 'icon-cache-read': IconCacheRead(14),
+    'icon-requests': IconRequests(14), 'refresh-icon': IconRefresh(14),
   };
+  for (const [id, svg] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = svg;
+  }
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('ai-guard-theme') || 'dark';
-  _applyTheme(saved);
-  initTimeRangeButtons();
-  loadData();
-});
-
-// 时间范围按钮
-function initTimeRangeButtons() {
-  document.querySelectorAll('.time-range .btn').forEach(btn => {
+// ===== 语言切换 =====
+function initLangButtons() {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.time-range .btn').forEach(b => b.classList.remove('active'));
+      const lang = btn.textContent.trim() === '中' ? 'zh' : 'en';
+      setLang(lang);
+    });
+  });
+}
+
+window.setLang = function(lang) {
+  _lang = lang;
+  localStorage.setItem('ai-guard-lang', lang);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.lang-btn:nth-child(${lang === 'zh' ? 1 : 2})`).classList.add('active');
+  updateAllText();
+  updateCharts();
+};
+
+function updateAllText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t()[key]) el.textContent = t()[key];
+  });
+  if (_dailyData.length > 0) {
+    document.getElementById('chart-token-title').textContent = isHourlyRange(_timeRange) ? t().hourlyTokenTrend : t().tokenTrend;
+    document.getElementById('chart-cost-title').textContent = isHourlyRange(_timeRange) ? t().hourlyCostTrend : t().costTrend;
+    document.getElementById('recent-title').textContent = isHourlyRange(_timeRange) ? t().hourlyRecentUsage : t().recentUsage;
+    document.getElementById('recent-col-date').textContent = isHourlyRange(_timeRange) ? t().time : t().date;
+  }
+}
+
+// ===== 时间范围 =====
+function initTimeRangeButtons() {
+  document.querySelectorAll('.time-range button[data-range]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const range = btn.getAttribute('data-range');
+      if (range === 'custom') {
+        document.getElementById('start-date').style.display = 'inline-block';
+        document.querySelector('.custom-range span').style.display = 'inline';
+        document.getElementById('end-date').style.display = 'inline-block';
+      } else {
+        document.getElementById('start-date').style.display = 'none';
+        document.querySelector('.custom-range span').style.display = 'none';
+        document.getElementById('end-date').style.display = 'none';
+      }
+      document.querySelectorAll('.time-range button[data-range]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      currentPreset = btn.dataset.preset;
+      _timeRange = range;
       loadData();
     });
   });
 }
 
-// 加载数据
+// ===== 数字格式切换 =====
+function initFormatToggle() {
+  document.querySelectorAll('.usage-header-right .format-toggle button[data-format]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.usage-header-right .format-toggle button[data-format]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _numberFormat = btn.getAttribute('data-format');
+      updateMetrics();
+      updateCharts();
+      updateModelTable();
+      updateRecentTable();
+    });
+  });
+}
+
+// ===== Token 总计/分类视图 =====
+function initTokenViewToggle() {
+  document.querySelectorAll('.stat-card .format-toggle button[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.stat-card .format-toggle button[data-view]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _tokenViewMode = btn.getAttribute('data-view');
+      updateTokenCard();
+    });
+  });
+}
+
+// ===== 内部导航（数据面板/定价） =====
+function initInnerNavTabs() {
+  document.querySelectorAll('.inner-nav-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.inner-nav-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _activeTab = btn.getAttribute('data-tab');
+      document.getElementById('dashboard-content').style.display = _activeTab === 'dashboard' ? 'block' : 'none';
+      document.getElementById('pricing-content').style.display = _activeTab === 'pricing' ? 'block' : 'none';
+      if (_activeTab === 'pricing') renderPricingTables();
+    });
+  });
+}
+
+// ===== 添加模型表单 =====
+function initAddModelForm() {
+  document.getElementById('add-model-toggle').addEventListener('click', () => toggleAddForm(true));
+  document.getElementById('new-model-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addCustomModel();
+  });
+}
+
+window.toggleAddForm = function(show) {
+  document.getElementById('add-model-form').style.display = show ? 'flex' : 'none';
+  if (show) document.getElementById('new-model-name').focus();
+};
+
+window.addCustomModel = function() {
+  const name = document.getElementById('new-model-name').value.trim();
+  if (!name) return;
+  _pricingOverrides[name] = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.3 };
+  savePricingOverrides(_pricingOverrides);
+  document.getElementById('new-model-name').value = '';
+  toggleAddForm(false);
+  renderPricingTables();
+};
+
+// ===== 数据加载 =====
 async function loadData() {
   try {
-    const params = currentPreset ? `?preset=${currentPreset}` : '';
+    const preset = _timeRange || undefined;
+    const isHourly = isHourlyRange(_timeRange);
 
-    // 并行加载所有数据
-    const [summary, daily, models] = await Promise.all([
-      fetch(`/api/usage/summary${params}`).then(r => r.json()),
-      fetch(`/api/usage/daily${params}`).then(r => r.json()),
-      fetch(`/api/usage/models${params}`).then(r => r.json())
-    ]);
+    if (isHourly) {
+      const [summary, hourly, models] = await Promise.all([
+        fetch(`/api/usage/summary${preset ? '?preset=' + preset : ''}`).then(r => r.json()),
+        loadHourlyData(preset),
+        fetch(`/api/usage/models${preset ? '?preset=' + preset : ''}`).then(r => r.json()),
+      ]);
+      _summaryData = summary;
+      _hourlyData = buildHourlyBuckets(hourly);
+      _dailyData = [];
+      _modelData = models;
+    } else {
+      const data = await loadAllData(preset);
+      _summaryData = data.summary;
+      _dailyData = data.daily;
+      _hourlyData = [];
+      _modelData = data.models;
+    }
 
-    summaryData = summary;
-    dailyData = daily;
-    modelData = models;
-
+    _detectedModels = _modelData.map(m => m.model_name);
     updateMetrics();
     updateCharts();
     updateModelTable();
-    updateDailyTable();
+    updateRecentTable();
+    updateAllText();
   } catch (error) {
     console.error('加载数据失败:', error);
   }
 }
 
-// 刷新数据
-async function refreshData() {
+window.refreshData = async function() {
+  if (_refreshing) return;
+  _refreshing = true;
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const text = document.getElementById('refresh-text');
+  const msg = document.getElementById('refresh-msg');
+
+  btn.disabled = true;
+  icon.style.animation = 'spin 1s linear infinite';
+  text.textContent = t().refreshing;
+  msg.textContent = t().refreshing;
+
   try {
     await fetch('/api/usage/refresh', { method: 'POST' });
     await loadData();
+    msg.textContent = _lang === 'zh' ? '刷新成功' : 'Success';
   } catch (error) {
-    console.error('刷新数据失败:', error);
+    msg.textContent = _lang === 'zh' ? '刷新失败' : 'Failed';
+  } finally {
+    _refreshing = false;
+    btn.disabled = false;
+    icon.style.animation = '';
+    text.textContent = t().refresh;
+    setTimeout(() => msg.textContent = '', 3000);
+  }
+};
+
+// ===== 更新指标卡片 =====
+function updateMetrics() {
+  if (!_summaryData) return;
+  const isHourly = isHourlyRange(_timeRange);
+  const sourceData = isHourly ? _hourlyData : _dailyData;
+  const totals = calculateTotals(sourceData);
+
+  updateTokenCard();
+  document.getElementById('total-cost').textContent = '$' + totals.totalCost.toFixed(2);
+  document.getElementById('active-days').textContent = isHourly
+    ? new Set(_hourlyData.map(h => h.hour?.substring(0, 10))).size
+    : _dailyData.length;
+  document.getElementById('total-input').textContent = fmt(totals.totalInput);
+  document.getElementById('total-output').textContent = fmt(totals.totalOutput);
+  document.getElementById('total-cache-write').textContent = fmt(totals.totalCacheWrite);
+  document.getElementById('total-cache-read').textContent = fmt(totals.totalCacheRead);
+  document.getElementById('total-requests').textContent = totals.totalRequests.toLocaleString();
+
+  const sortedModels = aggregateModelStats(isHourly ? _hourlyData : _dailyData);
+  document.getElementById('models-count').textContent = sortedModels.length;
+}
+
+function updateTokenCard() {
+  const isHourly = isHourlyRange(_timeRange);
+  const sourceData = isHourly ? _hourlyData : _dailyData;
+  const totals = calculateTotals(sourceData);
+
+  if (_tokenViewMode === 'total') {
+    document.getElementById('token-view-total').style.display = 'block';
+    document.getElementById('token-view-breakdown').style.display = 'none';
+    document.getElementById('token-view-total').textContent = fmt(totals.totalTokens);
+  } else {
+    document.getElementById('token-view-total').style.display = 'none';
+    document.getElementById('token-view-breakdown').style.display = 'block';
+    const items = [
+      { label: t().input, color: '#58a6ff', value: totals.totalInput },
+      { label: t().output, color: '#3fb950', value: totals.totalOutput },
+      { label: t().cacheWriteShort, color: '#d29922', value: totals.totalCacheWrite },
+      { label: t().cacheReadShort, color: '#bc8cff', value: totals.totalCacheRead },
+    ];
+    document.getElementById('token-view-breakdown').innerHTML = items.map(i =>
+      `<div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span style="color:${i.color}">${i.label}</span><span style="color:var(--text-primary)">${fmt(i.value)}</span></div>`
+    ).join('') + `<div style="border-top:1px solid var(--border-default);margin-top:2px;padding-top:4px;display:flex;justify-content:space-between;font-size:0.85rem;font-weight:600;"><span>${t().total}</span><span>${fmt(totals.totalTokens)}</span></div>`;
   }
 }
 
-// 更新指标卡片
-function updateMetrics() {
-  if (!summaryData) return;
-
-  document.getElementById('total-tokens').textContent = formatNumber(summaryData.total_tokens);
-  document.getElementById('total-cost').textContent = `$${summaryData.total_cost.toFixed(2)}`;
-  document.getElementById('active-days').textContent = summaryData.active_days;
-  document.getElementById('models-count').textContent = summaryData.models_count;
-}
-
-// 更新图表
+// ===== 更新图表 =====
 function updateCharts() {
-  if (!dailyData || dailyData.length === 0) return;
+  const isHourly = isHourlyRange(_timeRange);
+  const sourceData = isHourly ? _hourlyData : _dailyData;
+  if (!sourceData || sourceData.length === 0) return;
 
-  const c = chartColors();
-  const labels = dailyData.map(d => d.date);
-  const tokenData = dailyData.map(d => d.total_tokens);
-  const costData = dailyData.map(d => d.total_cost);
+  const c = getChartColors();
 
   // Token 趋势图
-  const ctxTokens = document.getElementById('chart-tokens').getContext('2d');
-  if (chartTokens) chartTokens.destroy();
-  chartTokens = new Chart(ctxTokens, {
-    type: 'line',
-    data: {
-      labels: labels,
+  const ctxT = document.getElementById('chart-tokens').getContext('2d');
+  if (_chartTokens) _chartTokens.destroy();
+  let tokenData;
+  if (isHourly) {
+    tokenData = {
+      labels: _hourlyData.map(h => { const p = h.hour.split('T'); return `${p[0]} ${p[1]}:00`; }),
+      datasets: [
+        { label: t().inputTokens, data: _hourlyData.map(h => h.input_tokens || h.inputTokens || 0), backgroundColor: 'rgba(88,166,255,0.8)', borderColor: '#58a6ff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().outputTokens, data: _hourlyData.map(h => h.output_tokens || h.outputTokens || 0), backgroundColor: 'rgba(63,185,80,0.8)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().cacheWrite, data: _hourlyData.map(h => h.cache_creation_tokens || h.cacheCreationTokens || 0), backgroundColor: 'rgba(210,153,34,0.8)', borderColor: '#d29922', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+        { label: t().cacheRead, data: _hourlyData.map(h => h.cache_read_tokens || h.cacheReadTokens || 0), backgroundColor: 'rgba(188,140,255,0.8)', borderColor: '#bc8cff', borderWidth: 1, borderRadius: 2, stack: 'stack1' },
+      ],
+    };
+  } else {
+    tokenData = {
+      labels: _dailyData.map(d => d.date),
       datasets: [{
-        label: 'Token',
-        data: tokenData,
-        borderColor: c.blue,
-        backgroundColor: c.blue + '1a',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: c.blue,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: c.tooltipBg,
-          titleColor: c.tooltipTitle,
-          bodyColor: c.tooltipBody,
-          borderColor: c.tooltipBorder,
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-        }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { color: c.tick, callback: v => formatNumber(v) }, grid: { color: c.grid + '80' } },
-        x: { ticks: { color: c.tick, maxRotation: 0 }, grid: { color: c.grid + '80' } }
-      }
-    }
-  });
+        label: t().totalTokens, data: _dailyData.map(d => d.total_tokens || d.totalTokens || 0),
+        borderColor: c.blue, backgroundColor: c.blue + '1a', tension: 0.4, fill: true,
+        pointBackgroundColor: c.blue, pointBorderColor: c.blue, pointRadius: 3, pointHoverRadius: 6,
+      }],
+    };
+  }
+  _chartTokens = createTokenChart(ctxT, tokenData, isHourly, fmt);
 
   // 费用趋势图
-  const ctxCost = document.getElementById('chart-cost').getContext('2d');
-  if (chartCost) chartCost.destroy();
-  chartCost = new Chart(ctxCost, {
-    type: 'line',
-    data: {
-      labels: labels,
+  const ctxC = document.getElementById('chart-cost').getContext('2d');
+  if (_chartCost) _chartCost.destroy();
+  let costData;
+  if (isHourly) {
+    costData = {
+      labels: _hourlyData.map(h => { const p = h.hour.split('T'); return `${p[0]} ${p[1]}:00`; }),
       datasets: [{
-        label: 'Cost',
-        data: costData,
-        borderColor: c.green,
-        backgroundColor: c.green + '1a',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: c.green,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: c.tooltipBg,
-          titleColor: c.tooltipTitle,
-          bodyColor: c.tooltipBody,
-          borderColor: c.tooltipBorder,
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-          callbacks: { label: (ctx) => `$${ctx.parsed.y.toFixed(4)}` }
-        }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { color: c.tick, callback: v => `$${v.toFixed(2)}` }, grid: { color: c.grid + '80' } },
-        x: { ticks: { color: c.tick, maxRotation: 0 }, grid: { color: c.grid + '80' } }
-      }
-    }
-  });
+        label: t().totalCost, data: _hourlyData.map(h => h.total_cost || h.totalCost || 0),
+        backgroundColor: 'rgba(63,185,80,0.6)', borderColor: '#3fb950', borderWidth: 1, borderRadius: 4,
+      }],
+    };
+  } else {
+    costData = {
+      labels: _dailyData.map(d => d.date),
+      datasets: [{
+        label: t().totalCost, data: _dailyData.map(d => d.total_cost || d.totalCost || 0),
+        borderColor: c.green, backgroundColor: c.green + '1a', tension: 0.4, fill: true,
+        pointBackgroundColor: c.green, pointBorderColor: c.green, pointRadius: 3, pointHoverRadius: 6,
+      }],
+    };
+  }
+  _chartCost = createCostChart(ctxC, costData, isHourly);
+
+  // 模型分布饼图
+  updatePieChart();
 }
 
-// 更新模型统计表格
+function updatePieChart() {
+  const isHourly = isHourlyRange(_timeRange);
+  const sourceData = isHourly ? _hourlyData : _dailyData;
+  const sortedModels = aggregateModelStats(sourceData);
+  const labels = sortedModels.map(([name]) => name);
+  const values = sortedModels.map(([, v]) => v.tokens);
+
+  const ctxP = document.getElementById('chart-pie').getContext('2d');
+  if (_chartPie) _chartPie.destroy();
+
+  if (labels.length === 0) {
+    document.getElementById('model-legend').innerHTML = `<p style="color:var(--text-secondary);text-align:center;">${t().noData}</p>`;
+    return;
+  }
+
+  _chartPie = createPieChart(ctxP, {
+    labels, datasets: [{ data: values, backgroundColor: MODEL_COLORS.slice(0, labels.length), borderColor: 'transparent', borderWidth: 0 }],
+  }, fmt);
+
+  // 图例
+  const totalTk = values.reduce((a, b) => a + b, 0);
+  document.getElementById('model-legend').innerHTML = labels.map((label, i) => {
+    const pct = totalTk > 0 ? ((values[i] / totalTk) * 100).toFixed(1) : 0;
+    return `<div class="legend-item"><div style="display:flex;align-items:center;flex:1;min-width:0;"><span class="legend-color" style="background:${MODEL_COLORS[i % MODEL_COLORS.length]}"></span><span class="legend-name" title="${label}">${label}</span></div><span class="legend-value">${fmt(values[i])} (${pct}%)</span></div>`;
+  }).join('');
+}
+
+// ===== 更新模型统计表 =====
 function updateModelTable() {
+  const isHourly = isHourlyRange(_timeRange);
+  const sourceData = isHourly ? _hourlyData : _dailyData;
+  const sortedModels = aggregateModelStats(sourceData);
   const tbody = document.getElementById('model-stats-body');
 
-  if (!modelData || modelData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无数据</td></tr>';
+  if (sortedModels.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = modelData.map(m => `
+  tbody.innerHTML = sortedModels.map(([name, stats], i) => `
     <tr>
-      <td>${m.model_name}</td>
-      <td class="text-right text-mono">${formatNumber(m.input_tokens)}</td>
-      <td class="text-right text-mono">${formatNumber(m.output_tokens)}</td>
-      <td class="text-right text-mono">${formatNumber(m.cache_creation_tokens)}</td>
-      <td class="text-right text-mono">${formatNumber(m.cache_read_tokens)}</td>
-      <td class="text-right text-mono">${formatNumber(m.total_tokens)}</td>
-      <td class="text-right text-mono">$${m.cost.toFixed(4)}</td>
-      <td class="text-right text-mono">${m.request_count}</td>
+      <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${MODEL_COLORS[i % MODEL_COLORS.length]};margin-right:8px;vertical-align:middle;"></span>${name}</td>
+      <td style="color:var(--accent-blue);font-weight:500;">${(stats.requestCount || 0).toLocaleString()}</td>
+      <td>${fmt(stats.input)}</td>
+      <td>${fmt(stats.output)}</td>
+      <td>${fmt(stats.cacheWrite)}</td>
+      <td>${fmt(stats.cacheRead)}</td>
+      <td style="font-weight:600;">${fmt(stats.tokens)}</td>
+      <td>$${stats.cost.toFixed(2)}</td>
     </tr>
   `).join('');
 }
 
-// 更新每日使用表格
-function updateDailyTable() {
-  const tbody = document.getElementById('daily-usage-body');
+// ===== 更新最近使用表 =====
+function updateRecentTable() {
+  const isHourly = isHourlyRange(_timeRange);
+  const tbody = document.getElementById('recent-body');
 
-  if (!dailyData || dailyData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无数据</td></tr>';
-    return;
+  if (isHourly) {
+    const recent = [..._hourlyData].reverse().slice(0, 10);
+    if (recent.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = recent.map(h => `
+      <tr>
+        <td>${h.hour.replace('T', ' ')}</td>
+        <td>${fmt(h.total_tokens || h.totalTokens || 0)}</td>
+        <td>$${(h.total_cost || h.totalCost || 0).toFixed(4)}</td>
+        <td title="${(h.models_used || h.modelsUsed || []).join(', ')}">${(h.models_used || h.modelsUsed || []).map(shortenModelName).join(', ') || '-'}</td>
+      </tr>
+    `).join('');
+  } else {
+    const recent = [..._dailyData].reverse().slice(0, 10);
+    if (recent.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = recent.map(d => `
+      <tr>
+        <td>${d.date}</td>
+        <td>${fmt(d.total_tokens || d.totalTokens || 0)}</td>
+        <td>$${(d.total_cost || d.totalCost || 0).toFixed(4)}</td>
+        <td title="${(d.models_used || d.modelsUsed || []).join(', ')}">${(d.models_used || d.modelsUsed || []).map(shortenModelName).join(', ') || '-'}</td>
+      </tr>
+    `).join('');
   }
-
-  tbody.innerHTML = dailyData.slice().reverse().map(d => `
-    <tr>
-      <td>${d.date}</td>
-      <td class="text-right text-mono">${formatNumber(d.total_tokens)}</td>
-      <td class="text-right text-mono">$${d.total_cost.toFixed(4)}</td>
-      <td style="font-size:11px;color:var(--text-secondary)">${d.models_used.join(', ')}</td>
-    </tr>
-  `).join('');
 }
 
-// 格式化数字
-function formatNumber(num) {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
+// ===== 定价配置 =====
+function renderPricingTables() {
+  const allModels = mergeDetectedModels(_detectedModels);
+  const container = document.getElementById('pricing-tables');
+  const customKeys = Object.keys(_pricingOverrides).filter(k => !DEFAULT_PRICES[k] && !_detectedModels.includes(k));
+  const detectedOnlyKeys = _detectedModels.filter(m => !DEFAULT_PRICES[m]);
+
+  document.getElementById('reset-all-btn').style.display = Object.keys(_pricingOverrides).length > 0 ? 'inline-block' : 'none';
+  document.getElementById('reset-all-btn').onclick = () => {
+    _pricingOverrides = {};
+    savePricingOverrides(_pricingOverrides);
+    renderPricingTables();
+  };
+
+  let html = '';
+  if (customKeys.length > 0) {
+    html += renderPricingSection(t().customModels, customKeys, true);
   }
-  return num.toString();
+  if (detectedOnlyKeys.length > 0) {
+    html += renderPricingSection(t().detectedModels, detectedOnlyKeys, false);
+  }
+  html += renderPricingSection(t().builtinModels, Object.keys(DEFAULT_PRICES), false);
+  container.innerHTML = html;
 }
+
+function renderPricingSection(title, keys, isCustom) {
+  const tt = t();
+  let html = `<div class="pricing-section"><h3 class="pricing-section-title">${title}</h3><table class="pricing-table"><thead><tr>
+    <th>${tt.model}</th>
+    <th>${tt.inputPrice} <span class="per-million">${tt.perMillion}</span></th>
+    <th>${tt.outputPrice} <span class="per-million">${tt.perMillion}</span></th>
+    <th>${tt.cacheWritePrice} <span class="per-million">${tt.perMillion}</span></th>
+    <th>${tt.cacheReadPrice} <span class="per-million">${tt.perMillion}</span></th>
+    <th>${tt.actions}</th>
+  </tr></thead><tbody>`;
+
+  for (const key of keys) {
+    const price = getEffectivePrice(key, _pricingOverrides);
+    const hasOverride = !!_pricingOverrides[key];
+    const isEditing = _editingModel === key;
+    const isSaved = _savedModels[key];
+    const tt = t();
+
+    html += `<tr class="pricing-row${hasOverride ? ' overridden' : ''}">`;
+    html += `<td><div class="model-name-cell"><span class="model-name-text" title="${key}">${key}</span>${hasOverride ? `<span class="override-badge">${tt.overrideNote}</span>` : ''}</div></td>`;
+
+    if (isEditing) {
+      html += `<td><input class="price-input" type="number" min="0" step="0.01" value="${_editValues.input}" onchange="window._editValues.input=parseFloat(this.value)||0"></td>`;
+      html += `<td><input class="price-input" type="number" min="0" step="0.01" value="${_editValues.output}" onchange="window._editValues.output=parseFloat(this.value)||0"></td>`;
+      html += `<td><input class="price-input" type="number" min="0" step="0.01" value="${_editValues.cacheWrite}" onchange="window._editValues.cacheWrite=parseFloat(this.value)||0"></td>`;
+      html += `<td><input class="price-input" type="number" min="0" step="0.01" value="${_editValues.cacheRead}" onchange="window._editValues.cacheRead=parseFloat(this.value)||0"></td>`;
+      html += `<td class="actions-cell"><button class="btn-save" onclick="savePricingEdit('${key}')">${tt.save}</button><button class="btn-cancel" onclick="cancelPricingEdit()">${tt.cancel}</button></td>`;
+    } else {
+      html += `<td class="price-cell">$${price.input.toFixed(2)}</td>`;
+      html += `<td class="price-cell">$${price.output.toFixed(2)}</td>`;
+      html += `<td class="price-cell">$${(price.cacheWrite || 0).toFixed(2)}</td>`;
+      html += `<td class="price-cell">$${(price.cacheRead || 0).toFixed(2)}</td>`;
+      html += `<td class="actions-cell">`;
+      if (isSaved) {
+        html += `<span class="saved-indicator">&check; ${tt.saved}</span>`;
+      } else {
+        html += `<button class="btn-edit" onclick="startPricingEdit('${key}')">${tt.save}</button>`;
+      }
+      if (hasOverride) html += `<button class="btn-reset" onclick="resetPricingModel('${key}')">${tt.reset}</button>`;
+      if (isCustom && !DEFAULT_PRICES[key] && !_detectedModels.includes(key)) {
+        html += `<button class="btn-delete" onclick="deletePricingModel('${key}')">${tt.deleteModel}</button>`;
+      }
+      html += `</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// 定价编辑操作（全局函数）
+window._editValues = _editValues;
+window.startPricingEdit = function(key) {
+  const price = getEffectivePrice(key, _pricingOverrides);
+  _editingModel = key;
+  _editValues = { ...price };
+  window._editValues = _editValues;
+  renderPricingTables();
+};
+window.cancelPricingEdit = function() {
+  _editingModel = null;
+  _editValues = {};
+  renderPricingTables();
+};
+window.savePricingEdit = function(key) {
+  _pricingOverrides[key] = { ...window._editValues };
+  savePricingOverrides(_pricingOverrides);
+  _editingModel = null;
+  _savedModels[key] = true;
+  setTimeout(() => { _savedModels[key] = false; renderPricingTables(); }, 2000);
+  renderPricingTables();
+};
+window.resetPricingModel = function(key) {
+  delete _pricingOverrides[key];
+  savePricingOverrides(_pricingOverrides);
+  if (_editingModel === key) _editingModel = null;
+  renderPricingTables();
+};
+window.deletePricingModel = function(key) {
+  delete _pricingOverrides[key];
+  savePricingOverrides(_pricingOverrides);
+  renderPricingTables();
+};
+
 </script>
 
 </body>

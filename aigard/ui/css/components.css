@@ -29,7 +29,7 @@ header {
   transition: background var(--duration-base), border-color var(--duration-base);
 }
 
-.header-left  { display: flex; align-items: center; flex-shrink: 0; }
+.header-left  { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
 .header-center { flex: 1; display: flex; justify-content: center; }
 .header-right {
   display: flex;
@@ -937,3 +937,66 @@ input::placeholder { color: var(--text-tertiary); }
 .empty-state-icon { color: var(--text-tertiary); }
 .empty-state-title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--text-primary); }
 .empty-state-desc  { font-size: var(--text-sm); max-width: 300px; }
+
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  18. btn-sm 颜色变体（进程表动态按钮）                      ║
+   ╚══════════════════════════════════════════════════════════╝ */
+/* btn-sm 已在第 8 节定义基础样式，此处补充颜色变体 */
+.btn-sm.btn-blue   { background: rgba(88,166,255,.12); color: var(--accent-blue); }
+.btn-sm.btn-danger { background: rgba(248,81,73,.12);  color: var(--accent-red); }
+.btn-sm.btn-green  { background: rgba(63,185,80,.12);  color: var(--accent-green); }
+.btn-sm.btn-disabled { opacity: .3; cursor: not-allowed; pointer-events: none; }
+.btn-sm.font-bold  { font-weight: var(--weight-bold); }
+
+/* checkbox 不强制固定尺寸，保持系统默认 */
+.checkbox-auto { width: auto; height: auto; cursor: pointer; accent-color: var(--accent-blue); }
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  19. 黑名单容器（启动拦截黑名单）                            ║
+   ╚══════════════════════════════════════════════════════════╝ */
+#blacklist-container {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
+}
+
+.blacklist-item {
+  display: flex;
+  align-items: center;
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.blacklist-item-name {
+  flex: 1;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.blacklist-empty {
+  text-align: center;
+  padding: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  20. 弹性间距辅助类                                         ║
+   ╚══════════════════════════════════════════════════════════╝ */
+.flex-1    { flex: 1; }
+.flex-none { flex: none; }
+
+/* 用于自动终止日志提示文字 */
+.log-hint {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* 设置抽屉中的提示文字 */
+.settings-hint {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
+  line-height: 1.5;
+}

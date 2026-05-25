@@ -6,360 +6,9 @@
 <title>AI Guard — 书签管理</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z' fill='none' stroke='%2358a6ff' stroke-width='1.5'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-<style>
-/* ── Theme Variables ───────────────────────────── */
-:root, [data-theme="dark"] {
-  --bg: #0d1117; --card: #161b22; --card2: #1c2128; --border: #30363d;
-  --text: #e6edf3; --muted: #8b949e; --muted2: #6e7681;
-  --green: #3fb950; --yellow: #d29922; --red: #f85149;
-  --blue: #58a6ff; --purple: #bc8cff; --orange: #d29922;
-  --btn-muted-bg: #21262d;
-  --input-bg: #0d1117;
-  --row-hover: rgba(88,166,255,.06);
-  --row-selected: rgba(88,166,255,.1);
-  --shadow: 0 2px 8px rgba(0,0,0,.3);
-  --scrollbar-bg: #161b22; --scrollbar-thumb: #30363d;
-}
-[data-theme="light"] {
-  --bg: #f6f8fa; --card: #ffffff; --card2: #f6f8fa; --border: #d0d7de;
-  --text: #1f2328; --muted: #656d76; --muted2: #8b949e;
-  --green: #1a7f37; --yellow: #9a6700; --red: #cf222e;
-  --blue: #0969da; --purple: #8250df; --orange: #9a6700;
-  --btn-muted-bg: #eaeef2;
-  --input-bg: #f6f8fa;
-  --row-hover: rgba(9,105,218,.04);
-  --row-selected: rgba(9,105,218,.08);
-  --shadow: 0 1px 3px rgba(31,35,40,.12), 0 8px 24px rgba(66,74,83,.12);
-  --scrollbar-bg: #f6f8fa; --scrollbar-thumb: #d0d7de;
-}
-
-/* ── Reset & Base ──────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-  background: var(--bg); color: var(--text);
-  font-size: 14px; line-height: 1.5;
-  min-height: 100vh;
-  transition: background .2s, color .2s;
-}
-
-/* ── Scrollbar ─────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
-::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-
-/* ── Header ────────────────────────────────────── */
-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 24px; border-bottom: 1px solid var(--border); gap: 12px;
-}
-.header-left { display: flex; align-items: center; gap: 0; }
-.logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; }
-.logo span { color: var(--blue); }
-.header-right { display: flex; align-items: center; gap: 10px; }
-nav { display: flex; gap: 6px; margin-left: 16px; }
-nav a {
-  padding: 5px 12px; border-radius: 7px; text-decoration: none;
-  font-size: 12px; font-weight: 600; transition: all 0.2s;
-}
-nav a.active { background: rgba(88,166,255,0.15); color: var(--blue); }
-nav a:not(.active) { background: var(--btn-muted-bg); color: var(--muted); }
-nav a:not(.active):hover { color: var(--text); }
-.lang-toggle { display: flex; gap: 2px; }
-.lang-toggle button {
-  padding: 4px 8px; font-size: 11px; font-weight: 600; border: 1px solid var(--border);
-  background: transparent; color: var(--muted); cursor: pointer; border-radius: 6px;
-  transition: all .15s;
-}
-.lang-toggle button.active { background: var(--blue); border-color: var(--blue); color: #fff; }
-.icon-btn {
-  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
-  background: transparent; color: var(--muted); cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background .15s, color .15s;
-}
-.icon-btn:hover { background: var(--card2); color: var(--text); }
-
-/* ── Main Layout ───────────────────────────────── */
-main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap: 16px; }
-
-/* ── Card ──────────────────────────────────────── */
-.card {
-  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 16px 20px; transition: background .2s, border-color .2s;
-}
-.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.card-title {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 1px; color: var(--muted); display: flex; align-items: center; gap: 8px;
-}
-
-/* ── Grid Layouts ──────────────────────────────── */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-@media(max-width: 1000px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
-@media(max-width: 600px) { .grid-3, .grid-4 { grid-template-columns: 1fr; } }
-
-/* ── Stat Card ─────────────────────────────────── */
-.stat-card {
-  padding: 14px 16px; background: var(--card2); border-radius: 8px;
-  border: 1px solid var(--border); transition: all .15s;
-}
-.stat-card:hover { border-color: var(--blue); }
-.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.stat-value { font-size: 28px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
-.stat-value.blue { color: var(--blue); }
-.stat-value.green { color: var(--green); }
-.stat-value.purple { color: var(--purple); }
-.stat-value.orange { color: var(--orange); }
-.stat-sub { font-size: 11px; color: var(--muted2); margin-top: 2px; }
-
-/* ── Button ────────────────────────────────────── */
-.btn {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s;
-  white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
-  background: var(--card); color: var(--muted);
-}
-.btn:hover { background: var(--card2); color: var(--text); }
-.btn:disabled { opacity: .35; cursor: not-allowed; }
-.btn-primary { background: rgba(63,185,80,.12); color: var(--green); border-color: rgba(63,185,80,.3); }
-.btn-primary:hover { background: rgba(63,185,80,.2); }
-.btn-blue { background: rgba(88,166,255,.1); color: var(--blue); border-color: rgba(88,166,255,.3); }
-.btn-blue:hover { background: rgba(88,166,255,.2); }
-.btn-danger { background: rgba(248,81,73,.1); color: var(--red); border-color: rgba(248,81,73,.3); }
-.btn-danger:hover { background: rgba(248,81,73,.2); }
-
-/* ── Browser Selector ──────────────────────────── */
-.browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.browser-card {
-  padding: 16px; border: 1px solid var(--border); border-radius: 10px;
-  cursor: pointer; transition: all .2s; text-align: center; background: var(--card2);
-}
-.browser-card:hover { border-color: var(--blue); }
-.browser-card.active { border-color: var(--blue); background: rgba(88,166,255,.08); }
-.browser-icon { width: 36px; height: 36px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
-.browser-card.active .browser-icon { color: var(--blue); }
-.browser-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-.browser-type { font-size: 11px; color: var(--muted2); }
-
-/* ── Issue Badge ───────────────────────────────── */
-.badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
-}
-.badge-red { background: rgba(248,81,73,.12); color: var(--red); }
-.badge-yellow { background: rgba(210,153,34,.12); color: var(--yellow); }
-.badge-blue { background: rgba(88,166,255,.12); color: var(--blue); }
-.badge-green { background: rgba(63,185,80,.12); color: var(--green); }
-.badge-purple { background: rgba(188,140,255,.12); color: var(--purple); }
-
-/* ── Search & Filter ───────────────────────────── */
-.toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
-.search-input {
-  flex: 1; min-width: 200px; padding: 7px 12px 7px 32px;
-  border: 1px solid var(--border); border-radius: 8px;
-  background: var(--input-bg); color: var(--text); font-size: 13px;
-  transition: border-color .15s;
-}
-.search-input:focus { outline: none; border-color: var(--blue); }
-.search-wrap { position: relative; flex: 1; min-width: 200px; }
-.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted2); pointer-events: none; }
-.filter-select {
-  padding: 7px 28px 7px 10px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--input-bg); color: var(--text); font-size: 12px;
-  appearance: none; cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b949e'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 8px center;
-}
-.filter-select:focus { outline: none; border-color: var(--blue); }
-
-/* ── Bookmark Table ────────────────────────────── */
-.bookmark-table-wrap {
-  overflow: auto; max-height: calc(100vh - 420px); min-height: 300px;
-  border: 1px solid var(--border); border-radius: 8px;
-}
-.bookmark-table {
-  width: 100%; border-collapse: collapse; font-size: 13px;
-}
-.bookmark-table thead { position: sticky; top: 0; z-index: 1; }
-.bookmark-table th {
-  padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted);
-  background: var(--card2); border-bottom: 1px solid var(--border);
-  white-space: nowrap; cursor: pointer; user-select: none;
-}
-.bookmark-table th:hover { color: var(--text); }
-.bookmark-table th .sort-arrow { margin-left: 4px; font-size: 10px; opacity: 0.4; }
-.bookmark-table th.sorted .sort-arrow { opacity: 1; color: var(--blue); }
-.bookmark-table td {
-  padding: 8px 12px; border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-.bookmark-table tr:hover td { background: var(--row-hover); }
-.bookmark-table tr:last-child td { border-bottom: none; }
-.bm-name { font-weight: 500; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-name a { color: var(--text); text-decoration: none; }
-.bm-name a:hover { color: var(--blue); text-decoration: underline; }
-.bm-url { font-size: 11px; color: var(--muted2); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
-.bm-folder {
-  font-size: 11px; padding: 2px 8px; background: var(--card2); border-radius: 4px;
-  color: var(--muted); white-space: nowrap; display: inline-block;
-}
-
-/* ── Folder Distribution ───────────────────────── */
-.folder-bar-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-.folder-bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background .15s; }
-.folder-bar-row:hover { background: var(--row-hover); }
-.folder-bar-row.active { background: var(--row-selected); }
-.folder-bar-name { width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-.folder-bar-track { flex: 1; height: 8px; background: var(--card2); border-radius: 4px; overflow: hidden; }
-.folder-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
-.folder-bar-count { width: 40px; text-align: right; color: var(--muted); font-family: 'SF Mono', 'Fira Code', Consolas, monospace; font-size: 11px; }
-
-/* ── AI Notice ─────────────────────────────────── */
-.ai-notice {
-  padding: 12px 16px; border: 1px solid; border-radius: 8px;
-  display: flex; align-items: flex-start; gap: 10px; font-size: 13px;
-}
-.ai-notice.success { background: rgba(63,185,80,.06); border-color: rgba(63,185,80,.3); }
-.ai-notice.warning { background: rgba(210,153,34,.06); border-color: rgba(210,153,34,.3); }
-.ai-notice svg { flex-shrink: 0; margin-top: 2px; }
-.ai-notice-body { flex: 1; }
-.ai-notice-title { font-weight: 600; margin-bottom: 2px; }
-.ai-notice-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
-
-/* ── Analysis Category Cards ───────────────────── */
-.cat-card {
-  padding: 12px 16px; background: var(--card2); border-radius: 8px;
-  border: 1px solid var(--border); transition: border-color .15s;
-}
-.cat-card:hover { border-color: var(--blue); }
-.cat-name { font-weight: 600; margin-bottom: 4px; }
-.cat-desc { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.cat-count { font-size: 11px; color: var(--muted2); }
-
-/* ── Loading & Empty ───────────────────────────── */
-.loading { text-align: center; padding: 40px; color: var(--muted); }
-.spinner {
-  display: inline-block; width: 20px; height: 20px;
-  border: 2px solid var(--border); border-top-color: var(--blue);
-  border-radius: 50%; animation: spin 0.6s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
-.empty-state svg { margin-bottom: 12px; color: var(--muted2); }
-.empty-state .title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-
-/* ── Refresh spin ──────────────────────────────── */
-@keyframes refresh-spin { to { transform: rotate(360deg); } }
-.spinning svg { animation: refresh-spin .8s linear infinite; }
-
-/* ── Footer stats bar ──────────────────────────── */
-.footer-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 0; font-size: 11px; color: var(--muted2); margin-top: 8px;
-}
-
-/* ── Modal / Wizard ────────────────────────────── */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
-.modal-overlay.open { opacity: 1; pointer-events: auto; }
-.modal {
-  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-  width: 680px; max-width: 92vw; max-height: 85vh; display: flex; flex-direction: column;
-  box-shadow: var(--shadow); transform: translateY(12px) scale(.97);
-  transition: transform .2s;
-}
-.modal-overlay.open .modal { transform: translateY(0) scale(1); }
-.modal-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--border);
-}
-.modal-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.modal-close {
-  width: 28px; height: 28px; border-radius: 6px; border: none;
-  background: transparent; color: var(--muted); cursor: pointer;
-  display: flex; align-items: center; justify-content: center; transition: all .15s;
-}
-.modal-close:hover { background: var(--card2); color: var(--text); }
-.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-.modal-footer {
-  padding: 14px 20px; border-top: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-}
-
-/* ── Steps indicator ───────────────────────────── */
-.steps { display: flex; gap: 4px; }
-.step-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--border);
-  transition: background .2s;
-}
-.step-dot.active { background: var(--blue); width: 20px; border-radius: 4px; }
-.step-dot.done { background: var(--green); }
-
-/* ── Wizard content ────────────────────────────── */
-.wizard-step { display: none; }
-.wizard-step.active { display: block; }
-.issue-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
-  margin-bottom: 8px; transition: border-color .15s;
-}
-.issue-row:hover { border-color: var(--blue); }
-.issue-row .left { display: flex; align-items: center; gap: 10px; }
-.issue-row .count {
-  font-size: 18px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-  min-width: 36px;
-}
-.issue-row .label { font-size: 13px; }
-.issue-row .desc { font-size: 11px; color: var(--muted2); }
-.action-tag {
-  font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-.action-tag.clean { background: rgba(63,185,80,.1); color: var(--green); }
-.action-tag.warn { background: rgba(210,153,34,.1); color: var(--yellow); }
-.action-tag.info { background: rgba(88,166,255,.1); color: var(--blue); }
-.preview-table {
-  width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 12px;
-}
-.preview-table th {
-  padding: 6px 10px; text-align: left; font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border);
-}
-.preview-table td {
-  padding: 6px 10px; border-bottom: 1px solid var(--border);
-}
-.preview-table tr:last-child td { border-bottom: none; }
-.preview-change { color: var(--green); font-weight: 500; }
-.preview-remove { color: var(--red); text-decoration: line-through; }
-.summary-box {
-  padding: 16px; background: var(--card2); border-radius: 8px; text-align: center;
-  margin-bottom: 16px;
-}
-.summary-box .big { font-size: 32px; font-weight: 700; color: var(--green); }
-.summary-box .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-/* ── AI Organize Button (prominent) ────────────── */
-.btn-ai {
-  background: linear-gradient(135deg, rgba(88,166,255,.15), rgba(188,140,255,.15));
-  border: 1px solid rgba(88,166,255,.3); color: var(--blue);
-  padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-  transition: all .2s; position: relative; overflow: hidden;
-}
-.btn-ai:hover {
-  background: linear-gradient(135deg, rgba(88,166,255,.25), rgba(188,140,255,.25));
-  border-color: var(--blue); transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(88,166,255,.2);
-}
-.btn-ai:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
-</style>
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/bookmarks.css">
 </head>
 <body>
 
@@ -367,10 +16,10 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
 <header>
   <div class="header-left">
     <h1 class="logo">AI <span>Guard</span></h1>
-    <nav>
-      <a href="/" id="nav-monitor"></a>
-      <a href="/usage.html" id="nav-usage"></a>
-      <a href="/bookmarks.html" class="active" id="nav-bookmarks"></a>
+    <nav class="nav-tabs">
+      <a href="/" class="nav-tab" id="nav-monitor">监控面板</a>
+      <a href="/usage.html" class="nav-tab" id="nav-usage">Claude 统计</a>
+      <a href="/bookmarks.html" class="nav-tab active" id="nav-bookmarks">书签管理</a>
     </nav>
   </div>
   <div class="header-right">
@@ -401,12 +50,12 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
     </div>
     <div id="browser-list" class="loading">
       <div class="spinner"></div>
-      <div style="margin-top: 8px;" data-i18n="loading"></div>
+      <div class="loading-text" data-i18n="loading"></div>
     </div>
   </div>
 
   <!-- Stats Cards -->
-  <div class="grid-4" id="stats-section" style="display:none;">
+  <div class="grid-4 hidden" id="stats-section">
     <div class="stat-card"><div class="stat-label" data-i18n="totalBookmarks"></div><div class="stat-value blue" id="st-total">0</div></div>
     <div class="stat-card"><div class="stat-label" data-i18n="totalFolders"></div><div class="stat-value green" id="st-folders">0</div></div>
     <div class="stat-card"><div class="stat-label" data-i18n="totalDomains"></div><div class="stat-value purple" id="st-domains">0</div></div>
@@ -414,16 +63,16 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
   </div>
 
   <!-- AI Organize Button -->
-  <div id="ai-organize-section" style="display:none;text-align:center;padding:4px 0;">
+  <div class="hidden text-center p-4-0" id="ai-organize-section">
     <button class="btn-ai" id="btn-ai-organize" onclick="openAIWizard()" disabled>
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 1l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>
       <span data-i18n="aiOrganize"></span>
     </button>
-    <div style="font-size:11px;color:var(--muted2);margin-top:6px;" data-i18n="aiOrganizeDesc"></div>
+    <div class="text-11px text-muted2 mt-6" data-i18n="aiOrganizeDesc"></div>
   </div>
 
   <!-- Folder Distribution + Analysis  -->
-  <div class="grid-2" id="middle-section" style="display:none;">
+  <div class="grid-2 hidden" id="middle-section">
     <!-- Folder Distribution -->
     <div class="card">
       <div class="card-header">
@@ -432,7 +81,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
           <span data-i18n="folderDist"></span>
         </div>
       </div>
-      <div id="folder-dist" class="folder-bar-wrap" style="max-height:320px;overflow-y:auto;"></div>
+      <div id="folder-dist" class="folder-bar-wrap max-h-320 overflow-y"></div>
     </div>
     <!-- Analysis -->
     <div class="card">
@@ -441,7 +90,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
           <span data-i18n="analysis"></span>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="flex-row flex-gap-2">
           <button class="btn btn-blue" onclick="analyzeBookmarks()">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
             <span data-i18n="analyze"></span>
@@ -453,7 +102,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
         </div>
       </div>
       <div id="analysis-result">
-        <div class="empty-state" style="padding:24px;">
+        <div class="empty-state empty-state-lg">
           <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
           <div class="title" data-i18n="noAnalysis"></div>
           <div data-i18n="clickAnalyzeHint"></div>
@@ -463,14 +112,14 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
   </div>
 
   <!-- Bookmark List -->
-  <div class="card" id="bookmarks-card" style="display:none;">
+  <div class="card hidden" id="bookmarks-card">
     <div class="card-header">
       <div class="card-title">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
         <span data-i18n="bookmarkList"></span>
-        <span id="bm-count-badge" class="badge badge-blue" style="margin-left:6px;"></span>
+        <span id="bm-count-badge" class="badge badge-blue ml-6"></span>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div class="flex-row flex-gap-2">
         <button class="btn" onclick="exportBookmarks('json')">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
           JSON
@@ -506,7 +155,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
       <table class="bookmark-table">
         <thead>
           <tr>
-            <th style="width:36px;">#</th>
+            <th class="w-36px">#</th>
             <th data-i18n="colName" onclick="toggleSort('name')"><span></span><span class="sort-arrow"></span></th>
             <th data-i18n="colUrl" onclick="toggleSort('url')"><span></span><span class="sort-arrow"></span></th>
             <th data-i18n="colFolder" onclick="toggleSort('folder')"><span></span><span class="sort-arrow"></span></th>
@@ -537,8 +186,8 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; display: grid; gap
     <div class="modal-body" id="wizard-body"></div>
     <div class="modal-footer">
       <div class="steps" id="wizard-steps"></div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn" id="wizard-back" onclick="wizardBack()" style="display:none;" data-i18n="back"></button>
+      <div class="flex-row flex-gap-2">
+        <button class="btn hidden" id="wizard-back" onclick="wizardBack()" data-i18n="back"></button>
         <button class="btn btn-blue" id="wizard-next" onclick="wizardNext()"></button>
       </div>
     </div>
@@ -903,7 +552,7 @@ function renderBookmarks() {
   bms.forEach((bm, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML =
-      `<td style="color:var(--muted2);font-size:11px;font-family:'SF Mono','Fira Code',Consolas,monospace;">${i + 1}</td>` +
+      `<td class="table-index">${i + 1}</td>` +
       `<td><div class="bm-name"><a href="${escapeHtml(bm.url)}" target="_blank" rel="noopener">${escapeHtml(bm.name)}</a></div></td>` +
       `<td><div class="bm-url" title="${escapeHtml(bm.url)}">${escapeHtml(bm.url)}</div></td>` +
       `<td><span class="bm-folder">${escapeHtml(bm.folder || t('uncategorizedFolder'))}</span></td>`;
