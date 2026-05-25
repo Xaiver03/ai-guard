@@ -74,3 +74,22 @@ class MonthlySummary:
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
     daily_data: List[DailySummary]
+
+
+@dataclass(slots=True)
+class SessionSummary:
+    """会话汇总"""
+    session_id: str
+    project: str
+    start_time: datetime
+    end_time: datetime
+    duration_seconds: int
+    message_count: int
+    total_tokens: int
+    input_tokens: int
+    output_tokens: int
+    cache_creation_tokens: int
+    cache_read_tokens: int
+    total_cost: float
+    models_used: List[str]
+

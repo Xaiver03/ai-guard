@@ -70,7 +70,7 @@ threads = BackgroundThreads(CFG, history, alerter, whitelist)
 threads.settings = {
     "alert": dict(ALERT_CFG),
     "auto_kill": dict(AUTO_KILL_CFG),
-    "monitor": {"interval_sec": MONITOR_CFG.get("interval_sec", 1)},
+    "monitor": {"interval_sec": MONITOR_CFG.get("interval_sec", 15)},
     "scoring": {
         "cpu_caution_pct": 20,
         "idle_min_hours": 1.0,

@@ -4,9 +4,9 @@ port = 8765
 open_browser = true
 
 [monitor]
-# 监控采集间隔（秒），默认 5 秒
-interval_sec = 5
-# 历史数据点数量，默认 60 点（5 分钟历史）
+# 监控采集间隔（秒），默认 15 秒
+interval_sec = 15
+# 历史数据点数量，默认 60 点（15 分钟历史）
 history_points = 60
 
 [alert]
@@ -59,3 +59,6 @@ pids = []
 claude_data_dir = "~/.claude"
 # 数据缓存时间（秒）
 cache_ttl = 300
+# 自动刷新间隔（秒），默认 1800 秒（30 分钟）
+# 设置为 0 禁用自动刷新
+auto_refresh_interval = 1800

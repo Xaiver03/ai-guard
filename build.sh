@@ -12,7 +12,8 @@ echo "🗑️  步骤 2: 清理旧构建..."
 rm -rf build dist
 
 echo "📦 步骤 3: py2app 打包..."
-python3 setup.py py2app
+source venv/bin/activate
+python setup.py py2app
 
 echo "🔏 步骤 4: 自签名（避免 Gatekeeper 拦截）..."
 codesign --force --deep --sign - "dist/AI Guard.app"

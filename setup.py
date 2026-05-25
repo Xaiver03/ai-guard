@@ -14,9 +14,16 @@ DATA_FILES = [
                       "aigard/ui/bookmarks.html",
                       "aigard/ui/usage.html"]),
     ("aigard/ui/css", ["aigard/ui/css/design-system.css",
-                       "aigard/ui/css/components.css"]),
+                       "aigard/ui/css/components.css",
+                       "aigard/ui/css/usage.css",
+                       "aigard/ui/css/bookmarks.css"]),
+    ("aigard/ui/js",  ["aigard/ui/js/usage-i18n.js",
+                       "aigard/ui/js/usage-data.js",
+                       "aigard/ui/js/usage-charts.js",
+                       "aigard/ui/js/usage-pricing.js",
+                       "aigard/ui/js/usage-icons.js"]),
     ("",             ["config.toml"]),
-    ("assets",       ["assets/icon.icns"]),
+    ("assets",       ["assets/icon.icns", "assets/menubar_icon.png"]),
 ]
 
 OPTIONS = {

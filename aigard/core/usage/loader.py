@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
-from .models import UsageEntry
+from .models import UsageEntry, SessionSummary
 
 
 class ClaudeDataLoader:
@@ -213,3 +213,77 @@ class ClaudeDataLoader:
                 projects.append(project_dir.name)
 
         return sorted(projects)
+
+    def load_session_summaries(self, project: Optional[str] = None) -> List[SessionSummary]:
+        """
+        加载会话汇总数据
+
+        Args:
+            project: 可选的项目名称，如果指定则只加载该项目的会话
+
+        Returns:
+            会话汇总列表
+        """
+        # 加载所有使用记录
+        if project:
+            entries = self.load_project_usage(project)
+        else:
+            entries = self.load_all_usage()
+
+        if not entries:
+            return []
+
+        # 按 (project, session_id) 分组
+        sessions_dict = {}
+        for entry in entries:
+            key = (entry.project, entry.session_id)
+            if key not in sessions_dict:
+                sessions_dict[key] = []
+            sessions_dict[key].append(entry)
+
+        # 计算每个会话的汇总
+        summaries = []
+        for (proj, sess_id), sess_entries in sessions_dict.items():
+            if not sess_entries:
+                continue
+
+            # 按时间排序
+            sess_entries.sort(key=lambda x: x.timestamp)
+
+            start_time = sess_entries[0].timestamp
+            end_time = sess_entries[-1].timestamp
+            duration_seconds = int((end_time - start_time).total_seconds())
+
+            message_count = len(sess_entries)
+            total_tokens = sum(
+                e.input_tokens + e.output_tokens + e.cache_creation_tokens + e.cache_read_tokens
+                for e in sess_entries
+            )
+            input_tokens = sum(e.input_tokens for e in sess_entries)
+            output_tokens = sum(e.output_tokens for e in sess_entries)
+            cache_creation_tokens = sum(e.cache_creation_tokens for e in sess_entries)
+            cache_read_tokens = sum(e.cache_read_tokens for e in sess_entries)
+            total_cost = sum(e.cost for e in sess_entries)
+            models_used = list(set(e.model for e in sess_entries))
+
+            summaries.append(SessionSummary(
+                session_id=sess_id,
+                project=proj,
+                start_time=start_time,
+                end_time=end_time,
+                duration_seconds=duration_seconds,
+                message_count=message_count,
+                total_tokens=total_tokens,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+                cache_read_tokens=cache_read_tokens,
+                total_cost=total_cost,
+                models_used=models_used,
+            ))
+
+        # 按开始时间倒序排列（最新的在前）
+        summaries.sort(key=lambda x: x.start_time, reverse=True)
+
+        return summaries
+

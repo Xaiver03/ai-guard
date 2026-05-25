@@ -591,6 +591,23 @@
 
 .hidden { display: none; }
 
+/* ── Preview Cards (Wizard Step 3) ─────────────────────── */
+.cat-preview-card {
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  background: var(--bg-tertiary);
+}
+.cat-preview-card:hover { border-color: var(--accent-blue); }
+.cat-preview-card.active {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, .08);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, .15);
+}
+
 /* 加载状态中的 margin-top */
 .loading-text { margin-top: var(--space-2); }
 

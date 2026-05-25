@@ -37,6 +37,10 @@ class BackgroundThreads:
         # JSONL 增量解析：记录每个文件的读取位置
         self._jsonl_offsets = {}  # {file_path: last_offset}
 
+        # 条件变量：用于事件驱动的线程唤醒
+        self._block_event = threading.Event()
+        self._autokill_event = threading.Event()
+
         # 线程对象
         self._threads = []
 
@@ -81,8 +85,10 @@ class BackgroundThreads:
         last_killed_time = 0.0
 
         while True:
-            time.sleep(5)
             if not self.autokill_enabled:
+                # 禁用时休眠，等待被唤醒（toggle API 会 set 事件）
+                self._autokill_event.wait(timeout=60)
+                self._autokill_event.clear()
                 continue
 
             with self.settings_lock:
@@ -94,14 +100,17 @@ class BackgroundThreads:
 
             latest = self.history.latest
             if not latest:
+                time.sleep(15)
                 continue
 
             mem_pct = latest.get("mem_percent", 0)
             swap_pct = latest.get("swap_percent", 0)
 
             if mem_pct < mem_trigger and swap_pct < swap_trigger:
+                time.sleep(15)
                 continue
             if time.time() - last_killed_time < cooldown:
+                time.sleep(15)
                 continue
 
             with self.lock:
@@ -142,11 +151,15 @@ class BackgroundThreads:
                 # 抑制 Swap 告警 3 分钟，给系统时间释放 Swap
                 self.alerter.suppress_swap_alert(180)
 
+            time.sleep(15)
+
     def _block_loop(self):
-        """黑名单拦截线程：每秒扫描黑名单进程并终止"""
+        """黑名单拦截线程：有黑名单时每5秒扫描，无黑名单时休眠等待"""
         while True:
-            time.sleep(1)
             if not self.blocked_processes:
+                # 无黑名单时休眠，等待被唤醒（add_blocked_process 会 set 事件）
+                self._block_event.wait(timeout=60)
+                self._block_event.clear()
                 continue
 
             with self.lock:
@@ -160,6 +173,8 @@ class BackgroundThreads:
                     result = kill_process(pid)
                     if result.success:
                         print(f"[block] 拦截黑名单进程 {name} (PID {pid})")
+
+            time.sleep(5)
 
     def _scheduled_kill_loop(self):
         """定时终止线程：按固定间隔终止 safe 进程"""
@@ -207,7 +222,7 @@ class BackgroundThreads:
                 print(f"[scheduled-kill] 定时终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
 
     def _usage_refresh_loop(self):
-        """Usage 轮询线程：每 5 分钟增量更新当天的 Claude 使用数据
+        """Usage 轮询线程：每 10 分钟增量更新当天的 Claude 使用数据
 
         内存策略：
         - 只扫描今天修改过的 JSONL 文件
@@ -223,7 +238,7 @@ class BackgroundThreads:
         )
         from aigard.core.usage.models import UsageEntry
 
-        REFRESH_INTERVAL = 300  # 5 分钟
+        REFRESH_INTERVAL = 600  # 10 分钟
 
         # 等待服务启动
         time.sleep(10)

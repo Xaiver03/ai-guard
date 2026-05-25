@@ -22,7 +22,7 @@ export async function loadHourlyData(preset) {
 
 /** 判断是否为小时级视图 */
 export function isHourlyRange(range) {
-  return range === 'today' || range === 'yesterday' || range === 'last_3_days';
+  return range === 'today' || range === '24h' || range === 'yesterday' || range === 'last_3_days';
 }
 
 /** 按时间范围过滤日数据 */

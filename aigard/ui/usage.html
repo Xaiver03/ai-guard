@@ -1109,6 +1109,7 @@ async function renderPricingTables() {
     _backendPricing = await response.json();
   } catch (err) {
     console.error('Error loading pricing:', err);
+    showToast('cross', t().loadDataFailed || 'Failed to load pricing', true);
     _backendPricing = {};
   }
 
@@ -1130,7 +1131,7 @@ async function renderPricingTables() {
       await renderPricingTables();
     } catch (err) {
       console.error('Error resetting pricing:', err);
-      alert(t().errorResetting || 'Failed to reset pricing');
+      showToast('cross', t().errorResetting || 'Failed to reset pricing', true);
     }
   };
 
@@ -1231,7 +1232,7 @@ window.savePricingEdit = async function(key) {
     await renderPricingTables();
   } catch (err) {
     console.error('Error saving pricing:', err);
-    alert(t().errorSaving || 'Failed to save pricing');
+    showToast('cross', t().errorSaving || 'Failed to save pricing', true);
   }
 };
 window.resetPricingModel = async function(key) {
@@ -1246,7 +1247,7 @@ window.resetPricingModel = async function(key) {
     await renderPricingTables();
   } catch (err) {
     console.error('Error resetting pricing:', err);
-    alert(t().errorResetting || 'Failed to reset pricing');
+    showToast('cross', t().errorResetting || 'Failed to reset pricing', true);
   }
 };
 window.deletePricingModel = async function(key) {
@@ -1262,7 +1263,7 @@ window.deletePricingModel = async function(key) {
     await renderPricingTables();
   } catch (err) {
     console.error('Error deleting model:', err);
-    alert(t().errorDeleting || 'Failed to delete model');
+    showToast('cross', t().errorDeleting || 'Failed to delete model', true);
   }
 };
 

@@ -11,6 +11,7 @@
 </head>
 <body>
 
+<!-- ===== 统一顶部导航 ===== -->
 <header>
   <div class="header-left">
     <h1 class="logo">AI <span>Guard</span></h1>
@@ -27,14 +28,19 @@
       <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
     </div>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换深色/浅色主题"></button>
+  </div>
+</header>
+
+<!-- ===== 主内容 ===== -->
+<main>
+  <!-- 页面控件栏 -->
+  <div class="page-controls">
     <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="设置"></button>
     <button id="autokill-toggle" onclick="toggleAutoKill()"></button>
     <span id="status-badge"></span>
     <span id="last-update">—</span>
   </div>
-</header>
 
-<main>
   <!-- 资源压力仪表 -->
   <div class="card">
     <div class="card-title mb-3" data-i18n="monitor.resourcePressure">资源压力</div>
@@ -506,6 +512,7 @@ async function switchView(view) {
     }
   } catch (e) {
     console.error('switchView failed:', e);
+    showToast('cross', 'Failed to switch view', true);
   }
 }
 
@@ -922,6 +929,7 @@ async function fetchProcesses() {
     updateProcesses(Array.isArray(data) ? data : (data.processes || []));
   } catch (e) {
     console.error('Failed to fetch processes:', e);
+    showToast('cross', 'Failed to load processes', true);
   }
 }
 

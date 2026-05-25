@@ -72,20 +72,24 @@ def _sf_symbol_to_png(name: str, size: float = 18.0) -> str:
 
 
 def _get_fallback_icon() -> str:
-    """返回 fallback 图标路径（assets/icon.png）"""
+    """返回 fallback 图标路径（assets/menubar_icon.png）"""
     # 开发模式：从项目根目录读取
-    dev_icon = Path(__file__).parent / "assets" / "icon.png"
+    dev_icon = Path(__file__).parent / "assets" / "menubar_icon.png"
     if dev_icon.exists():
         return str(dev_icon)
 
-    # 打包模式：从 .app/Contents/Resources 读取
-    if getattr(sys, 'frozen', False):
-        bundle_dir = Path(sys._MEIPASS)
-        bundle_icon = bundle_dir / "assets" / "icon.png"
-        if bundle_icon.exists():
-            return str(bundle_icon)
+    # 打包模式（py2app）：从 __file__ 所在目录的 assets/ 读取
+    # py2app 把 app_menubar.py 放在 Contents/Resources/ 下
+    bundle_icon = Path(__file__).parent / "assets" / "menubar_icon.png"
+    if bundle_icon.exists():
+        return str(bundle_icon)
 
-    # 最后的 fallback：返回 None（rumps 会使用默认图标）
+    # 尝试 icon.png 作为最后 fallback
+    for name in ("menubar_icon.png", "icon.png"):
+        fallback = Path(__file__).parent / "assets" / name
+        if fallback.exists():
+            return str(fallback)
+
     print("[ERROR] 找不到任何可用的图标文件")
     return None
 
@@ -123,14 +127,14 @@ class _PopoverClickHandler(NSObject):
 
 class AIGuardApp(rumps.App):
     def __init__(self):
-        # 获取初始图标（带 fallback）
-        initial_icon = _sf_symbol_to_png(_SYMBOLS["normal"]) or _get_fallback_icon()
+        # 直接使用静态图标（SF Symbol 在打包环境可能失败）
+        initial_icon = _get_fallback_icon()
 
         super().__init__(
             name="AI Guard",
-            title="AI Guard",  # 显示应用名称
+            title=None,        # 不显示文字，只显示图标
             icon=initial_icon,
-            template=True,     # 模板图片：系统自动处理深色/浅色
+            template=False,    # 使用彩色图标
             quit_button=None,
         )
 

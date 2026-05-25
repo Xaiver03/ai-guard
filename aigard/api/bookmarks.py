@@ -63,6 +63,14 @@ def get_bookmarks(browser: str):
         raise HTTPException(status_code=404, detail=f"浏览器 {browser} 未检测到")
 
     bookmarks = bookmark_manager.extract_all_bookmarks(browser)
+
+    # Safari 权限问题特殊处理
+    if bookmarks is None and browser == "safari":
+        raise HTTPException(
+            status_code=403,
+            detail="Safari 书签需要「完全磁盘访问权限」。请前往：系统设置 → 隐私与安全性 → 完全磁盘访问权限，勾选 AI Guard。"
+        )
+
     if bookmarks is None:
         raise HTTPException(status_code=500, detail=f"读取 {browser} 书签失败")
 
@@ -169,7 +177,7 @@ def export_bookmarks(req: ExportRequest):
             "message": f"书签已导出到 {output_path}"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="导出失败")
 
 
 # ── AI 工具 ───────────────────────────────────────────────────

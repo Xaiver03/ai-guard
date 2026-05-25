@@ -159,15 +159,15 @@ async def get_summary(
                 entries = [e for e in entries if e.timestamp.strftime('%Y-%m-%d') <= end]
 
             # 计算汇总
-            total_cost = sum(e.cost for e in entries)
             total_tokens = sum(e.input_tokens + e.output_tokens + e.cache_creation_tokens + e.cache_read_tokens for e in entries)
             input_tokens = sum(e.input_tokens for e in entries)
             output_tokens = sum(e.output_tokens for e in entries)
             cache_creation_tokens = sum(e.cache_creation_tokens for e in entries)
             cache_read_tokens = sum(e.cache_read_tokens for e in entries)
 
-            # 模型统计
+            # 模型统计（含定价计算，cost 从此处求和才准确）
             model_breakdown = calculator.calculate_model_breakdown(entries)
+            total_cost = sum(mb.cost for mb in model_breakdown)
             models_used = list(set(e.model for e in entries))
 
             # 覆盖率
@@ -203,7 +203,7 @@ async def get_summary(
         return cache.get_summary(start, end)
     except Exception as e:
         logger.error(f"获取统计总览失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取统计总览失败")
 
 
 @router.get("/daily")
@@ -263,7 +263,7 @@ async def get_daily_usage(
         return cache.get_daily(start, end)
     except Exception as e:
         logger.error(f"获取每日统计失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取每日统计失败")
 
 
 @router.get("/hourly")
@@ -340,7 +340,7 @@ async def get_hourly_usage(
         return cache.get_hourly(start_hour, end_hour)
     except Exception as e:
         logger.error(f"获取每小时统计失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取每小时统计失败")
 
 
 @router.get("/monthly")
@@ -383,7 +383,7 @@ async def get_monthly_usage():
         return result
     except Exception as e:
         logger.error(f"获取每月统计失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取每月统计失败")
 
 
 @router.get("/models")
@@ -430,7 +430,7 @@ async def get_model_stats(
         return result
     except Exception as e:
         logger.error(f"获取模型统计失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取模型统计失败")
 
 
 @router.get("/projects")
@@ -441,7 +441,7 @@ async def get_projects():
         return {"projects": projects}
     except Exception as e:
         logger.error(f"获取项目列表失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取项目列表失败")
 
 
 @router.get("/sessions")
@@ -481,7 +481,7 @@ async def get_sessions(
         }
     except Exception as e:
         logger.error(f"获取会话列表失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取会话列表失败")
 
 
 @router.get("/pricing")
@@ -524,7 +524,7 @@ async def update_pricing(pricing_data: dict):
         return {"status": "success", "message": "定价配置已更新，缓存正在重建"}
     except Exception as e:
         logger.error(f"更新定价失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="更新定价失败")
 
 
 @router.delete("/pricing/{model:path}")
@@ -547,7 +547,7 @@ async def delete_pricing(model: str):
         raise
     except Exception as e:
         logger.error(f"删除定价失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="删除定价失败")
 
 
 @router.post("/pricing/reset")
@@ -562,7 +562,7 @@ async def reset_all_pricing():
         return {"status": "success", "message": "所有定价覆盖已重置"}
     except Exception as e:
         logger.error(f"重置定价失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="重置定价失败")
 
 
 @router.post("/refresh")
@@ -632,7 +632,7 @@ async def refresh_data():
         }
     except Exception as e:
         logger.error(f"刷新数据失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="刷新数据失败")
 
 
 def _resolve_date_range(

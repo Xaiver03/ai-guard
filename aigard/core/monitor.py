@@ -57,8 +57,9 @@ def collect_metrics() -> Metrics:
     disk = psutil.disk_usage("/")
     cpu = psutil.cpu_percent(interval=0)
 
-    # 修复磁盘百分比：使用 used/total 而非 psutil 的 percent（后者不包括保留空间）
-    disk_percent_corrected = round((disk.used / disk.total) * 100, 1) if disk.total > 0 else 0.0
+    # 修复磁盘百分比：macOS APFS 中 disk.used 不包含快照/预留空间
+    # 正确算法: (total - free) / total，反映用户实际可用空间占比
+    disk_percent_corrected = round(((disk.total - disk.free) / disk.total) * 100, 1) if disk.total > 0 else 0.0
 
     return Metrics(
         ts=time.time(),
@@ -70,7 +71,7 @@ def collect_metrics() -> Metrics:
         swap_used_gb=_gb(swap.used),
         swap_percent=swap.percent,
         disk_total_gb=_gb(disk.total),
-        disk_used_gb=_gb(disk.used),
+        disk_used_gb=_gb(disk.total - disk.free),  # 修正：total-free 才是实际占用
         disk_free_gb=_gb(disk.free),
         disk_percent=disk_percent_corrected,
         cpu_percent=cpu,

@@ -227,6 +227,9 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         with threads_manager.lock:
             threads_manager.autokill_enabled = not threads_manager.autokill_enabled
             state = threads_manager.autokill_enabled
+        # 启用时唤醒自动终止线程
+        if state:
+            threads_manager._autokill_event.set()
         label = "开启" if state else "关闭"
         print(f"[auto-kill] 自动终止已{label}")
         return {"enabled": state}
@@ -344,7 +347,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     # 心跳保持连接
                     yield f": heartbeat\n\n"
 
-                await asyncio.sleep(3)
+                await asyncio.sleep(15)
 
         return StreamingResponse(
             event_generator(),
@@ -437,6 +440,8 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             raise HTTPException(status_code=400, detail="进程名不能为空")
         with threads_manager.lock:
             threads_manager.blocked_processes.add(name)
+        # 唤醒黑名单线程
+        threads_manager._block_event.set()
         return {"message": f"已将 {name} 加入黑名单", "blocked": list(threads_manager.blocked_processes)}
 
     @app.post("/api/processes/unblock")
@@ -484,6 +489,20 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             "enabled": threads_manager.scheduled_kill_enabled,
             "interval_minutes": threads_manager.scheduled_kill_interval,
         }
+
+    # ── 系统操作 ──────────────────────────────────────────────
+    @app.post("/api/system/open-privacy-settings")
+    def open_privacy_settings():
+        """打开 macOS 系统设置 → 隐私与安全性 → 完全磁盘访问权限"""
+        import subprocess
+        try:
+            subprocess.run(
+                ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"],
+                check=False, timeout=5
+            )
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": "无法打开系统设置"}
 
     # ── 静态文件（CSS / JS）────────────────────────────────────
     ui_dev = base_dir / "aigard" / "ui"

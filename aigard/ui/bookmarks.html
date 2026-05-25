@@ -12,24 +12,27 @@
 </head>
 <body>
 
-<!-- ── Header ──────────────────────────────────── -->
+<!-- ===== 统一顶部导航 ===== -->
 <header>
   <div class="header-left">
     <h1 class="logo">AI <span>Guard</span></h1>
     <nav class="nav-tabs">
-      <a href="/" class="nav-tab" id="nav-monitor">监控面板</a>
-      <a href="/usage.html" class="nav-tab" id="nav-usage">Claude 统计</a>
-      <a href="/bookmarks.html" class="nav-tab active" id="nav-bookmarks">书签管理</a>
+      <a href="/" class="nav-tab" data-i18n="nav.monitor">监控面板</a>
+      <a href="/usage.html" class="nav-tab" data-i18n="nav.usage">Claude 统计</a>
+      <a href="/bookmarks.html" class="nav-tab active" data-i18n="nav.bookmarks">书签管理</a>
     </nav>
   </div>
   <div class="header-right">
     <div class="lang-toggle">
-      <button id="lang-zh" onclick="setLang('zh')">中</button>
-      <button id="lang-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
     </div>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()"></button>
   </div>
 </header>
+
+<!-- Toast 通知 -->
+<div id="toast"></div>
 
 <!-- ── Main Content ────────────────────────────── -->
 <main>
@@ -235,6 +238,13 @@ const T = {
     willRemove: '将移除', willClean: '将清理', willRename: '将重命名', willReclassify: '将重新分类',
     noIssuesFound: '你的书签很整洁! 没有发现需要修复的问题。',
     step: (n) => `第 ${n} 步`,
+    // Toast 消息
+    loadBrowsersFailed: '浏览器列表加载失败',
+    loadBookmarksFailed: '书签数据加载失败',
+    analyzeFailed: '分析失败',
+    aiCategorizeFailed: 'AI 分类失败',
+    exportSuccess: '导出成功',
+    exportFailed: '导出失败',
   },
   en: {
     navMonitor: 'Monitor', navUsage: 'Claude Stats', navBookmarks: 'Bookmarks',
@@ -272,6 +282,13 @@ const T = {
     willRemove: 'Will remove', willClean: 'Will clean', willRename: 'Will rename', willReclassify: 'Will reclassify',
     noIssuesFound: 'Your bookmarks are clean! No issues found.',
     step: (n) => `Step ${n}`,
+    // Toast messages
+    loadBrowsersFailed: 'Failed to load browsers',
+    loadBookmarksFailed: 'Failed to load bookmarks',
+    analyzeFailed: 'Analysis failed',
+    aiCategorizeFailed: 'AI categorization failed',
+    exportSuccess: 'Export successful',
+    exportFailed: 'Export failed',
   }
 };
 
@@ -280,6 +297,33 @@ const t = (key, ...args) => {
   const v = T[_lang][key];
   return typeof v === 'function' ? v(...args) : (v || key);
 };
+
+// ── SVG 图标库（与 index.html 保持一致）────────────────────
+const ICONS = {
+  bolt:   `<path d="M9.5 2L4 9h4.5L7 14l6-7H9.5z" fill="currentColor" stroke="none"/>`,
+  check:  `<polyline points="2.5,8.5 6,12.5 13.5,4" stroke-width="2"/>`,
+  warn:   `<path d="M8 2.5L14.5 14H1.5z" stroke-width="1.75"/><line x1="8" y1="7" x2="8" y2="10.5" stroke-width="2"/><circle cx="8" cy="12.5" r="0.85" fill="currentColor" stroke="none"/>`,
+  cross:  `<line x1="3" y1="3" x2="13" y2="13" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke-width="2"/>`,
+};
+function icon(name, cls='') {
+  const paths = ICONS[name] || '';
+  return `<svg class="icon${cls?' '+cls:''}" viewBox="0 0 16 16" width="1em" height="1em"
+    fill="none" stroke="currentColor" stroke-width="1.75"
+    stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths}</svg>`;
+}
+
+// ── Toast 通知（与 index.html 保持一致）────────────────────
+let _toastTimer;
+function showToast(iconName, msg, isErr = false) {
+  const el = document.getElementById('toast');
+  const cls = isErr ? 'icon-red' : (iconName === 'bolt' ? 'icon-yellow' : 'icon-green');
+  el.innerHTML = icon(iconName, cls) + `<span>${msg}</span>`;
+  el.style.borderColor = isErr ? 'var(--red)' : 'var(--green)';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
 
 function setLang(lang) {
   _lang = lang; localStorage.setItem('ai-guard-lang', lang);
@@ -352,6 +396,23 @@ function escapeHtml(text) {
   return d.innerHTML;
 }
 
+function openPrivacySettings() {
+  // 打开 macOS 系统设置 → 隐私与安全性 → 完全磁盘访问权限
+  fetch('/api/system/open-privacy-settings', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(_lang === 'zh'
+          ? '已打开系统设置。请在「完全磁盘访问权限」中勾选 AI Guard，然后刷新页面。'
+          : 'System Settings opened. Enable AI Guard in "Full Disk Access", then refresh.');
+      }
+    })
+    .catch(e => {
+      console.error('打开隐私设置失败:', e);
+      showToast('cross', t('loadBrowsersFailed'), true);
+    });
+}
+
 /* ══════════════════════════════════════════════════
    AI Config
    ══════════════════════════════════════════════════ */
@@ -410,11 +471,11 @@ async function selectBrowser(browser, cardEl) {
   document.querySelectorAll('.browser-card').forEach(c => c.classList.remove('active'));
   if (cardEl) cardEl.classList.add('active');
 
-  // show sections
-  document.getElementById('stats-section').style.display = '';
-  document.getElementById('ai-organize-section').style.display = '';
-  document.getElementById('middle-section').style.display = '';
-  document.getElementById('bookmarks-card').style.display = '';
+  // show sections — 移除 hidden class
+  document.getElementById('stats-section').classList.remove('hidden');
+  document.getElementById('ai-organize-section').classList.remove('hidden');
+  document.getElementById('middle-section').classList.remove('hidden');
+  document.getElementById('bookmarks-card').classList.remove('hidden');
   document.getElementById('btn-ai-organize').disabled = false;
 
   await Promise.all([loadBookmarks(browser), loadStats(browser)]);
@@ -437,7 +498,10 @@ async function loadStats(browser) {
     folderStats = s.folders;
     renderFolderDist();
     populateFolderFilter();
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error('加载书签数据失败:', e);
+    showToast('cross', t('loadBookmarksFailed'), true);
+  }
 }
 
 function renderFolderDist() {
@@ -481,7 +545,44 @@ async function loadBookmarks(browser) {
   try {
     const res = await fetch(`/api/bookmarks/${browser}`);
     const data = await res.json();
+
+    if (res.status === 403 || res.status === 500 || res.status === 404) {
+      // Safari 权限问题 / 其他错误
+      const detail = data.detail || '';
+      if (res.status === 403 || browser === 'safari') {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:32px;">
+          <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="var(--yellow)" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v1"/><path d="M2 14h12L8 2 2 14z"/></svg>
+          <div class="title">${_lang === 'zh' ? '需要授权' : 'Permission Required'}</div>
+          <div style="max-width:400px;margin:8px auto;font-size:12px;color:var(--muted);">
+            ${_lang === 'zh'
+              ? 'Safari 书签需要「完全磁盘访问权限」。'
+              : 'Safari bookmarks require "Full Disk Access".'}
+          </div>
+          <button class="btn btn-blue" style="margin-top:12px;padding:8px 20px;" onclick="openPrivacySettings()">
+            ${_lang === 'zh' ? '打开系统设置' : 'Open System Settings'}
+          </button>
+        </div></td></tr>`;
+      } else {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--red);">${escapeHtml(detail)}</td></tr>`;
+      }
+      return;
+    }
+
     allBookmarks = data.bookmarks || [];
+
+    if (allBookmarks.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:32px;">
+        <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 2h10a1 1 0 0 1 1 1v11l-6-3-6 3V3a1 1 0 0 1 1-1z"/></svg>
+        <div class="title">${_lang === 'zh' ? '该浏览器暂无书签' : 'No bookmarks in this browser'}</div>
+        <div style="font-size:12px;color:var(--muted);max-width:360px;margin:8px auto;">
+          ${_lang === 'zh'
+            ? '该浏览器的默认 Profile 中没有保存书签。如果你在其他 Profile 中有书签，请切换到对应 Profile。'
+            : 'Default profile has no bookmarks. Switch to the correct profile if you use a different one.'}
+        </div>
+      </div></td></tr>`;
+      return;
+    }
+
     filterBookmarks();
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--red);">${e.message}</td></tr>`;
@@ -857,6 +958,9 @@ async function runStep2AI() {
     const data = await res.json();
     wizardData.aiCategories = data.result;
 
+    // 构建整理后的书签映射（书签ID → 新分类）
+    wizardData.reorganizedBookmarks = buildReorganizedMap(wizardData.aiCategories);
+
     wizardStep = 2;
     nextBtn.disabled = false;
     renderStep2Results();
@@ -864,6 +968,26 @@ async function runStep2AI() {
     body.innerHTML = `<div style="color:var(--red);padding:20px;text-align:center;">${e.message}</div>`;
     nextBtn.disabled = false;
   }
+}
+
+function buildReorganizedMap(aiResult) {
+  /**
+   * 根据 AI 返回的分类建议，构建书签重组映射
+   * 返回格式：{ bookmarkIndex: newFolderName }
+   */
+  const map = {};
+  const categories = (aiResult && aiResult.categories) || [];
+
+  categories.forEach(cat => {
+    const folderName = cat.name;
+    const bookmarkIndices = cat.bookmarks || [];
+    bookmarkIndices.forEach(idx => {
+      // AI 返回的是 1-based index，转为 0-based
+      map[idx - 1] = folderName;
+    });
+  });
+
+  return map;
 }
 
 function renderStep2Results() {
@@ -914,80 +1038,327 @@ function renderStep2Results() {
   body.innerHTML = html;
 }
 
-// Step 3/4: Preview + Export
-function renderPreviewAndExport() {
+// Step 3/4: Preview + Edit + Export
+function renderPreviewAndEdit() {
+  const body = document.getElementById('wizard-body');
+  const nextBtn = document.getElementById('wizard-next');
+  nextBtn.style.display = '';
+  nextBtn.textContent = _lang === 'zh' ? '确认并导出' : 'Confirm & Export';
+  nextBtn.disabled = false;
+
+  const totalSteps = wizardData.aiConfigured ? 5 : 4;
+  const currentStep = wizardData.aiConfigured ? 3 : 2;
+
+  document.getElementById('wizard-title').textContent = _lang === 'zh' ? '预览和微调' : 'Preview & Edit';
+  const stepsEl = document.getElementById('wizard-steps');
+  stepsEl.innerHTML = Array.from({length: totalSteps}, (_, i) =>
+    `<div class="step-dot${i === currentStep ? ' active' : (i < currentStep ? ' done' : '')}"></div>`
+  ).join('');
+  document.getElementById('wizard-back').style.display = '';
+
+  const cats = (wizardData.aiCategories && wizardData.aiCategories.categories) || [];
+  const reMap = wizardData.reorganizedBookmarks || {};
+  const sampleBms = allBookmarks.slice(0, 50); // AI 只分析了前 50 条
+
+  // 获取所有分类名
+  const allFolderNames = [...new Set([
+    ...cats.map(c => c.name),
+    ...sampleBms.map(b => b.folder || (_lang === 'zh' ? '未分类' : 'Uncategorized'))
+  ])].sort();
+
+  // ── 看板概览 ──
+  let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+    ${_lang === 'zh'
+      ? '点击分类查看详情，使用下拉框修改书签的目标分类。'
+      : 'Click a category to see details. Use dropdowns to change bookmark categories.'}
+  </div>`;
+
+  // 统计各分类书签数
+  const catCounts = {};
+  cats.forEach(cat => {
+    catCounts[cat.name] = (cat.bookmarks || []).length;
+  });
+
+  // 计算未被分类的数量
+  const classifiedIndices = new Set();
+  cats.forEach(cat => (cat.bookmarks || []).forEach(i => classifiedIndices.add(i - 1)));
+  const unclassifiedCount = sampleBms.filter((_, i) => !classifiedIndices.has(i)).length;
+  if (unclassifiedCount > 0) {
+    catCounts[_lang === 'zh' ? '未变更' : 'Unchanged'] = unclassifiedCount;
+  }
+
+  // 看板卡片
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:16px;">';
+  Object.entries(catCounts).forEach(([name, count]) => {
+    const isActive = wizardData._previewActiveCategory === name;
+    html += `<div class="cat-preview-card${isActive ? ' active' : ''}" onclick="togglePreviewCategory('${escapeHtml(name)}')">
+      <div style="font-weight:600;font-size:13px;">${escapeHtml(name)}</div>
+      <div style="font-size:22px;font-weight:700;color:var(--blue);margin:4px 0;">${count}</div>
+      <div style="font-size:11px;color:var(--muted);">${_lang === 'zh' ? '个书签' : 'bookmarks'}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // ── 详细表格（展示选中分类的书签）──
+  const activeCategory = wizardData._previewActiveCategory;
+  if (activeCategory) {
+    // 找出该分类下的书签
+    let categoryBookmarks = [];
+
+    if (activeCategory === (_lang === 'zh' ? '未变更' : 'Unchanged')) {
+      categoryBookmarks = sampleBms.map((bm, i) => ({...bm, _origIndex: i}))
+        .filter(bm => !classifiedIndices.has(bm._origIndex));
+    } else {
+      const cat = cats.find(c => c.name === activeCategory);
+      if (cat) {
+        categoryBookmarks = (cat.bookmarks || []).map(idx => {
+          const bm = sampleBms[idx - 1];
+          return bm ? {...bm, _origIndex: idx - 1} : null;
+        }).filter(Boolean);
+      }
+    }
+
+    html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:280px;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--card2);position:sticky;top:0;z-index:1;">
+            <th style="text-align:left;padding:8px;width:30%;">${_lang === 'zh' ? '名称' : 'Name'}</th>
+            <th style="text-align:left;padding:8px;width:30%;">${_lang === 'zh' ? '当前文件夹' : 'Current'}</th>
+            <th style="text-align:left;padding:8px;width:30%;">${_lang === 'zh' ? '新分类' : 'New Category'}</th>
+            <th style="text-align:center;padding:8px;width:10%;">${_lang === 'zh' ? '操作' : 'Action'}</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    categoryBookmarks.forEach(bm => {
+      const origIdx = bm._origIndex;
+      const currentFolder = bm.folder || (_lang === 'zh' ? '未分类' : 'Uncategorized');
+      const newFolder = reMap[origIdx] || currentFolder;
+      const changed = newFolder !== currentFolder;
+
+      html += `<tr style="border-top:1px solid var(--border);${changed ? 'background:rgba(88,166,255,0.04);' : ''}">
+        <td style="padding:6px 8px;">
+          <a href="${escapeHtml(bm.url)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;" title="${escapeHtml(bm.url)}">${escapeHtml((bm.name || '').slice(0, 30))}</a>
+        </td>
+        <td style="padding:6px 8px;color:var(--muted);">${escapeHtml(currentFolder)}</td>
+        <td style="padding:6px 8px;">
+          <select style="width:100%;padding:3px 6px;font-size:11px;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:4px;"
+                  onchange="updateBookmarkCategory(${origIdx}, this.value)">
+            ${allFolderNames.map(f =>
+              `<option value="${escapeHtml(f)}"${f === newFolder ? ' selected' : ''}>${escapeHtml(f)}</option>`
+            ).join('')}
+            <option value="${escapeHtml(currentFolder)}"${!allFolderNames.includes(currentFolder) ? ' selected' : ''}>${escapeHtml(currentFolder)} (${_lang === 'zh' ? '原始' : 'original'})</option>
+          </select>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          ${changed
+            ? `<button style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--muted);cursor:pointer;"
+                onclick="revertBookmarkCategory(${origIdx})">${_lang === 'zh' ? '还原' : 'Revert'}</button>`
+            : `<span style="color:var(--muted2);font-size:10px;">—</span>`}
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+  }
+
+  // 底部操作按钮
+  const changedCount = Object.keys(reMap).filter(k => {
+    const bm = sampleBms[parseInt(k)];
+    return bm && reMap[k] !== bm.folder;
+  }).length;
+
+  html += `<div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between;align-items:center;">
+    <div style="font-size:12px;color:var(--muted);">
+      ${_lang === 'zh' ? `共 ${changedCount} 个书签将被重新分类` : `${changedCount} bookmarks will be recategorized`}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" style="font-size:12px;padding:6px 12px;"
+              onclick="acceptAllSuggestions()">${_lang === 'zh' ? '采纳全部建议' : 'Accept All'}</button>
+      <button class="btn" style="font-size:12px;padding:6px 12px;"
+              onclick="resetReorganization()">${_lang === 'zh' ? '重置' : 'Reset'}</button>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+function togglePreviewCategory(name) {
+  if (wizardData._previewActiveCategory === name) {
+    wizardData._previewActiveCategory = null;
+  } else {
+    wizardData._previewActiveCategory = name;
+  }
+  renderPreviewAndEdit();
+}
+
+function updateBookmarkCategory(origIndex, newFolder) {
+  if (!wizardData.reorganizedBookmarks) wizardData.reorganizedBookmarks = {};
+  wizardData.reorganizedBookmarks[origIndex] = newFolder;
+  // 不重新渲染整个面板，只更新计数
+}
+
+function revertBookmarkCategory(origIndex) {
+  if (wizardData.reorganizedBookmarks) {
+    delete wizardData.reorganizedBookmarks[origIndex];
+  }
+  renderPreviewAndEdit();
+}
+
+function acceptAllSuggestions() {
+  // 已经在 buildReorganizedMap 中构建了，无需改动
+  renderPreviewAndEdit();
+}
+
+function resetReorganization() {
+  wizardData.reorganizedBookmarks = {};
+  renderPreviewAndEdit();
+}
+
+// Step 4/5: Export
+function renderFinalExport() {
   const body = document.getElementById('wizard-body');
   const nextBtn = document.getElementById('wizard-next');
   nextBtn.style.display = 'none';
 
-  const isLastStep = wizardData.aiConfigured ? 3 : 2;
+  const totalSteps = wizardData.aiConfigured ? 5 : 4;
+  const lastStep = totalSteps - 1;
   document.getElementById('wizard-title').textContent = t('wizardStep4');
 
   const stepsEl = document.getElementById('wizard-steps');
-  const totalSteps = wizardData.aiConfigured ? 4 : 3;
   stepsEl.innerHTML = Array.from({length: totalSteps}, (_, i) =>
-    `<div class="step-dot${i === isLastStep ? ' active' : ' done'}"></div>`
+    `<div class="step-dot${i === lastStep ? ' active' : ' done'}"></div>`
   ).join('');
 
-  const a = wizardData.analysis;
-  const issueCount = a ? a.issue_count : 0;
+  const reMap = wizardData.reorganizedBookmarks || {};
+  const sampleBms = allBookmarks.slice(0, 50);
+  const changedCount = Object.keys(reMap).filter(k => {
+    const bm = sampleBms[parseInt(k)];
+    return bm && reMap[k] !== bm.folder;
+  }).length;
 
   let html = `
-    <div class="summary-box">
-      <div class="big">${allBookmarks.length.toLocaleString()}</div>
-      <div class="label">${t('totalBookmarks')}</div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:42px;font-weight:800;color:var(--blue);">${changedCount}</div>
+      <div style="font-size:13px;color:var(--muted);">${_lang === 'zh' ? '个书签将被重新分类' : 'bookmarks recategorized'}</div>
     </div>
     <div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px;">
       ${t('exportDesc')}
     </div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn btn-blue" style="padding:10px 24px;" onclick="exportBookmarks('html');closeWizard()">
+      <button class="btn btn-blue" style="padding:10px 24px;" onclick="exportReorganized('html')">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
         ${t('exportHtml')}
       </button>
-      <button class="btn" style="padding:10px 24px;" onclick="exportBookmarks('json');closeWizard()">
+      <button class="btn" style="padding:10px 24px;" onclick="exportReorganized('json')">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
         ${t('exportJson')}
       </button>
-      <button class="btn" style="padding:10px 24px;" onclick="exportBookmarks('csv');closeWizard()">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 12v2h12v-2"/></svg>
-        ${t('exportCsv')}
-      </button>
-    </div>`;
-
-  if (issueCount > 0) {
-    html += `<div style="margin-top:20px;padding:12px 16px;background:rgba(210,153,34,.06);border:1px solid rgba(210,153,34,.2);border-radius:8px;font-size:12px;color:var(--muted);">
+    </div>
+    <div style="margin-top:20px;padding:12px 16px;background:rgba(210,153,34,.06);border:1px solid rgba(210,153,34,.2);border-radius:8px;font-size:12px;color:var(--muted);">
       ${_lang === 'zh'
-        ? 'AI Guard 目前只能导出书签，不会直接修改浏览器中的书签。导出后可手动导入到浏览器。未来版本将支持直接修改。'
-        : 'AI Guard can only export bookmarks for now. It will not modify your browser bookmarks directly. You can import the exported file manually. Direct modification will be supported in future versions.'}
+        ? '导出的文件包含整理后的分类结构。下载 HTML 格式后可在浏览器中通过「导入书签」功能导入。'
+        : 'Exported file contains the reorganized structure. Download HTML and import via browser\'s "Import Bookmarks" feature.'}
     </div>`;
-  }
 
   body.innerHTML = html;
+}
+
+async function exportReorganized(format) {
+  // 构建整理后的书签数据
+  const reMap = wizardData.reorganizedBookmarks || {};
+  const sampleBms = allBookmarks.slice(0, 50);
+
+  const reorganized = sampleBms.map((bm, i) => ({
+    ...bm,
+    folder: reMap[i] || bm.folder
+  }));
+
+  // 未被 AI 分析的书签保持原样
+  const rest = allBookmarks.slice(50);
+  const allReorganized = [...reorganized, ...rest];
+
+  if (format === 'html') {
+    // 生成可导入浏览器的 HTML
+    const htmlContent = generateBookmarkHtml(allReorganized);
+    downloadFile(`bookmarks_organized.html`, htmlContent, 'text/html');
+  } else {
+    const jsonContent = JSON.stringify(allReorganized, null, 2);
+    downloadFile(`bookmarks_organized.json`, jsonContent, 'application/json');
+  }
+
+  closeWizard();
+}
+
+function generateBookmarkHtml(bookmarks) {
+  // 按文件夹分组
+  const folders = {};
+  bookmarks.forEach(bm => {
+    const folder = bm.folder || (_lang === 'zh' ? '未分类' : 'Uncategorized');
+    if (!folders[folder]) folders[folder] = [];
+    folders[folder].push(bm);
+  });
+
+  let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>\n`;
+
+  Object.entries(folders).sort((a, b) => a[0].localeCompare(b[0])).forEach(([folder, bms]) => {
+    html += `    <DT><H3>${escapeHtml(folder)}</H3>\n    <DL><p>\n`;
+    bms.forEach(bm => {
+      html += `        <DT><A HREF="${escapeHtml(bm.url)}">${escapeHtml(bm.name)}</A>\n`;
+    });
+    html += `    </DL><p>\n`;
+  });
+
+  html += `</DL><p>`;
+  return html;
+}
+
+function downloadFile(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Override wizardNext to handle final steps
 const _origWizardNext = wizardNext;
 wizardNext = function() {
-  const maxStep = wizardData.aiConfigured ? 3 : 2;
-
+  // Step 0: Start scan
   if (wizardStep === 0) { runStep1Scan(); return; }
 
-  // After scan results shown (step = 1)
+  // Step 1: After scan results → go to AI or preview
   if (wizardStep === 1) {
     if (wizardData.aiConfigured) {
       runStep2AI();
     } else {
-      wizardStep = maxStep;
-      renderPreviewAndExport();
+      // No AI: go to preview directly (skip AI step)
+      wizardStep = 2;
+      renderPreviewAndEdit();
     }
     return;
   }
 
-  // After AI results (step = 2, only if AI configured)
+  // Step 2: After AI results → go to preview
   if (wizardStep === 2 && wizardData.aiConfigured) {
-    wizardStep = maxStep;
-    renderPreviewAndExport();
+    wizardStep = 3;
+    renderPreviewAndEdit();
+    return;
+  }
+
+  // Step 3 (or 2 without AI): Preview → Export
+  const previewStep = wizardData.aiConfigured ? 3 : 2;
+  if (wizardStep === previewStep) {
+    wizardStep = previewStep + 1;
+    renderFinalExport();
     return;
   }
 };
@@ -995,11 +1366,22 @@ wizardNext = function() {
 // Override wizardBack to handle steps correctly
 const _origWizardBack = wizardBack;
 wizardBack = function() {
-  const maxStep = wizardData.aiConfigured ? 3 : 2;
-  if (wizardStep === maxStep) {
-    wizardStep = wizardData.aiConfigured ? 2 : 1;
-    if (wizardStep === 2) { renderStep2Results(); }
-    else { renderStep1Results(); }
+  const previewStep = wizardData.aiConfigured ? 3 : 2;
+  const exportStep = previewStep + 1;
+
+  if (wizardStep === exportStep) {
+    wizardStep = previewStep;
+    renderPreviewAndEdit();
+    return;
+  }
+  if (wizardStep === previewStep) {
+    if (wizardData.aiConfigured) {
+      wizardStep = 2;
+      renderStep2Results();
+    } else {
+      wizardStep = 1;
+      renderStep1Results();
+    }
     return;
   }
   if (wizardStep === 2) { wizardStep = 1; renderStep1Results(); return; }
