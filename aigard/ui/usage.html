@@ -376,6 +376,11 @@
           <select class="filter-select" id="sessions-project-filter" style="min-width:140px;">
             <option value="" data-i18n="allProjects">全部项目</option>
           </select>
+          <select class="filter-select" id="sessions-source-filter" style="min-width:120px;">
+            <option value="" data-i18n="allTools">全部工具</option>
+            <option value="claude-code">Claude Code</option>
+            <option value="codex">Codex</option>
+          </select>
           <span style="font-size:0.78rem;color:var(--text-secondary);" id="sessions-count-label"></span>
         </div>
       </div>
@@ -445,6 +450,7 @@ let _activeTab = 'dashboard';
 let _tokenViewMode = 'total';
 let _refreshing = false;
 let _selectedProject = '';
+let _selectedSource = '';
 let _dailyData = [];
 
 // ── SVG 图标库（与 index.html 保持一致）────────────────────
@@ -637,6 +643,15 @@ async function initProjectFilter() {
       _selectedProject = select.value;
       loadData();
     });
+
+    // 工具筛选下拉
+    const sourceFilter = document.getElementById('source-filter');
+    if (sourceFilter) {
+      sourceFilter.addEventListener('change', () => {
+        _selectedSource = sourceFilter.value;
+        loadData();
+      });
+    }
   } catch (e) {
     console.error('加载项目列表失败:', e);
     showToast('cross', t().loadProjectsFailed, true);
@@ -781,6 +796,7 @@ async function loadData() {
       const p = { ...base };
       if (preset) p.preset = preset;
       if (_selectedProject) p.project = _selectedProject;
+      if (_selectedSource) p.source = _selectedSource;
       const qs = new URLSearchParams(p).toString();
       return qs ? '?' + qs : '';
     };
@@ -1290,6 +1306,7 @@ async function loadSessionsData(reset = true) {
   try {
     const params = new URLSearchParams({ limit: SESSION_PAGE_SIZE, offset: _sessionOffset });
     if (_sessionProject) params.set('project', _sessionProject);
+    if (_selectedSource) params.set('source', _selectedSource);
 
     const data = await fetch(`/api/usage/sessions?${params}`).then(r => r.json());
     _sessionTotal = data.total || 0;
@@ -1376,6 +1393,15 @@ function renderSessionsView() {
         _sessionProject = sessProj.value;
         loadSessionsData(true);
       });
+
+      // 会话工具筛选器
+      const sessSource = document.getElementById('sessions-source-filter');
+      if (sessSource && !sessSource.dataset.bound) {
+        sessSource.dataset.bound = 'true';
+        sessSource.addEventListener('change', () => {
+          loadSessionsData(true);
+        });
+      }
     }).catch((e) => {
       console.error('加载项目列表失败:', e);
       showToast('cross', t().loadProjectsFailed, true);
@@ -1416,7 +1442,12 @@ window.loadMoreSessions = function() {
 // ===== 月视图 =====
 async function loadMonthlyData() {
   try {
-    const data = await fetch('/api/usage/monthly').then(r => r.json());
+    const params = new URLSearchParams();
+    if (_selectedProject) params.append('project', _selectedProject);
+    if (_selectedSource) params.append('source', _selectedSource);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    const data = await fetch(`/api/usage/monthly${queryString}`).then(r => r.json());
     _monthlyData = data;
     renderMonthlyView();
   } catch (e) {

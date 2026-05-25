@@ -310,6 +310,30 @@ class PricingManager:
         ),
 
         # ===== GPT 系列 =====
+        'gpt-5-codex': ModelPricing(
+            input_price=1.25,
+            output_price=10.0,
+            cache_creation_price=1.25,
+            cache_read_price=0.125,
+        ),
+        'gpt-5.1-codex': ModelPricing(
+            input_price=1.25,
+            output_price=10.0,
+            cache_creation_price=1.25,
+            cache_read_price=0.125,
+        ),
+        'gpt-5.2-codex': ModelPricing(
+            input_price=1.25,
+            output_price=10.0,
+            cache_creation_price=1.25,
+            cache_read_price=0.125,
+        ),
+        'gpt-5.3-codex': ModelPricing(
+            input_price=1.25,
+            output_price=10.0,
+            cache_creation_price=1.25,
+            cache_read_price=0.125,
+        ),
         'gpt-4o': ModelPricing(
             input_price=2.50,
             output_price=10.0,
@@ -381,12 +405,18 @@ class PricingManager:
             cache_read_price=0.20,
         ),
 
-        # ===== 零价模型 =====
+        # ===== 零价/特殊模型 =====
         '<synthetic>': ModelPricing(
             input_price=0.0,
             output_price=0.0,
             cache_creation_price=0.0,
             cache_read_price=0.0,
+        ),
+        'unknown': ModelPricing(
+            input_price=3.0,
+            output_price=15.0,
+            cache_creation_price=3.75,
+            cache_read_price=0.30,
         ),
     }
 
@@ -444,6 +474,10 @@ class PricingManager:
         ('mimo-v2.5-pro',     'mimo-v2.5-pro'),
         ('mimo',              'mimo-v2.5-pro'),
         # GPT
+        ('gpt-5.3-codex',     'gpt-5.3-codex'),
+        ('gpt-5.2-codex',     'gpt-5.2-codex'),
+        ('gpt-5.1-codex',     'gpt-5.1-codex'),
+        ('gpt-5-codex',       'gpt-5-codex'),
         ('gpt-4o-mini',       'gpt-4o-mini'),
         ('gpt-4o',            'gpt-4o'),
         ('gpt-4-turbo',       'gpt-4-turbo'),

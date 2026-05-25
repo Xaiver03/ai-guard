@@ -23,7 +23,7 @@ DATA_FILES = [
                        "aigard/ui/js/usage-pricing.js",
                        "aigard/ui/js/usage-icons.js"]),
     ("",             ["config.toml"]),
-    ("assets",       ["assets/icon.icns", "assets/menubar_icon.png"]),
+    ("assets",       ["assets/icon.icns", "assets/menubar_icon.png", "assets/menubar_icon_color.png"]),
 ]
 
 OPTIONS = {

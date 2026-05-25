@@ -4,20 +4,29 @@
  */
 
 /** 从 API 并行加载数据 */
-export async function loadAllData(preset) {
-  const params = preset ? `?preset=${preset}` : '';
+export async function loadAllData(preset, project = null, source = null) {
+  const params = new URLSearchParams();
+  if (preset) params.append('preset', preset);
+  if (project) params.append('project', project);
+  if (source) params.append('source', source);
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+
   const [summary, daily, models] = await Promise.all([
-    fetch(`/api/usage/summary${params}`).then(r => r.json()),
-    fetch(`/api/usage/daily${params}`).then(r => r.json()),
-    fetch(`/api/usage/models${params}`).then(r => r.json()),
+    fetch(`/api/usage/summary${queryString}`).then(r => r.json()),
+    fetch(`/api/usage/daily${queryString}`).then(r => r.json()),
+    fetch(`/api/usage/models${queryString}`).then(r => r.json()),
   ]);
   return { summary, daily, models };
 }
 
 /** 从 API 加载小时数据 */
-export async function loadHourlyData(preset) {
-  const params = preset ? `?preset=${preset}` : '';
-  return fetch(`/api/usage/hourly${params}`).then(r => r.json());
+export async function loadHourlyData(preset, project = null, source = null) {
+  const params = new URLSearchParams();
+  if (preset) params.append('preset', preset);
+  if (project) params.append('project', project);
+  if (source) params.append('source', source);
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  return fetch(`/api/usage/hourly${queryString}`).then(r => r.json());
 }
 
 /** 判断是否为小时级视图 */

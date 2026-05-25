@@ -357,12 +357,12 @@ function applyI18n() {
 /* ══════════════════════════════════════════════════
    Theme
    ══════════════════════════════════════════════════ */
-const ICONS = {
+const THEME_ICONS = {
   moon: `<path d="M12 12.5A5.5 5.5 0 0 1 6.5 4a5.5 5.5 0 1 0 7 7.5c-.5.1-1 .05-1.5 0z" fill="currentColor" stroke="none"/>`,
   sun: `<circle cx="8" cy="8" r="3"/><line x1="8" y1="1.5" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="14.5" y2="8"/><line x1="3.5" y1="3.5" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="12.5" y2="12.5"/><line x1="11.5" y1="3.5" x2="12.5" y2="4.5"/><line x1="3.5" y1="11.5" x2="4.5" y2="12.5"/>`,
 };
 function svgIcon(name) {
-  return `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
+  return `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${THEME_ICONS[name]||''}</svg>`;
 }
 
 function applyTheme(theme) {

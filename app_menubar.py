@@ -127,14 +127,14 @@ class _PopoverClickHandler(NSObject):
 
 class AIGuardApp(rumps.App):
     def __init__(self):
-        # 使用纯黑色图标（Template 模式要求）
+        # 使用纯黑色图标 + template 模式（macOS 菜单栏规范）
         icon_path = Path(__file__).parent / "assets" / "menubar_icon.png"
 
         super().__init__(
             name="AI Guard",
-            title=None,        # 不显示文字，只显示图标
+            title=None,
             icon=str(icon_path) if icon_path.exists() else None,
-            template=True,     # 模板图片：系统自动处理深色/浅色
+            template=True,
             quit_button=None,
         )
 
@@ -186,7 +186,7 @@ class AIGuardApp(rumps.App):
 
         # 创建 Popover
         self._popover = NSPopover.alloc().init()
-        self._popover.setContentSize_((300, 480))
+        self._popover.setContentSize_((300, 520))  # 匹配 view_builder 中的容器高度
         self._popover.setBehavior_(1)  # NSPopoverBehaviorTransient (点击外部自动关闭)
 
         # 创建 PopoverViewController（使用 ObjC 风格初始化）
@@ -197,6 +197,8 @@ class AIGuardApp(rumps.App):
 
         # 获取 NSStatusItem 并替换菜单为自定义点击行为
         nsstatusitem = self._nsapp.nsstatusitem
+        button = nsstatusitem.button()
+
         nsstatusitem.setMenu_(None)  # 移除 rumps 的默认菜单
 
         # 创建 ObjC handler 对象来处理点击
@@ -206,36 +208,31 @@ class AIGuardApp(rumps.App):
         self._click_handler.popover_controller = self._popover_controller
 
         # 设置按钮点击 action
-        button = nsstatusitem.button()
         button.setTarget_(self._click_handler)
         button.setAction_("togglePopover:")
 
-        # 显式重新设置图标（确保在自定义点击行为后图标仍然显示）
+        # 显式重新设置图标（确保自定义点击行为后图标不丢失）
         if self._icon_nsimage:
+            nsstatusitem.setImage_(self._icon_nsimage)
             button.setImage_(self._icon_nsimage)
+        else:
+            icon_path = Path(__file__).parent / "assets" / "menubar_icon.png"
+            if icon_path.exists():
+                from rumps.rumps import _nsimage_from_file
+                img = _nsimage_from_file(str(icon_path), template=True)
+                if img:
+                    nsstatusitem.setImage_(img)
+                    button.setImage_(img)
 
     # ── 定时刷新 ──────────────────────────────────────────────
 
     def _refresh_status(self, _):
-        """每 15 秒从 history 读最新指标，更新菜单栏图标和 Popover"""
+        """每 15 秒从 history 读最新指标，更新 Popover"""
         latest = _main_mod.history.latest
         if not latest:
             return
 
-        mem   = latest.get("mem_percent", 0)
-        swap  = latest.get("swap_percent", 0)
-        level = latest.get("alert_level", "normal")
-
-        # 仅在等级变化时切换图标
-        if level != self._last_level:
-            symbol_name = _SYMBOLS.get(level, _SYMBOLS["normal"])
-            icon_path = _sf_symbol_to_png(symbol_name)
-            if icon_path:
-                self.icon = icon_path
-            self._last_level = level
-
-        # 菜单栏只显示图标，不显示文字
-        self.title = None
+        # 注意：不修改菜单栏图标，保持彩色 logo 不变
 
         # 更新 Popover（仅在显示时）
         if self._popover and self._popover.isShown() and self._popover_controller:
