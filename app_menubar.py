@@ -127,10 +127,13 @@ class _PopoverClickHandler(NSObject):
 
 class AIGuardApp(rumps.App):
     def __init__(self):
+        # 使用纯黑色图标（Template 模式要求）
+        icon_path = Path(__file__).parent / "assets" / "menubar_icon.png"
+
         super().__init__(
             name="AI Guard",
-            title="AI Guard",  # 显示应用名称
-            icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
+            title=None,        # 不显示文字，只显示图标
+            icon=str(icon_path) if icon_path.exists() else None,
             template=True,     # 模板图片：系统自动处理深色/浅色
             quit_button=None,
         )
@@ -206,6 +209,10 @@ class AIGuardApp(rumps.App):
         button = nsstatusitem.button()
         button.setTarget_(self._click_handler)
         button.setAction_("togglePopover:")
+
+        # 显式重新设置图标（确保在自定义点击行为后图标仍然显示）
+        if self._icon_nsimage:
+            button.setImage_(self._icon_nsimage)
 
     # ── 定时刷新 ──────────────────────────────────────────────
 

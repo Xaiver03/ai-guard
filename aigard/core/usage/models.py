@@ -18,6 +18,7 @@ class UsageEntry:
     cost: float
     project: str
     session_id: str
+    source: str = "claude-code"  # 数据来源：claude-code, codex, cursor
 
 
 @dataclass(slots=True)

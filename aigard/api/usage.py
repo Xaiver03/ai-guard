@@ -9,7 +9,7 @@ import os
 import threading
 
 from aigard.core.usage import (
-    ClaudeDataLoader,
+    MultiToolDataLoader,
     UsageCalculator,
     UsageAggregator,
     PricingManager,
@@ -40,7 +40,7 @@ pricing_repository = PricingRepository()
 pricing_manager = PricingManager(repository=pricing_repository)
 calculator = UsageCalculator(pricing_manager)
 aggregator = UsageAggregator(calculator)
-loader = ClaudeDataLoader(claude_dir=_claude_dir)
+loader = MultiToolDataLoader()
 cache = UsageCache()
 
 # 缓存重建锁（防止并发刷新导致数据不一致）
@@ -56,13 +56,13 @@ def _ensure_cache():
     _rebuild_cache()
 
 
-def _rebuild_cache(project: Optional[str] = None):
+def _rebuild_cache(project: Optional[str] = None, source: Optional[str] = None):
     """重建缓存（支持按项目筛选），线程安全"""
     with _rebuild_lock:
         if project:
-            entries = loader.load_project_usage(project)
+            entries = loader.load_project_usage(project, source=source)
         else:
-            entries = loader.load_all_usage()
+            entries = loader.load_all_usage(source=source)
         if not entries:
             return
 
@@ -137,13 +137,14 @@ async def get_summary(
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     preset: Optional[str] = Query(None, description="预设范围: today, yesterday, last_3_days, this_week, this_month"),
-    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）")
+    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
 ):
     """获取使用统计总览"""
     try:
         # 项目筛选：实时计算（不使用缓存）
         if project:
-            entries = loader.load_project_usage(project)
+            entries = loader.load_project_usage(project, source=source)
             if not entries:
                 return {
                     'total_cost': 0, 'total_tokens': 0, 'input_tokens': 0, 'output_tokens': 0,
@@ -211,13 +212,14 @@ async def get_daily_usage(
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     preset: Optional[str] = Query(None, description="预设范围"),
-    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）")
+    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
 ):
     """获取每日使用统计"""
     try:
         # 项目筛选：实时计算
         if project:
-            entries = loader.load_project_usage(project)
+            entries = loader.load_project_usage(project, source=source)
             if not entries:
                 return []
 
@@ -271,13 +273,14 @@ async def get_hourly_usage(
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     preset: Optional[str] = Query(None, description="预设范围"),
-    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）")
+    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
 ):
     """获取每小时使用统计"""
     try:
         # 项目筛选：实时计算
         if project:
-            entries = loader.load_project_usage(project)
+            entries = loader.load_project_usage(project, source=source)
             if not entries:
                 return []
 
@@ -390,7 +393,8 @@ async def get_monthly_usage():
 async def get_model_stats(
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
-    preset: Optional[str] = Query(None, description="预设范围")
+    preset: Optional[str] = Query(None, description="预设范围"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
 ):
     """获取模型使用统计"""
     try:
@@ -448,11 +452,12 @@ async def get_projects():
 async def get_sessions(
     project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
     limit: Optional[int] = Query(50, description="返回数量限制"),
-    offset: Optional[int] = Query(0, description="偏移量")
+    offset: Optional[int] = Query(0, description="偏移量"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
 ):
     """获取会话列表"""
     try:
-        summaries = loader.load_session_summaries(project=project)
+        summaries = loader.load_session_summaries(project=project, source=source)
 
         # 分页
         total = len(summaries)
