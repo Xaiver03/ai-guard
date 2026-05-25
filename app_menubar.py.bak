@@ -75,7 +75,7 @@ class AIGuardApp(rumps.App):
     def __init__(self):
         super().__init__(
             name="AI Guard",
-            title=None,  # 只显示图标
+            title="AI Guard",  # 显示应用名称
             icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
             template=True,     # 模板图片：系统自动处理深色/浅色
             quit_button=None,

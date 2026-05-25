@@ -48,9 +48,15 @@ _rebuild_lock = threading.Lock()
 
 
 def _ensure_cache():
-    """确保缓存中有数据，如果没有则从 JSONL 加载"""
+    """确保缓存中有数据且完整（含 model_breakdowns），否则重建"""
     if cache.has_data():
-        return
+        # 检查缓存是否包含 model_breakdowns（旧缓存可能缺失）
+        sample = cache.get_hourly()
+        if sample and isinstance(sample[0], dict) and sample[0].get('model_breakdowns'):
+            return
+        # 缓存不完整，重建
+        logger.info("缓存数据不完整（缺少 model_breakdowns），正在重建...")
+        cache.clear()
 
     logger.info("首次加载 Claude 使用数据到缓存...")
     _rebuild_cache()

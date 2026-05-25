@@ -61,8 +61,9 @@ def build_popover_ui(container, controller):
     W = 300  # 容器宽度
     PAD = 14  # 边距
     INNER_W = W - 2 * PAD  # 内容区宽度
+    H = 480  # 容器高度
 
-    y = 470  # 从顶部开始布局（增加高度以容纳详细信息）
+    y = H - 10  # 从顶部开始布局（留 10px 顶部边距）
 
     metrics_labels = {}
     progress_bars = {}
@@ -234,8 +235,7 @@ def build_popover_ui(container, controller):
     container.addSubview_(status_label)
     metrics_labels['status'] = status_label
 
-    # 调整容器高度
-    container.setFrameSize_((W, 520))
+    # 调整容器高度（不改变，保持初始值）
 
     return metrics_labels, progress_bars
 
