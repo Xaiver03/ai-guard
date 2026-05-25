@@ -1,4 +1,4 @@
-"""app_menubar.py — macOS 菜单栏托盘入口（rumps + SF Symbols）
+"""app_menubar.py — macOS 菜单栏托盘入口（rumps + SF Symbols + NSPopover）
 
 运行方式：
     python app_menubar.py          # 开发模式
@@ -8,6 +8,8 @@
     正常：shield.fill
     警告：exclamationmark.triangle.fill
     危险：xmark.shield.fill
+
+点击行为：显示 NSPopover 弹窗（原生 AppKit 控件）
 """
 
 import os
@@ -16,9 +18,11 @@ import tempfile
 import threading
 import webbrowser
 from pathlib import Path
+from datetime import datetime, timedelta
 
 import rumps
-from AppKit import NSImage
+from AppKit import NSImage, NSPopover
+from Foundation import NSObject
 
 # 禁止 main.py 的 on_startup 自动打开浏览器（菜单栏模式下由用户手动点击）
 os.environ["AIGARD_NO_BROWSER"] = "1"
@@ -45,7 +49,7 @@ def _sf_symbol_to_png(name: str, size: float = 18.0) -> str:
 
     img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(name, None)
     if img is None:
-        return None
+        return _get_fallback_icon()
 
     img = img.copy()
     img.setSize_((size, size))
@@ -53,14 +57,37 @@ def _sf_symbol_to_png(name: str, size: float = 18.0) -> str:
 
     # 导出为 PNG
     from AppKit import NSBitmapImageRep, NSPNGFileType
-    img.lockFocus()
-    rep = NSBitmapImageRep.alloc().initWithFocusedViewRect_(
-        ((0, 0), (size, size))
-    )
-    img.unlockFocus()
-    png_data = rep.representationUsingType_properties_(NSPNGFileType, None)
-    png_data.writeToFile_atomically_(str(cache_path), True)
-    return str(cache_path)
+    try:
+        img.lockFocus()
+        rep = NSBitmapImageRep.alloc().initWithFocusedViewRect_(
+            ((0, 0), (size, size))
+        )
+        img.unlockFocus()
+        png_data = rep.representationUsingType_properties_(NSPNGFileType, None)
+        png_data.writeToFile_atomically_(str(cache_path), True)
+        return str(cache_path)
+    except Exception as e:
+        print(f"[WARN] SF Symbol 转换失败: {e}，使用 fallback 图标")
+        return _get_fallback_icon()
+
+
+def _get_fallback_icon() -> str:
+    """返回 fallback 图标路径（assets/icon.png）"""
+    # 开发模式：从项目根目录读取
+    dev_icon = Path(__file__).parent / "assets" / "icon.png"
+    if dev_icon.exists():
+        return str(dev_icon)
+
+    # 打包模式：从 .app/Contents/Resources 读取
+    if getattr(sys, 'frozen', False):
+        bundle_dir = Path(sys._MEIPASS)
+        bundle_icon = bundle_dir / "assets" / "icon.png"
+        if bundle_icon.exists():
+            return str(bundle_icon)
+
+    # 最后的 fallback：返回 None（rumps 会使用默认图标）
+    print("[ERROR] 找不到任何可用的图标文件")
+    return None
 
 
 # 三种状态图标
@@ -71,12 +98,38 @@ _SYMBOLS = {
 }
 
 
+class _PopoverClickHandler(NSObject):
+    """处理菜单栏按钮点击的 ObjC 类（NSObject 子类，用于 setTarget_/setAction_）"""
+
+    popover = None
+    nsstatusitem = None
+    popover_controller = None
+
+    def togglePopover_(self, sender):
+        """点击菜单栏图标时触发"""
+        if self.popover.isShown():
+            self.popover.close()
+        else:
+            button = self.nsstatusitem.button()
+            self.popover.showRelativeToRect_ofView_preferredEdge_(
+                button.bounds(), button, 3  # NSMinYEdge (向下显示)
+            )
+            # 立即更新一次数据
+            if self.popover_controller:
+                self.popover_controller.update_metrics()
+                self.popover_controller.update_usage()
+                self.popover_controller.update_autokill_button()
+
+
 class AIGuardApp(rumps.App):
     def __init__(self):
+        # 获取初始图标（带 fallback）
+        initial_icon = _sf_symbol_to_png(_SYMBOLS["normal"]) or _get_fallback_icon()
+
         super().__init__(
             name="AI Guard",
             title="AI Guard",  # 显示应用名称
-            icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
+            icon=initial_icon,
             template=True,     # 模板图片：系统自动处理深色/浅色
             quit_button=None,
         )
@@ -91,26 +144,20 @@ class AIGuardApp(rumps.App):
         for name in _SYMBOLS.values():
             _sf_symbol_to_png(name)
 
-        # 持有菜单项引用
-        self._status_item = rumps.MenuItem("状态: 启动中...")
-        self._autokill_item = rumps.MenuItem(
-            "自动终止: 关", callback=self._toggle_autokill
-        )
+        # 读取 usage 自动刷新间隔（秒），默认 1800 秒（30 分钟）
+        usage_cfg = _main_mod.CFG.get("usage", {})
+        self._usage_refresh_interval = usage_cfg.get("auto_refresh_interval", 1800)
 
-        self.menu = [
-            rumps.MenuItem("打开监控面板", callback=self._open_panel),
-            rumps.MenuItem("Claude 使用统计", callback=self._open_usage),
-            rumps.separator,
-            self._status_item,
-            rumps.separator,
-            rumps.MenuItem("一键终止安全进程", callback=self._kill_safe),
-            self._autokill_item,
-            rumps.separator,
-            rumps.MenuItem("检查更新", callback=self._check_update),
-            rumps.MenuItem("偏好设置", callback=self._open_config),
-            rumps.separator,
-            rumps.MenuItem("退出 AI Guard", callback=self._quit),
-        ]
+        # 使用 Timer 替代轮询检查
+        if self._usage_refresh_interval > 0:
+            self._schedule_usage_refresh()
+
+        # Popover 相关
+        self._popover = None
+        self._popover_controller = None
+
+        # 空菜单（rumps 要求有 menu，但我们用 Popover 替代）
+        self.menu = []
 
         # 在后台线程启动 FastAPI
         self._server_thread = threading.Thread(
@@ -118,96 +165,51 @@ class AIGuardApp(rumps.App):
         )
         self._server_thread.start()
 
-        # 每 5 秒刷新菜单栏状态（优化：从 2 秒改为 5 秒）
-        self._timer = rumps.Timer(self._refresh_status, 5)
+        # 每 15 秒刷新菜单栏状态
+        self._timer = rumps.Timer(self._refresh_status, 15)
         self._timer.start()
 
-    # ── 菜单回调 ──────────────────────────────────────────────
+        # 注册 before_start 回调，在 rumps 初始化 StatusBar 后替换为 Popover
+        @rumps.events.before_start
+        def _setup_popover():
+            self._init_popover()
 
-    def _open_panel(self, _):
-        webbrowser.open(self._url)
+    # ── Popover 初始化 ──────────────────────────────────────
 
-    def _open_usage(self, _):
-        webbrowser.open(f"{self._url}/usage.html")
+    def _init_popover(self):
+        """在 rumps 初始化 StatusBar 后，替换默认菜单为 Popover"""
+        from aigard.popover.controller import PopoverViewController
 
-    def _open_config(self, _):
-        import subprocess
-        exe = Path(sys.executable)
-        resources = exe.parent.parent / "Resources"
-        config_path = resources / "config.toml" if (resources / "config.toml").exists() \
-                      else Path(__file__).parent / "config.toml"
-        subprocess.run(["open", "-t", str(config_path)], check=False)
+        # 创建 Popover
+        self._popover = NSPopover.alloc().init()
+        self._popover.setContentSize_((300, 480))
+        self._popover.setBehavior_(1)  # NSPopoverBehaviorTransient (点击外部自动关闭)
 
-    def _kill_safe(self, _):
-        """一键终止所有评分为 safe 的进程"""
-        from aigard.core import kill_process
+        # 创建 PopoverViewController（使用 ObjC 风格初始化）
+        self._popover_controller = PopoverViewController.alloc().initWithThreadsManager_serverUrl_(
+            _main_mod.threads, self._url
+        )
+        self._popover.setContentViewController_(self._popover_controller)
 
-        threads = _main_mod.threads
-        with threads.lock:
-            safe_procs = [p for p in threads.latest_processes if p.get("risk") == "safe"]
+        # 获取 NSStatusItem 并替换菜单为自定义点击行为
+        nsstatusitem = self._nsapp.nsstatusitem
+        nsstatusitem.setMenu_(None)  # 移除 rumps 的默认菜单
 
-        if not safe_procs:
-            rumps.notification("AI Guard", "", "当前没有可安全终止的进程")
-            return
+        # 创建 ObjC handler 对象来处理点击
+        self._click_handler = _PopoverClickHandler.alloc().init()
+        self._click_handler.popover = self._popover
+        self._click_handler.nsstatusitem = nsstatusitem
+        self._click_handler.popover_controller = self._popover_controller
 
-        killed = 0
-        total_freed = 0.0
-        for proc in safe_procs:
-            r = kill_process(proc["pid"])
-            if r.success:
-                killed += 1
-                total_freed += r.mem_freed_mb
-
-        msg = f"已终止 {killed} 个进程，释放 {total_freed:.0f} MB"
-        rumps.notification("AI Guard", "一键终止完成", msg)
-
-    def _toggle_autokill(self, _):
-        threads = _main_mod.threads
-        with threads.lock:
-            threads.autokill_enabled = not threads.autokill_enabled
-            state = threads.autokill_enabled
-        self._autokill_item.title = f"自动终止: {'开' if state else '关'}"
-
-        # 发送通知
-        status = "已开启" if state else "已关闭"
-        msg = "当内存压力过高时，将自动终止安全进程" if state else "不再自动终止进程"
-        rumps.notification("AI Guard", f"自动终止{status}", msg)
-
-    def _check_update(self, _):
-        """检查更新"""
-        import requests
-        try:
-            resp = requests.get(f"{self._url}/api/update/check", timeout=10)
-            if resp.status_code != 200:
-                rumps.notification("AI Guard", "检查更新失败", "无法连接到服务器")
-                return
-
-            data = resp.json()
-            if data.get('has_update'):
-                latest = data['latest_version']
-                current = data['current_version']
-                msg = f"发现新版本 v{latest}（当前 v{current}）"
-
-                # 显示通知
-                rumps.notification("AI Guard", "发现新版本", msg)
-
-                # 打开下载页面
-                if data.get('html_url'):
-                    webbrowser.open(data['html_url'])
-            else:
-                current = data['current_version']
-                rumps.notification("AI Guard", "已是最新版本", f"当前版本 v{current}")
-
-        except Exception as e:
-            rumps.notification("AI Guard", "检查更新失败", str(e))
-
-    def _quit(self, _):
-        rumps.quit_application()
+        # 设置按钮点击 action
+        button = nsstatusitem.button()
+        button.setTarget_(self._click_handler)
+        button.setAction_("togglePopover:")
 
     # ── 定时刷新 ──────────────────────────────────────────────
 
     def _refresh_status(self, _):
-        """每 2 秒从 history 读最新指标，更新菜单栏图标和状态行"""
+        """每 15 秒从 history 读最新指标，更新菜单栏图标和 Popover"""
         latest = _main_mod.history.latest
         if not latest:
             return
@@ -224,38 +226,75 @@ class AIGuardApp(rumps.App):
                 self.icon = icon_path
             self._last_level = level
 
-        # 菜单栏标题 - 多行显示（rumps 支持 \n）
-        cpu = latest.get("cpu_percent", 0)
-        disk = latest.get("disk_percent", 0)
+        # 菜单栏只显示图标，不显示文字
+        self.title = None
 
-        # 菜单栏只显示图标，不显示文字（避免占用太多宽度）
-        # 数据统计信息放在下拉菜单的状态行中
-        self.title = None  # 只显示图标
+        # 更新 Popover（仅在显示时）
+        if self._popover and self._popover.isShown() and self._popover_controller:
+            self._popover_controller.update_metrics()
+            self._popover_controller.update_usage()
+            self._popover_controller.update_autokill_button()
 
-        # 状态行 - 详细信息（在下拉菜单中显示）
-        usage = _main_mod.threads.get_today_usage()
-        usage_str = ""
-        if usage and usage.get('total_tokens', 0) > 0:
-            tokens = usage['total_tokens']
-            cost = usage.get('total_cost', 0)
-            if tokens >= 1_000_000:
-                token_str = f"{tokens / 1_000_000:.1f}M"
-            elif tokens >= 1000:
-                token_str = f"{tokens / 1000:.0f}K"
-            else:
-                token_str = str(tokens)
-            usage_str = f" | Token {token_str} ${cost:.2f}"
+    def _schedule_usage_refresh(self):
+        """使用 Timer 定时刷新 usage 缓存"""
+        def _refresh_and_reschedule():
+            self._auto_refresh_usage()
+            # 刷新完成后重新调度下一次
+            if self._usage_refresh_interval > 0:
+                self._schedule_usage_refresh()
 
-        self._status_item.title = (
-            f"CPU {cpu:.0f}% / Mem {mem:.0f}% / Swap {swap:.0f}% / Disk {disk:.0f}%{usage_str}"
+        timer = threading.Timer(self._usage_refresh_interval, _refresh_and_reschedule)
+        timer.daemon = True
+        timer.start()
+
+    def _auto_refresh_usage(self):
+        """后台自动刷新 usage 缓存"""
+        try:
+            import requests
+            requests.post(f"{self._url}/api/usage/refresh", timeout=60)
+        except Exception:
+            pass  # 自动刷新失败不影响正常运行
+
+
+def _kill_stale_processes():
+    """启动时清理旧的 AI Guard 进程和占用的端口"""
+    import signal
+
+    my_pid = os.getpid()
+    port = _main_mod.SERVER_CFG.get("port", 8765)
+
+    # 1. 杀掉占用端口的进程
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True, text=True, timeout=5
         )
+        for line in result.stdout.strip().split("\n"):
+            pid = int(line.strip()) if line.strip() else 0
+            if pid and pid != my_pid:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+    except Exception:
+        pass
 
-        # 同步自动终止开关
-        state = _main_mod.threads.autokill_enabled
-        self._autokill_item.title = f"自动终止: {'开' if state else '关'}"
+    # 2. 杀掉同名旧进程
+    try:
+        import psutil
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.info['name'] == 'AI Guard' and proc.info['pid'] != my_pid:
+                try:
+                    proc.kill()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+    except Exception:
+        pass
 
 
 def main():
+    _kill_stale_processes()
     AIGuardApp().run()
 
 
