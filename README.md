@@ -13,6 +13,8 @@
 - **进程白名单** — 标记关键进程永不自动终止，支持进程名、命令行关键字、临时 PID
 - **所有进程视图** — 类似活动监视器，可查看系统所有进程，默认显示 AI/开发进程
 - **书签管理** — 智能分析和管理浏览器书签，支持 AI 相关内容识别
+- **Claude 使用统计** — 解析本地日志，按日/小时/模型聚合 token 使用量和费用，支持项目筛选
+- **定价管理** — 可自定义模型定价，SQLite 持久化，覆盖 50+ 模型（Claude、DeepSeek、Kimi、MiniMax、GLM、MiMo 等）
 - **菜单栏托盘** — rumps 驱动，支持开机自启，显示 CPU、内存、Swap、磁盘状态
 - **告警历史** — SQLite 持久化，随时回查历史事件
 
@@ -24,7 +26,7 @@
 | 前端 | 单文件 HTML + Vanilla JS + Chart.js (CDN) |
 | 菜单栏 | rumps 0.4.0 |
 | 打包 | py2app 0.28（生成独立 `.app`） |
-| 持久化 | SQLite（`~/.aigard/alert_history.db`） |
+| 持久化 | SQLite（`~/.aigard/alert_history.db`, `~/.aigard/usage_cache.db`） |
 | 配置 | `config.toml` |
 
 ## 快速开始
@@ -95,6 +97,8 @@ port = 8765
 
 ## API 接口
 
+### 监控与进程
+
 | Method | Path | 说明 |
 |--------|------|------|
 | GET | `/api/metrics` | 当前系统指标快照 |
@@ -107,6 +111,11 @@ port = 8765
 | POST | `/api/processes/{pid}/kill` | 终止进程（SIGTERM） |
 | POST | `/api/processes/batch/kill-safe` | 一键终止所有安全进程 |
 | POST | `/api/autokill/toggle` | 切换自动终止开关 |
+
+### 白名单
+
+| Method | Path | 说明 |
+|--------|------|------|
 | GET | `/api/whitelist` | 获取白名单配置 |
 | POST | `/api/whitelist/process-name` | 添加进程名到白名单 |
 | DELETE | `/api/whitelist/process-name` | 从白名单移除进程名 |
@@ -114,6 +123,28 @@ port = 8765
 | DELETE | `/api/whitelist/cmdline-keyword` | 从白名单移除命令行关键字 |
 | POST | `/api/whitelist/pid` | 添加临时 PID 到白名单 |
 | DELETE | `/api/whitelist/pid` | 从白名单移除 PID |
+
+### Claude 使用统计
+
+| Method | Path | 说明 |
+|--------|------|------|
+| GET | `/api/usage/summary` | 使用统计总览（支持日期范围/预设/项目筛选） |
+| GET | `/api/usage/daily` | 每日使用统计 |
+| GET | `/api/usage/hourly` | 每小时使用统计 |
+| GET | `/api/usage/monthly` | 每月使用统计 |
+| GET | `/api/usage/models` | 模型使用分布 |
+| GET | `/api/usage/projects` | 项目列表 |
+| GET | `/api/usage/sessions` | 会话列表（支持分页） |
+| POST | `/api/usage/refresh` | 刷新数据（重新解析 JSONL） |
+
+### 定价管理
+
+| Method | Path | 说明 |
+|--------|------|------|
+| GET | `/api/usage/pricing` | 获取完整定价配置（默认 + 用户覆盖） |
+| POST | `/api/usage/pricing` | 更新模型定价（SQLite 持久化，自动重建缓存） |
+| DELETE | `/api/usage/pricing/{model}` | 删除单个模型的定价覆盖 |
+| POST | `/api/usage/pricing/reset` | 重置所有定价覆盖 |
 
 ## 项目结构
 
@@ -130,15 +161,24 @@ AI Guard/
 │   │   ├── alerter.py         # 分级告警（macOS 通知）
 │   │   ├── threads.py         # 后台线程管理
 │   │   ├── whitelist.py       # 白名单管理
-│   │   └── ...
+│   │   └── usage/             # Claude 使用统计模块
+│   │       ├── loader.py      # JSONL 数据加载器
+│   │       ├── calculator.py  # 费用计算器
+│   │       ├── aggregator.py  # 数据聚合（按日/时/模型）
+│   │       ├── pricing.py     # 定价管理（50+ 模型）
+│   │       ├── pricing_repository.py  # 定价 SQLite 持久化
+│   │       └── cache.py       # SQLite 缓存
 │   ├── api/
 │   │   ├── routes.py          # 主要 API 路由
 │   │   ├── whitelist.py       # 白名单 API
 │   │   ├── bookmarks.py       # 书签 API
-│   │   └── ...
+│   │   └── usage.py           # Claude 使用统计 API
 │   ├── ui/
 │   │   ├── index.html         # 实时监控仪表盘
-│   │   └── bookmarks.html     # 书签管理界面
+│   │   ├── usage.html         # Claude 使用统计界面
+│   │   ├── bookmarks.html     # 书签管理界面
+│   │   ├── css/               # 共享样式
+│   │   └── js/                # 模块化 JavaScript
 │   └── bookmarks/             # 书签分析模块
 ├── assets/                    # App 图标
 ├── scripts/                   # 开机自启脚本
