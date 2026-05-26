@@ -207,13 +207,17 @@ class AIGuardApp(rumps.App):
     # ── 定时刷新 ──────────────────────────────────────────────
 
     def _refresh_status(self, _):
-        """每 2 秒从 history 读最新指标，更新菜单栏图标和状态行"""
+        """每 15 秒从 history 读最新指标，更新菜单栏图标和状态行"""
         latest = _main_mod.history.latest
         if not latest:
+            # 服务启动中，显示等待状态
+            self._status_item.title = "状态: 等待数据..."
             return
 
+        cpu   = latest.get("cpu_percent", 0)
         mem   = latest.get("mem_percent", 0)
         swap  = latest.get("swap_percent", 0)
+        disk  = latest.get("disk_percent", 0)
         level = latest.get("alert_level", "normal")
 
         # 仅在等级变化时切换图标
