@@ -217,20 +217,13 @@ bash scripts/install_autostart.sh
 
 ## 付费支持
 
-AI Guard 是开源免费软件，但开发和维护需要时间和精力。如果这个工具帮到了你，欢迎通过以下方式支持：
+AI Guard 是开源免费软件，但开发和维护需要时间和精力。如果这个工具帮到了你，欢迎 **¥6 元打赏支持**（一杯奶茶的价格）：
 
 ### 打赏方式
 
-#### 1. GitHub Sponsors（推荐）
+**建议金额：¥6 元** — 一杯奶茶的价格，支持开源开发 ☕
 
-访问 [GitHub Sponsors](https://github.com/sponsors/your-username) 设置月度赞助或一次性打赏。
-
-**建议金额：**
-- ☕ $3 - 请我喝杯咖啡
-- 🍕 $10 - 请我吃顿午餐
-- 🎉 $30 - 支持持续开发
-
-#### 2. 支付宝/微信打赏
+#### 1. 支付宝/微信打赏（推荐）
 
 <details>
 <summary>点击展开二维码</summary>
@@ -238,20 +231,24 @@ AI Guard 是开源免费软件，但开发和维护需要时间和精力。如�
 **支付宝：**
 
 ```
-[放置支付宝收款码图片]
+[放置支付宝收款码图片，建议设置默认金额 ¥6]
 ```
 
 **微信支付：**
 
 ```
-[放置微信收款码图片]
+[放置微信收款码图片，建议设置默认金额 ¥6]
 ```
 
 </details>
 
-#### 3. 爱发电
+#### 2. 爱发电
 
-访问 [爱发电主页](https://afdian.net/@your-username) 进行赞助。
+访问 [爱发电主页](https://afdian.net/@your-username) 进行赞助，单次 ¥6 或设置月度支持。
+
+#### 3. GitHub Sponsors
+
+访问 [GitHub Sponsors](https://github.com/sponsors/your-username) 设置一次性打赏（约 $1）或月度赞助。
 
 ### 企业赞助
 
