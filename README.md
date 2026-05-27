@@ -4,6 +4,28 @@
 
 当你在使用 Claude Code、Codex、Cursor 等 AI 编程 Agent 时，本工具可防止 Mac 内存 / Swap / 磁盘被快速耗尽。以 macOS 菜单栏原生 App 的形式常驻后台，无需打开终端。
 
+[![下载](https://img.shields.io/github/v/release/Xaiver03/ai-guard?label=下载&style=flat-square)](https://github.com/Xaiver03/ai-guard/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![打赏支持](https://img.shields.io/badge/打赏-¥6-orange.svg?style=flat-square)](#支持开发)
+
+## 快速安装
+
+**方式一：下载 DMG（推荐）**
+
+1. 访问 [Releases 页面](https://github.com/Xaiver03/ai-guard/releases/latest)
+2. 下载最新版本的 `.dmg` 文件
+3. 双击 DMG，拖拽到 Applications 文件夹
+4. 打开应用，首次启动可能需要在"系统设置 → 隐私与安全性"中允许运行
+
+**方式二：从源码运行**
+
+```bash
+git clone https://github.com/Xaiver03/ai-guard.git
+cd ai-guard
+pip install -r requirements.txt
+python app_menubar.py
+```
+
 ## 功能特性
 
 - **实时监控** — 每秒采集内存、Swap、磁盘、CPU 使用率
@@ -195,6 +217,23 @@ AI Guard/
 
 随时可通过 `SIGCONT` 恢复，零数据损失。
 
+## 支持开发
+
+AI Guard 是 **100% 开源免费软件**（MIT 协议），所有功能完全免费使用。
+
+如果这个工具帮到了你，欢迎 **¥6 元打赏支持**（一杯奶茶的价格）：
+
+- **支付宝/微信** — 扫码打赏（见 [docs/distribution.md](docs/distribution.md#打赏方式)）
+- **爱发电** — [https://afdian.net/@your-username](https://afdian.net/@your-username)
+- **GitHub Sponsors** — [https://github.com/sponsors/Xaiver03](https://github.com/sponsors/Xaiver03)
+
+打赏用于支持持续维护、Bug 修复和新功能开发。
+
+## 开发文档
+
+- [分发指南](docs/distribution.md) — 打包、签名、公证、发布流程
+- [项目说明](CLAUDE.md) — 完整技术文档和开发流程
+
 ## License
 
-MIT © Xavier
+MIT © 晓黎创意
