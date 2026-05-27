@@ -12,8 +12,8 @@ history_points = 60
 [alert]
 mem_warn = 80
 mem_crit = 90
-swap_warn = 50
-swap_crit = 80
+swap_warn = 70
+swap_crit = 85
 disk_free_warn_gb = 20
 disk_free_crit_gb = 10
 cooldown_sec = 60

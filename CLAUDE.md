@@ -122,6 +122,7 @@ AI Guard/
 │   ├── uninstall_autostart.sh # 卸载开机自启
 │   └── com.aigard.menubar.plist # LaunchAgent plist 模板
 ├── docs/
+│   ├── distribution.md        # 分发指南（签名、公证、发布、付费支持）
 │   └── plans/
 │       └── 2026-05-19-mac-menubar-app.md  # 菜单栏 App 实现计划
 └── SCORING.md                 # 进程安全评分规则说明
@@ -159,39 +160,33 @@ open "/Applications/AI Guard.app"
 bash scripts/install_autostart.sh
 ```
 
-## 打包注意事项
+## 打包与分发
 
-**重要：** 打包前必须确保以下条件：
+**详细指南：** 参见 [docs/distribution.md](docs/distribution.md)
 
-1. **Python 版本**：必须使用 Python 3.11.x（不支持 3.12）
-   ```bash
-   pyenv install 3.11.15
-   pyenv local 3.11.15
-   ```
+**快速打包：**
+```bash
+./build.sh  # 自动版本检查 + py2app 打包
+```
 
-2. **依赖版本**：
-   - setuptools < 70.0.0（避免 pkg_resources 问题）
-   - 使用纯 Python 版本的依赖（避免 mypyc 编译模块）
-   ```bash
-   pip install 'setuptools<70.0.0'
-   pip uninstall -y tomli && pip install tomli --no-binary tomli
-   ```
+**签名与公证：**
+- 需要 Apple Developer 账号（$99/年）
+- 使用 Developer ID Application 证书签名
+- 通过 Apple 公证后用户可直接安装，无需手动绕过安全检查
+- 详见 [docs/distribution.md#签名与公证](docs/distribution.md#签名与公证)
 
-3. **打包流程**：
-   ```bash
-   # 清理旧的打包文件
-   rm -rf build dist
-   
-   # 执行打包（自动版本检查）
-   ./build.sh
-   
-   # 安装到 /Applications（替换旧版本）
-   cp -r "dist/AI Guard.app" /Applications/
-   ```
+**发布到 GitHub Release：**
+```bash
+gh release create v1.1.3 "dist/AI-Guard-v1.1.3.dmg" \
+  --title "AI Guard v1.1.3" \
+  --notes "Release notes..."
+```
 
-4. **常见问题**：
-   - 如果遇到 `ModuleNotFoundError: No module named 'ddc459050edb75a05942__mypyc'`，说明 tomli 使用了编译版本，需要重新安装纯 Python 版本
-   - 如果遇到 `RuntimeError: set_wakeup_fd only works in main thread`，说明 ASGI 服务器在子线程中无法设置信号处理器，已在 main.py 中处理
+**付费支持：**
+- GitHub Sponsors: $3-30（推荐）
+- 支付宝/微信打赏
+- 爱发电赞助
+- 详见 [docs/distribution.md#付费支持](docs/distribution.md#付费支持)
 
 ## 菜单栏 App 架构
 

@@ -1,6 +1,8 @@
 """monitor.py — 系统指标采集"""
 
 import time
+import subprocess
+import re
 from collections import deque
 from dataclasses import dataclass, field, asdict
 from typing import Any, Optional, List
@@ -51,8 +53,82 @@ def _gb(b: float) -> float:
     return round(b / (1024 ** 3), 2)
 
 
+def _get_memory_from_vm_stat() -> tuple:
+    """
+    从 vm_stat 获取内存数据，使用合理的内存压力算法
+
+    Returns:
+        (used_gb, percent, available_gb, total_gb)
+    """
+    try:
+        result = subprocess.run(['vm_stat'], capture_output=True, text=True, timeout=2)
+        lines = result.stdout.strip().split('\n')
+
+        # 提取页大小
+        page_size_match = re.search(r'page size of (\d+) bytes', lines[0])
+        page_size = int(page_size_match.group(1)) if page_size_match else 16384
+
+        # 解析各项数据
+        data = {}
+        for line in lines[1:]:
+            match = re.match(r'"?([^"]+)"?:\s+(\d+)\.?', line)
+            if match:
+                key = match.group(1).strip()
+                value = int(match.group(2))
+                data[key] = value
+
+        # 计算内存（GB）
+        def pages_to_gb(pages):
+            return (pages * page_size) / (1024**3)
+
+        active_gb = pages_to_gb(data.get('Pages active', 0))
+        inactive_gb = pages_to_gb(data.get('Pages inactive', 0))
+        wired_gb = pages_to_gb(data.get('Pages wired down', 0))
+        free_gb = pages_to_gb(data.get('Pages free', 0))
+        speculative_gb = pages_to_gb(data.get('Pages speculative', 0))
+        compressed_gb = pages_to_gb(data.get('Pages stored in compressor', 0))
+        compressor_gb = pages_to_gb(data.get('Pages occupied by compressor', 0))
+
+        # Total（从 psutil 获取，更准确）
+        total_gb = psutil.virtual_memory().total / (1024**3)
+
+        # Available = Free + Inactive + Speculative
+        # （Inactive 可以被快速回收，Speculative 是预读的页面）
+        available_gb = free_gb + inactive_gb + speculative_gb
+
+        # Used（物理内存实际占用）= Wired + Active + Inactive + Compressor
+        # 注意：这里用 Compressor（压缩后占用的物理空间），不是 Compressed（原始大小）
+        physical_used_gb = wired_gb + active_gb + inactive_gb + compressor_gb
+
+        # Percent（内存压力）= (Total - Available) / Total
+        # 这个百分比反映"还剩多少可用"，不会超过 100%
+        percent = ((total_gb - available_gb) / total_gb * 100) if total_gb > 0 else 0
+
+        return (
+            round(physical_used_gb, 2),
+            round(percent, 1),
+            round(available_gb, 2),
+            round(total_gb, 2)
+        )
+    except Exception as e:
+        # 降级到 psutil
+        return None
+
+
 def collect_metrics() -> Metrics:
-    mem = psutil.virtual_memory()
+    # 尝试使用 vm_stat（活动监视器算法）
+    vm_stat_result = _get_memory_from_vm_stat()
+
+    if vm_stat_result:
+        mem_used_gb, mem_percent, mem_available_gb, mem_total_gb = vm_stat_result
+    else:
+        # 降级到 psutil
+        mem = psutil.virtual_memory()
+        mem_total_gb = _gb(mem.total)
+        mem_used_gb = _gb(mem.used)
+        mem_percent = mem.percent
+        mem_available_gb = _gb(mem.available)
+
     swap = psutil.swap_memory()
     disk = psutil.disk_usage("/")
     cpu = psutil.cpu_percent(interval=0)
@@ -63,10 +139,10 @@ def collect_metrics() -> Metrics:
 
     return Metrics(
         ts=time.time(),
-        mem_total_gb=_gb(mem.total),
-        mem_used_gb=_gb(mem.used),
-        mem_percent=mem.percent,
-        mem_available_gb=_gb(mem.available),
+        mem_total_gb=mem_total_gb,
+        mem_used_gb=mem_used_gb,
+        mem_percent=mem_percent,
+        mem_available_gb=mem_available_gb,
         swap_total_gb=_gb(swap.total),
         swap_used_gb=_gb(swap.used),
         swap_percent=swap.percent,
