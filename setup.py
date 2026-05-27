@@ -7,7 +7,7 @@
 """
 from setuptools import setup
 
-APP = ["app_menubar.py"]
+APP = ["app_native.py"]
 
 DATA_FILES = [
     ("aigard/ui",    ["aigard/ui/index.html",

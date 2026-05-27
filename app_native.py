@@ -40,51 +40,14 @@ else:
 import main as _main_mod
 
 
-class PopoverViewController(NSViewController):
-    """Popover 视图控制器"""
-
-    def init(self):
-        self = objc.super(PopoverViewController, self).init()
-        if self is None:
-            return None
-        self.webview = None
-        self.url = "http://127.0.0.1:8765/popover.html"
-        return self
-
-    def loadView(self):
-        """创建视图"""
-        # 创建毛玻璃背景视图
-        effect_view = NSVisualEffectView.alloc().initWithFrame_(
-            NSMakeRect(0, 0, 360, 400)
-        )
-        effect_view.setMaterial_(NSVisualEffectMaterialPopover)
-        effect_view.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
-        effect_view.setState_(1)  # NSVisualEffectStateActive
-
-        # 创建 WebView
-        self.webview = WKWebView.alloc().initWithFrame_(
-            NSMakeRect(0, 0, 360, 400)
-        )
-        self.webview.setAutoresizingMask_(18)  # 自动调整大小
-
-        # 设置透明背景
-        self.webview.setValue_forKey_(False, "drawsBackground")
-
-        # 加载 URL
-        request = NSURLRequest.requestWithURL_(NSURL.URLWithString_(self.url))
-        self.webview.loadRequest_(request)
-
-        # 将 WebView 添加到毛玻璃视图
-        effect_view.addSubview_(self.webview)
-
-        # 设置为控制器的视图
-        self.setView_(effect_view)
-
-
 class AIGuardDelegate(NSObject):
     """应用委托"""
 
     def init(self):
+        import sys
+        sys.stdout = open('/tmp/aigard_native.log', 'w', buffering=1)
+        sys.stderr = sys.stdout
+
         print("=== AIGuardDelegate.init() 开始 ===")
         self = objc.super(AIGuardDelegate, self).init()
         if self is None:
@@ -94,53 +57,33 @@ class AIGuardDelegate(NSObject):
         print("✅ super().init() 成功")
 
         # 读取服务地址
-        try:
-            print("正在读取服务配置...")
-            host = _main_mod.SERVER_CFG.get("host", "127.0.0.1")
-            port = _main_mod.SERVER_CFG.get("port", 8765)
-            self.url = f"http://{host}:{port}"
-            print(f"✅ 服务地址: {self.url}")
-        except Exception as e:
-            print(f"❌ 读取配置失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+        host = _main_mod.SERVER_CFG.get("host", "127.0.0.1")
+        port = _main_mod.SERVER_CFG.get("port", 8765)
+        self.url = f"http://{host}:{port}"
+        print(f"✅ 服务地址: {self.url}")
 
         # 创建状态栏项
-        print("=== 开始创建状态栏项 ===")
-        statusBar = NSStatusBar.systemStatusBar()
-        print(f"状态栏对象: {statusBar}")
-
-        self.statusItem = statusBar.statusItemWithLength_(NSVariableStatusItemLength)
+        print("=== 创建状态栏项 ===")
+        self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(
+            NSVariableStatusItemLength
+        )
         print(f"状态栏项: {self.statusItem}")
 
         # 设置按钮属性
         button = self.statusItem.button()
-        print(f"按钮对象: {button}")
-
+        print(f"按钮: {button}")
         if button:
-            button.setTitle_("AI Guard")  # 设置明显的标题
-            # 确保按钮可见
+            button.setTitle_("AI Guard")
             button.setEnabled_(True)
-            print("✅ 按钮已设置标题和启用")
-        else:
-            print("❌ 警告: 无法获取状态栏按钮")
+            print("✅ 按钮已设置")
 
         # 确保状态栏项可见
         self.statusItem.setVisible_(True)
-        print("✅ 状态栏项已设置为可见")
+        print(f"✅ 状态栏项可见性: {self.statusItem.isVisible()}")
 
-        # 打印状态栏项的详细信息
-        print(f"状态栏项是否可见: {self.statusItem.isVisible()}")
-        print(f"状态栏项长度: {self.statusItem.length()}")
-        print(f"按钮标题: {self.statusItem.button().title()}")
-        print(f"按钮是否启用: {self.statusItem.button().isEnabled()}")
-
-        # 创建 Popover
-        self.popover = NSPopover.alloc().init()
-        self.viewController = PopoverViewController.alloc().init()
-        self.popover.setContentViewController_(self.viewController)
-        self.popover.setBehavior_(1)  # NSPopoverBehaviorTransient
+        # 创建 Popover (使用 PopoverManager)
+        from aigard.popover_manager import PopoverManager
+        self.popover_manager = PopoverManager.get_instance(self.statusItem)
 
         # 创建原生窗口管理器（用于显示监控面板）
         from aigard.window_manager import DashboardWindow
@@ -163,9 +106,7 @@ class AIGuardDelegate(NSObject):
         )
 
         # 强制激活应用并显示菜单栏
-        print("正在激活应用...")
         NSApp.activateIgnoringOtherApps_(True)
-        print("✅ 应用已激活")
 
         return self
 
@@ -243,16 +184,12 @@ class AIGuardDelegate(NSObject):
 
     def togglePopover_(self, sender):
         """切换 Popover 显示/隐藏"""
-        if self.popover.isShown():
-            self.popover.close()
-        else:
-            # 显示 Popover
-            button = self.statusItem.button()
-            self.popover.showRelativeToRect_ofView_preferredEdge_(
-                button.bounds(),
-                button,
-                3  # NSRectEdgeMinY - 从下方弹出
-            )
+        button = self.statusItem.button()
+        self.popover_manager.toggle(
+            button.bounds(),
+            button,
+            3  # NSRectEdgeMinY - 从下方弹出
+        )
 
     def rightMouseDown_(self, event):
         """右键点击显示菜单"""
@@ -354,31 +291,12 @@ class AIGuardDelegate(NSObject):
 
 
 def main():
-    print("=== main() 开始 ===")
-    try:
-        print("正在获取 NSApplication...")
-        app = NSApplication.sharedApplication()
-        print(f"✅ NSApplication: {app}")
-
-        print("正在创建 AIGuardDelegate...")
-        delegate = AIGuardDelegate.alloc().init()
-        print(f"✅ AIGuardDelegate: {delegate}")
-
-        if delegate is None:
-            print("❌ 错误: delegate 为 None!")
-            return
-
-        print("正在设置 delegate...")
-        app.setDelegate_(delegate)
-        print("✅ delegate 已设置")
-
-        print("正在启动事件循环...")
-        app.run()
-        print("事件循环已退出")
-    except Exception as e:
-        print(f"❌ main() 异常: {e}")
-        import traceback
-        traceback.print_exc()
+    app = NSApplication.sharedApplication()
+    delegate = AIGuardDelegate.alloc().init()
+    if delegate is None:
+        return
+    app.setDelegate_(delegate)
+    app.run()
 
 
 if __name__ == "__main__":
