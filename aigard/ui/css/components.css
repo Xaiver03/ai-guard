@@ -18,7 +18,8 @@ header {
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--content-padding-x);
-  height: var(--header-height);
+  padding-top: 28px; /* macOS 窗口控制按钮安全区域 */
+  height: calc(var(--header-height) + 28px); /* 增加高度以容纳安全区域 */
   border-bottom: 1px solid var(--border-default);
   gap: var(--space-3);
   flex-shrink: 0;

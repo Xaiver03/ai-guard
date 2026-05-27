@@ -18,7 +18,7 @@ import webbrowser
 from pathlib import Path
 
 import rumps
-from AppKit import NSImage
+from AppKit import NSImage, NSApp
 
 # 禁止 main.py 的 on_startup 自动打开浏览器（菜单栏模式下由用户手动点击）
 os.environ["AIGARD_NO_BROWSER"] = "1"
@@ -74,7 +74,7 @@ _SYMBOLS = {
 class AIGuardApp(rumps.App):
     def __init__(self):
         super().__init__(
-            name="AI Guard",
+            name="",  # 不显示应用名称（避免底部重复）
             title="--",  # 初始显示占位符
             icon=None,  # 不使用图标，只显示文字
             template=False,
@@ -91,6 +91,10 @@ class AIGuardApp(rumps.App):
         from aigard.window_manager import DashboardWindow
         self._dashboard_window = DashboardWindow.get_instance(self._url)
 
+        # 创建 Popover（单例）
+        from aigard.popover_manager import PopoverManager
+        self._popover = None  # 延迟初始化（需要在 rumps 启动后）
+
         # 持有菜单项引用
         self._status_item = rumps.MenuItem("状态: 启动中...")
         self._autokill_item = rumps.MenuItem(
@@ -100,6 +104,8 @@ class AIGuardApp(rumps.App):
         self.menu = [
             rumps.MenuItem("打开监控面板", callback=self._open_panel),
             rumps.MenuItem("Claude 使用统计", callback=self._open_usage),
+            rumps.MenuItem("AI 工具导航", callback=self._open_tools),
+            rumps.MenuItem("最佳实践", callback=self._open_practices),
             rumps.separator,
             self._status_item,
             rumps.separator,
@@ -125,10 +131,23 @@ class AIGuardApp(rumps.App):
     # ── 菜单回调 ──────────────────────────────────────────────
 
     def _open_panel(self, _):
-        webbrowser.open(self._url)
+        """打开监控面板（原生窗口）"""
+        self._dashboard_window.show()
 
     def _open_usage(self, _):
-        webbrowser.open(f"{self._url}/usage.html")
+        """打开 Claude 使用统计（原生窗口）"""
+        self._dashboard_window.load_url(f"{self._url}/usage.html")
+        self._dashboard_window.show()
+
+    def _open_tools(self, _):
+        """打开 AI 工具导航（原生窗口）"""
+        self._dashboard_window.load_url(f"{self._url}/tools.html")
+        self._dashboard_window.show()
+
+    def _open_practices(self, _):
+        """打开最佳实践（原生窗口）"""
+        self._dashboard_window.load_url(f"{self._url}/practices.html")
+        self._dashboard_window.show()
 
     def _open_config(self, _):
         import subprocess
@@ -208,11 +227,24 @@ class AIGuardApp(rumps.App):
 
     def _refresh_status(self, _):
         """每 15 秒从 history 读最新指标，更新菜单栏显示"""
+        # 写入日志文件
+        with open("/tmp/aigard_refresh.log", "a") as f:
+            f.write(f"=== _refresh_status 被调用 ===\n")
+            f.flush()
+
         latest = _main_mod.history.latest
+
+        with open("/tmp/aigard_refresh.log", "a") as f:
+            f.write(f"latest: {latest}\n")
+            f.flush()
+
         if not latest:
             # 服务启动中，显示等待状态
             self._status_item.title = "状态: 等待数据..."
             self.title = "..."
+            with open("/tmp/aigard_refresh.log", "a") as f:
+                f.write("设置标题为: ...\n")
+                f.flush()
             return
 
         cpu   = latest.get("cpu_percent", 0)
@@ -228,6 +260,10 @@ class AIGuardApp(rumps.App):
             self.title = f"△{mem:.0f}%"  # 警告：三角形
         else:
             self.title = f"{mem:.0f}%"  # 正常：纯数字
+
+        with open("/tmp/aigard_refresh.log", "a") as f:
+            f.write(f"设置标题为: {self.title}\n")
+            f.flush()
 
         self._last_level = level
 

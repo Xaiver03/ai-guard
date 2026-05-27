@@ -5,6 +5,7 @@ FastAPI 路由定义
 import asyncio
 import json
 import time
+import threading
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
@@ -50,17 +51,43 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     """创建 FastAPI 应用实例"""
     app = FastAPI(title="AI Guard", version="1.0.0")
 
-    # 注册白名单路由
+    # 懒加载标记
+    _routers_loaded = {"whitelist": False, "bookmarks": False, "usage": False}
+    _routers_lock = threading.Lock()
+
+    # 注册白名单路由（轻量级，立即加载）
     from aigard.api.whitelist import router as whitelist_router
     app.include_router(whitelist_router)
+    _routers_loaded["whitelist"] = True
 
-    # 注册书签管理路由
-    from aigard.api.bookmarks import router as bookmarks_router
-    app.include_router(bookmarks_router)
+    # 懒加载中间件：按需加载重量级路由
+    @app.middleware("http")
+    async def lazy_load_middleware(request, call_next):
+        path = request.url.path
 
-    # 注册 Claude 使用统计路由
-    from aigard.api.usage import router as usage_router
-    app.include_router(usage_router)
+        # 书签管理路由（重量级）
+        if not _routers_loaded["bookmarks"] and (
+            path.startswith("/api/bookmarks") or path == "/bookmarks.html"
+        ):
+            with _routers_lock:
+                if not _routers_loaded["bookmarks"]:
+                    from aigard.api.bookmarks import router as bookmarks_router
+                    app.include_router(bookmarks_router)
+                    _routers_loaded["bookmarks"] = True
+                    print("[lazy-load] 书签管理模块已加载")
+
+        # Claude 使用统计路由（重量级）
+        if not _routers_loaded["usage"] and (
+            path.startswith("/api/usage") or path == "/usage.html"
+        ):
+            with _routers_lock:
+                if not _routers_loaded["usage"]:
+                    from aigard.api.usage import router as usage_router
+                    app.include_router(usage_router)
+                    _routers_loaded["usage"] = True
+                    print("[lazy-load] 使用统计模块已加载")
+
+        return await call_next(request)
 
     # ── 首页 ──────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
@@ -90,6 +117,98 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html_path = dev_path if dev_path.exists() else pkg_path
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
+
+    # ── Popover 页面 ──────────────────────────────────────────
+    @app.get("/popover.html", response_class=HTMLResponse)
+    def popover_page():
+        dev_path = base_dir / "aigard" / "ui" / "popover.html"
+        pkg_path = base_dir / "ui" / "popover.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    # ── 工具导航页面 ──────────────────────────────────────────
+    @app.get("/tools.html", response_class=HTMLResponse)
+    def tools_page():
+        dev_path = base_dir / "aigard" / "ui" / "tools.html"
+        pkg_path = base_dir / "ui" / "tools.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    # ── 最佳实践页面 ──────────────────────────────────────────
+    @app.get("/practices.html", response_class=HTMLResponse)
+    def practices_page():
+        dev_path = base_dir / "aigard" / "ui" / "practices.html"
+        pkg_path = base_dir / "ui" / "practices.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    # ── 工具导航 API ──────────────────────────────────────────
+    @app.get("/api/tools")
+    def get_tools():
+        """获取工具列表"""
+        import json
+        import sys
+        from pathlib import Path
+
+        # 开发模式：base_dir 是项目根目录
+        dev_path = base_dir / "aigard" / "data" / "tools.json"
+        # py2app 打包后：base_dir 是 Contents/Resources/
+        pkg_path = base_dir / "data" / "tools.json"
+
+        # 兜底：直接从当前文件位置查找
+        fallback_path = Path(__file__).parent.parent / "data" / "tools.json"
+
+        data_path = None
+        if dev_path.exists():
+            data_path = dev_path
+        elif pkg_path.exists():
+            data_path = pkg_path
+        elif fallback_path.exists():
+            data_path = fallback_path
+
+        if data_path is None or not data_path.exists():
+            print(f"[tools] 未找到数据文件")
+            print(f"[tools] base_dir: {base_dir}")
+            print(f"[tools] dev_path: {dev_path} (exists: {dev_path.exists()})")
+            print(f"[tools] pkg_path: {pkg_path} (exists: {pkg_path.exists()})")
+            print(f"[tools] fallback_path: {fallback_path} (exists: {fallback_path.exists()})")
+            return {"tools": []}
+
+        with open(data_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    # ── 最佳实践 API ──────────────────────────────────────────
+    @app.get("/api/practices")
+    def get_practices():
+        """获取最佳实践列表"""
+        import json
+        from pathlib import Path
+
+        # 开发模式：base_dir 是项目根目录
+        dev_path = base_dir / "aigard" / "data" / "practices.json"
+        # py2app 打包后：base_dir 是 Contents/Resources/
+        pkg_path = base_dir / "data" / "practices.json"
+
+        # 兜底：直接从当前文件位置查找
+        fallback_path = Path(__file__).parent.parent / "data" / "practices.json"
+
+        data_path = None
+        if dev_path.exists():
+            data_path = dev_path
+        elif pkg_path.exists():
+            data_path = pkg_path
+        elif fallback_path.exists():
+            data_path = fallback_path
+
+        if data_path is None or not data_path.exists():
+            print(f"[practices] 未找到数据文件")
+            return {"categories": []}
+
+        with open(data_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
 
     # ── 指标和历史 ────────────────────────────────────────────
     @app.get("/api/metrics")
@@ -515,5 +634,24 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
     if js_dir.exists():
         app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
+
+    # ── 启动 Dashboard 应用 ──────────────────────────────────
+    @app.post("/api/launch/dashboard")
+    def launch_dashboard():
+        """显示监控面板窗口"""
+        try:
+            # 通过主应用显示窗口
+            import objc
+            from AppKit import NSApp
+
+            # 获取主应用的 delegate
+            delegate = NSApp.delegate()
+            if delegate and hasattr(delegate, 'dashboard_window'):
+                delegate.dashboard_window.show()
+                return {"success": True, "message": "监控面板已打开"}
+            else:
+                raise Exception("无法访问窗口管理器")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"打开失败: {str(e)}")
 
     return app

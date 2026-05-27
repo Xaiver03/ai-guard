@@ -1,0 +1,171 @@
+{
+  "tools": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "icon": "",
+      "category": "AI 编程助手",
+      "description": "Anthropic 官方 AI 编程助手，支持 CLI、桌面应用和 IDE 扩展",
+      "links": {
+        "website": "https://claude.ai/code",
+        "github": "https://github.com/anthropics/claude-code",
+        "docs": "https://docs.anthropic.com/claude-code"
+      },
+      "tutorials": [
+        {
+          "title": "快速上手指南",
+          "url": "https://docs.anthropic.com/claude-code/quickstart",
+          "description": "5 分钟了解 Claude Code 的基本用法"
+        },
+        {
+          "title": "高级功能教程",
+          "url": "https://docs.anthropic.com/claude-code/advanced",
+          "description": "深入了解 Skills、Hooks、MCP 等高级特性"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "如何安装 Claude Code？",
+          "answer": "访问 claude.ai/code 下载 macOS/Windows 桌面应用，或使用 npm install -g @anthropic-ai/claude-code 安装 CLI 版本"
+        },
+        {
+          "question": "Claude Code 支持哪些编程语言？",
+          "answer": "支持所有主流编程语言，包括 Python、JavaScript、TypeScript、Go、Rust、Java 等"
+        },
+        {
+          "question": "如何配置 API Key？",
+          "answer": "运行 claude-code auth login 或在设置中输入 Anthropic API Key"
+        }
+      ]
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "icon": "",
+      "category": "AI 编程助手",
+      "description": "基于 VS Code 的 AI 编辑器，支持多种 AI 模型",
+      "links": {
+        "website": "https://cursor.sh",
+        "docs": "https://docs.cursor.sh"
+      },
+      "tutorials": [
+        {
+          "title": "Cursor 快速入门",
+          "url": "https://docs.cursor.sh/get-started",
+          "description": "了解 Cursor 的基本功能和快捷键"
+        },
+        {
+          "title": "Cursor vs Claude Code 对比",
+          "url": "https://docs.cursor.sh/comparison",
+          "description": "了解两者的区别和适用场景"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Cursor 和 VS Code 有什么区别？",
+          "answer": "Cursor 基于 VS Code，但内置了 AI 编程功能，支持 Claude、GPT-4 等多种模型"
+        },
+        {
+          "question": "Cursor 支持哪些 AI 模型？",
+          "answer": "支持 Claude Opus/Sonnet、GPT-4、GPT-3.5 等多种模型"
+        }
+      ]
+    },
+    {
+      "id": "github-copilot",
+      "name": "GitHub Copilot",
+      "icon": "",
+      "category": "AI 编程助手",
+      "description": "GitHub 官方 AI 编程助手，支持 VS Code、JetBrains 等 IDE",
+      "links": {
+        "website": "https://github.com/features/copilot",
+        "docs": "https://docs.github.com/copilot"
+      },
+      "tutorials": [
+        {
+          "title": "Copilot 快速入门",
+          "url": "https://docs.github.com/copilot/quickstart",
+          "description": "了解 Copilot 的基本用法"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Copilot 如何收费？",
+          "answer": "个人版 $10/月，企业版 $19/月/用户，学生和开源维护者免费"
+        }
+      ]
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "icon": "",
+      "category": "AI 编程助手",
+      "description": "Codeium 推出的 AI 编辑器，支持多种 AI 模型",
+      "links": {
+        "website": "https://codeium.com/windsurf",
+        "docs": "https://docs.codeium.com/windsurf"
+      },
+      "tutorials": [
+        {
+          "title": "Windsurf 快速入门",
+          "url": "https://docs.codeium.com/windsurf/quickstart",
+          "description": "了解 Windsurf 的基本功能"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Windsurf 和 Cursor 有什么区别？",
+          "answer": "Windsurf 更注重多模型支持和自定义配置"
+        }
+      ]
+    },
+    {
+      "id": "v0",
+      "name": "v0.dev",
+      "icon": "",
+      "category": "AI 设计工具",
+      "description": "Vercel 推出的 AI UI 生成工具，快速生成 React 组件",
+      "links": {
+        "website": "https://v0.dev",
+        "docs": "https://v0.dev/docs"
+      },
+      "tutorials": [
+        {
+          "title": "v0 快速入门",
+          "url": "https://v0.dev/docs/quickstart",
+          "description": "了解如何使用 v0 生成 UI 组件"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "v0 支持哪些框架？",
+          "answer": "主要支持 React、Next.js、Tailwind CSS"
+        }
+      ]
+    },
+    {
+      "id": "bolt",
+      "name": "Bolt.new",
+      "icon": "",
+      "category": "AI 开发工具",
+      "description": "StackBlitz 推出的 AI 全栈开发工具，在浏览器中快速构建应用",
+      "links": {
+        "website": "https://bolt.new",
+        "docs": "https://docs.bolt.new"
+      },
+      "tutorials": [
+        {
+          "title": "Bolt 快速入门",
+          "url": "https://docs.bolt.new/quickstart",
+          "description": "了解如何使用 Bolt 快速构建应用"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Bolt 和传统开发有什么区别？",
+          "answer": "Bolt 在浏览器中运行，无需本地环境，支持实时预览和部署"
+        }
+      ]
+    }
+  ]
+}

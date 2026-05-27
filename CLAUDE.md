@@ -7,36 +7,75 @@
 
 **每次代码更改后必须完成以下步骤：**
 
-1. **重新打包应用**（自动包含版本检查）
+1. **关闭旧应用（必须先执行）**
+   ```bash
+   # 关闭菜单栏主应用
+   pkill -9 "AI Guard" 2>/dev/null
+   
+   # 关闭 Dashboard 应用（如果在运行）
+   pkill -9 "Dashboard" 2>/dev/null
+   
+   # 释放端口
+   lsof -ti:8765 | xargs kill -9 2>/dev/null
+   
+   sleep 2
+   ```
+
+2. **重新打包应用**（自动包含版本检查）
    ```bash
    ./build.sh
    ```
    
    > 注：`build.sh` 会自动运行 `scripts/check-version.sh` 检查版本一致性
 
-2. **安装到本地测试**
+3. **安装到本地测试**
    ```bash
+   # 安装主应用
    cp -r "dist/AI Guard.app" /Applications/
-   open "/Applications/AI Guard.app"
+   
+   # 如果修改了 Dashboard,也需要重新打包安装
+   # ./build_dashboard.sh
+   # cp -r "dist_dashboard/AI Guard Dashboard.app" /Applications/
    ```
 
-3. **更新文档**
+4. **启动应用**
+   ```bash
+   # 只启动 Dashboard 应用（推荐）
+   open "/Applications/AI Guard Dashboard.app"
+   
+   # 或者启动菜单栏应用
+   # open "/Applications/AI Guard.app"
+   ```
+
+5. **验证启动状态（必须执行）**
+   ```bash
+   # 等待启动
+   sleep 3
+   
+   # 检查进程
+   ps aux | grep "AI Guard.app" | grep -v grep
+   
+   # 检查 API
+   curl -s http://localhost:8765/api/metrics | python3 -c "import sys, json; data = json.load(sys.stdin); print('✅ API 正常'); print(f'CPU: {data[\"cpu_percent\"]:.1f}%'); print(f'内存: {data[\"mem_percent\"]:.1f}%')"
+   ```
+   
+   **如果启动失败：**
+   - 检查端口占用: `lsof -i:8765`
+   - 查看系统日志: `log show --predicate 'process == "AI Guard"' --last 1m`
+   - 检查应用日志: `open ~/Library/Logs/`
+
+4. **更新文档**
    - 更新 README.md（如果有新功能或配置变更）
    - 更新 CLAUDE.md（如果有架构或技术栈变更）
 
-4. **Git 提交并推送**
+5. **Git 提交并推送**
    ```bash
    git add .
    git commit -m "feat: 描述你的更改"
    git push origin main
    ```
 
-5. **验证功能**
-   - 打开 Web UI (http://localhost:8765)
-   - 测试新功能是否正常工作
-   - 检查菜单栏状态显示是否正确
-
-**注意：** 不要跳过任何步骤，确保每次更改都经过完整的测试和发布流程。
+**注意：** 不要跳过任何步骤，特别是步骤3的启动验证，确保每次更改都经过完整的测试和发布流程。
 
 ## 项目简介
 

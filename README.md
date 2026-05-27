@@ -1,23 +1,23 @@
 # AI Guard
 
-> Mac AI 开发资源守护工具 — 实时监控 · 分级告警 · 安全进程干预
+> Mac AI  —  ·  · 
 
-当你在使用 Claude Code、Codex、Cursor 等 AI 编程 Agent 时，本工具可防止 Mac 内存 / Swap / 磁盘被快速耗尽。以 macOS 菜单栏原生 App 的形式常驻后台，无需打开终端。
+ Claude CodeCodexCursor  AI  Agent  Mac  / Swap /  macOS  App 
 
-[![下载](https://img.shields.io/github/v/release/Xaiver03/ai-guard?label=下载&style=flat-square)](https://github.com/Xaiver03/ai-guard/releases/latest)
+[![](https://img.shields.io/github/v/release/Xaiver03/ai-guard?label=&style=flat-square)](https://github.com/Xaiver03/ai-guard/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
-[![打赏支持](https://img.shields.io/badge/打赏-¥6-orange.svg?style=flat-square)](#支持开发)
+[![](https://img.shields.io/badge/-¥6-orange.svg?style=flat-square)](#)
 
-## 快速安装
+## 
 
-**方式一：下载 DMG（推荐）**
+** DMG**
 
-1. 访问 [Releases 页面](https://github.com/Xaiver03/ai-guard/releases/latest)
-2. 下载最新版本的 `.dmg` 文件
-3. 双击 DMG，拖拽到 Applications 文件夹
-4. 打开应用，首次启动可能需要在"系统设置 → 隐私与安全性"中允许运行
+1.  [Releases ](https://github.com/Xaiver03/ai-guard/releases/latest)
+2.  `.dmg` 
+3.  DMG Applications 
+4. " → "
 
-**方式二：从源码运行**
+****
 
 ```bash
 git clone https://github.com/Xaiver03/ai-guard.git
@@ -26,55 +26,55 @@ pip install -r requirements.txt
 python app_menubar.py
 ```
 
-## 功能特性
+## 
 
-- **实时监控** — 每秒采集内存、Swap、磁盘、CPU 使用率
-- **分级告警** — 通过 macOS 原生通知推送 warn / crit 两级告警，Swap 独立冷却时间
-- **可视化仪表盘** — 浏览器 Web UI，实时折线图（Chart.js）
-- **安全进程干预** — 暂停 / 恢复 / 终止，拒绝强制 SIGKILL
-- **进程白名单** — 标记关键进程永不自动终止，支持进程名、命令行关键字、临时 PID
-- **所有进程视图** — 类似活动监视器，可查看系统所有进程，默认显示 AI/开发进程
-- **书签管理** — 智能分析和管理浏览器书签，支持 AI 相关内容识别
-- **Claude 使用统计** — 解析本地日志，按日/小时/模型聚合 token 使用量和费用，支持项目筛选
-- **定价管理** — 可自定义模型定价，SQLite 持久化，覆盖 50+ 模型（Claude、DeepSeek、Kimi、MiniMax、GLM、MiMo 等）
-- **菜单栏托盘** — rumps 驱动，支持开机自启，显示 CPU、内存、Swap、磁盘状态
-- **告警历史** — SQLite 持久化，随时回查历史事件
+- **** — SwapCPU 
+- **** —  macOS  warn / crit Swap 
+- **** —  Web UIChart.js
+- **** —  /  /  SIGKILL
+- **** —  PID
+- **** —  AI/
+- **** —  AI 
+- **Claude ** — // token 
+- **** — SQLite  50+ ClaudeDeepSeekKimiMiniMaxGLMMiMo 
+- **** — rumps  CPUSwap
+- **** — SQLite 
 
-## 技术栈
+## 
 
-| 层 | 技术 |
+|  |  |
 |----|------|
-| 后端 | Python 3.11+, FastAPI, hypercorn, psutil |
-| 前端 | 单文件 HTML + Vanilla JS + Chart.js (CDN) |
-| 菜单栏 | rumps 0.4.0 |
-| 打包 | py2app 0.28（生成独立 `.app`） |
-| 持久化 | SQLite（`~/.aigard/alert_history.db`, `~/.aigard/usage_cache.db`） |
-| 配置 | `config.toml` |
+|  | Python 3.11+, FastAPI, hypercorn, psutil |
+|  |  HTML + Vanilla JS + Chart.js (CDN) |
+|  | rumps 0.4.0 |
+|  | py2app 0.28 `.app` |
+|  | SQLite`~/.aigard/alert_history.db`, `~/.aigard/usage_cache.db` |
+|  | `config.toml` |
 
-## 快速开始
+## 
 
-### 环境要求
+### 
 
 - macOS 12+
-- Python 3.11+ (推荐使用 pyenv 管理版本)
+- Python 3.11+ ( pyenv )
 
-### 安装依赖
+### 
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 运行方式
+### 
 
 ```bash
-# 方式一：纯后端模式（浏览器访问 http://localhost:8765）
+#  http://localhost:8765
 python main.py
 
-# 方式二：菜单栏 App（推荐）
+#  App
 python app_menubar.py
 ```
 
-### 打包为独立 .app
+###  .app
 
 ```bash
 pip install -r requirements-dev.txt
@@ -82,26 +82,26 @@ bash build.sh
 open "dist/AI Guard.app"
 ```
 
-### 安装开机自启
+### 
 
 ```bash
 bash scripts/install_autostart.sh
 
-# 卸载
+# 
 bash scripts/uninstall_autostart.sh
 ```
 
-## 配置
+## 
 
-编辑 `config.toml` 调整行为：
+ `config.toml` 
 
 ```toml
 [alert]
-memory_warn = 75       # 内存告警阈值（%）
+memory_warn = 75       # %
 memory_crit = 90
 swap_warn = 50
 swap_crit = 80
-swap_cooldown_sec = 300  # Swap 独立冷却时间（秒）
+swap_cooldown_sec = 300  # Swap 
 disk_warn = 85
 disk_crit = 95
 
@@ -109,131 +109,131 @@ disk_crit = 95
 watch_keywords = ["claude", "codex", "cursor", "python"]
 
 [whitelist]
-# 进程白名单（永不自动终止）
-process_names = []           # 进程名精确匹配
-cmdline_keywords = []        # 命令行关键字包含匹配
+# 
+process_names = []           # 
+cmdline_keywords = []        # 
 
 [server]
 port = 8765
 ```
 
-## API 接口
+## API 
 
-### 监控与进程
+### 
 
-| Method | Path | 说明 |
+| Method | Path |  |
 |--------|------|------|
-| GET | `/api/metrics` | 当前系统指标快照 |
-| GET | `/api/stream` | SSE 实时推流（每秒） |
-| GET | `/api/processes` | AI 进程列表（含安全评估） |
-| GET | `/api/processes/all` | 所有系统进程列表 |
-| GET | `/api/alerts/history` | 告警历史（最近 20 条） |
-| POST | `/api/processes/{pid}/pause` | 暂停进程（SIGSTOP） |
-| POST | `/api/processes/{pid}/resume` | 恢复进程（SIGCONT） |
-| POST | `/api/processes/{pid}/kill` | 终止进程（SIGTERM） |
-| POST | `/api/processes/batch/kill-safe` | 一键终止所有安全进程 |
-| POST | `/api/autokill/toggle` | 切换自动终止开关 |
+| GET | `/api/metrics` |  |
+| GET | `/api/stream` | SSE  |
+| GET | `/api/processes` | AI  |
+| GET | `/api/processes/all` |  |
+| GET | `/api/alerts/history` |  20  |
+| POST | `/api/processes/{pid}/pause` | SIGSTOP |
+| POST | `/api/processes/{pid}/resume` | SIGCONT |
+| POST | `/api/processes/{pid}/kill` | SIGTERM |
+| POST | `/api/processes/batch/kill-safe` |  |
+| POST | `/api/autokill/toggle` |  |
 
-### 白名单
+### 
 
-| Method | Path | 说明 |
+| Method | Path |  |
 |--------|------|------|
-| GET | `/api/whitelist` | 获取白名单配置 |
-| POST | `/api/whitelist/process-name` | 添加进程名到白名单 |
-| DELETE | `/api/whitelist/process-name` | 从白名单移除进程名 |
-| POST | `/api/whitelist/cmdline-keyword` | 添加命令行关键字到白名单 |
-| DELETE | `/api/whitelist/cmdline-keyword` | 从白名单移除命令行关键字 |
-| POST | `/api/whitelist/pid` | 添加临时 PID 到白名单 |
-| DELETE | `/api/whitelist/pid` | 从白名单移除 PID |
+| GET | `/api/whitelist` |  |
+| POST | `/api/whitelist/process-name` |  |
+| DELETE | `/api/whitelist/process-name` |  |
+| POST | `/api/whitelist/cmdline-keyword` |  |
+| DELETE | `/api/whitelist/cmdline-keyword` |  |
+| POST | `/api/whitelist/pid` |  PID  |
+| DELETE | `/api/whitelist/pid` |  PID |
 
-### Claude 使用统计
+### Claude 
 
-| Method | Path | 说明 |
+| Method | Path |  |
 |--------|------|------|
-| GET | `/api/usage/summary` | 使用统计总览（支持日期范围/预设/项目筛选） |
-| GET | `/api/usage/daily` | 每日使用统计 |
-| GET | `/api/usage/hourly` | 每小时使用统计 |
-| GET | `/api/usage/monthly` | 每月使用统计 |
-| GET | `/api/usage/models` | 模型使用分布 |
-| GET | `/api/usage/projects` | 项目列表 |
-| GET | `/api/usage/sessions` | 会话列表（支持分页） |
-| POST | `/api/usage/refresh` | 刷新数据（重新解析 JSONL） |
+| GET | `/api/usage/summary` | // |
+| GET | `/api/usage/daily` |  |
+| GET | `/api/usage/hourly` |  |
+| GET | `/api/usage/monthly` |  |
+| GET | `/api/usage/models` |  |
+| GET | `/api/usage/projects` |  |
+| GET | `/api/usage/sessions` |  |
+| POST | `/api/usage/refresh` |  JSONL |
 
-### 定价管理
+### 
 
-| Method | Path | 说明 |
+| Method | Path |  |
 |--------|------|------|
-| GET | `/api/usage/pricing` | 获取完整定价配置（默认 + 用户覆盖） |
-| POST | `/api/usage/pricing` | 更新模型定价（SQLite 持久化，自动重建缓存） |
-| DELETE | `/api/usage/pricing/{model}` | 删除单个模型的定价覆盖 |
-| POST | `/api/usage/pricing/reset` | 重置所有定价覆盖 |
+| GET | `/api/usage/pricing` |  +  |
+| POST | `/api/usage/pricing` | SQLite  |
+| DELETE | `/api/usage/pricing/{model}` |  |
+| POST | `/api/usage/pricing/reset` |  |
 
-## 项目结构
+## 
 
 ```
 AI Guard/
-├── main.py                    # FastAPI 服务 + 后台监控线程
-├── app_menubar.py             # 菜单栏 App 入口（rumps）
-├── config.toml                # 用户配置
-├── setup.py                   # py2app 打包配置
-├── build.sh                   # 一键打包脚本
-├── aigard/
-│   ├── core/
-│   │   ├── monitor.py         # 系统指标采集（psutil）
-│   │   ├── alerter.py         # 分级告警（macOS 通知）
-│   │   ├── threads.py         # 后台线程管理
-│   │   ├── whitelist.py       # 白名单管理
-│   │   └── usage/             # Claude 使用统计模块
-│   │       ├── loader.py      # JSONL 数据加载器
-│   │       ├── calculator.py  # 费用计算器
-│   │       ├── aggregator.py  # 数据聚合（按日/时/模型）
-│   │       ├── pricing.py     # 定价管理（50+ 模型）
-│   │       ├── pricing_repository.py  # 定价 SQLite 持久化
-│   │       └── cache.py       # SQLite 缓存
-│   ├── api/
-│   │   ├── routes.py          # 主要 API 路由
-│   │   ├── whitelist.py       # 白名单 API
-│   │   ├── bookmarks.py       # 书签 API
-│   │   └── usage.py           # Claude 使用统计 API
-│   ├── ui/
-│   │   ├── index.html         # 实时监控仪表盘
-│   │   ├── usage.html         # Claude 使用统计界面
-│   │   ├── bookmarks.html     # 书签管理界面
-│   │   ├── css/               # 共享样式
-│   │   └── js/                # 模块化 JavaScript
-│   └── bookmarks/             # 书签分析模块
-├── assets/                    # App 图标
-├── scripts/                   # 开机自启脚本
-└── docs/                      # 开发文档
+ main.py                    # FastAPI  + 
+ app_menubar.py             #  App rumps
+ config.toml                # 
+ setup.py                   # py2app 
+ build.sh                   # 
+ aigard/
+    core/
+       monitor.py         # psutil
+       alerter.py         # macOS 
+       threads.py         # 
+       whitelist.py       # 
+       usage/             # Claude 
+           loader.py      # JSONL 
+           calculator.py  # 
+           aggregator.py  # //
+           pricing.py     # 50+ 
+           pricing_repository.py  #  SQLite 
+           cache.py       # SQLite 
+    api/
+       routes.py          #  API 
+       whitelist.py       #  API
+       bookmarks.py       #  API
+       usage.py           # Claude  API
+    ui/
+       index.html         # 
+       usage.html         # Claude 
+       bookmarks.html     # 
+       css/               # 
+       js/                #  JavaScript
+    bookmarks/             # 
+ assets/                    # App 
+ scripts/                   # 
+ docs/                      # 
 ```
 
-## 干预设计原则
+## 
 
-不直接 SIGKILL，避免打断正在进行的 AI 任务：
+ SIGKILL AI 
 
-1. `SIGSTOP` — 暂停进程，冻结资源占用
-2. 用户在界面确认
-3. `SIGTERM` — 优雅退出
+1. `SIGSTOP` — 
+2. 
+3. `SIGTERM` — 
 
-随时可通过 `SIGCONT` 恢复，零数据损失。
+ `SIGCONT` 
 
-## 支持开发
+## 
 
-AI Guard 是 **100% 开源免费软件**（MIT 协议），所有功能完全免费使用。
+AI Guard  **100% **MIT 
 
-如果这个工具帮到了你，欢迎 **¥6 元打赏支持**（一杯奶茶的价格）：
+ **¥6 **
 
-- **支付宝/微信** — 扫码打赏（见 [docs/distribution.md](docs/distribution.md#打赏方式)）
-- **爱发电** — [https://afdian.net/@your-username](https://afdian.net/@your-username)
+- **/** —  [docs/distribution.md](docs/distribution.md#)
+- **** — [https://afdian.net/@your-username](https://afdian.net/@your-username)
 - **GitHub Sponsors** — [https://github.com/sponsors/Xaiver03](https://github.com/sponsors/Xaiver03)
 
-打赏用于支持持续维护、Bug 修复和新功能开发。
+Bug 
 
-## 开发文档
+## 
 
-- [分发指南](docs/distribution.md) — 打包、签名、公证、发布流程
-- [项目说明](CLAUDE.md) — 完整技术文档和开发流程
+- [](docs/distribution.md) — 
+- [](CLAUDE.md) — 
 
 ## License
 
-MIT © 晓黎创意
+MIT © 

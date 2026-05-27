@@ -12,7 +12,9 @@ APP = ["app_menubar.py"]
 DATA_FILES = [
     ("aigard/ui",    ["aigard/ui/index.html",
                       "aigard/ui/bookmarks.html",
-                      "aigard/ui/usage.html"]),
+                      "aigard/ui/usage.html",
+                      "aigard/ui/tools.html",
+                      "aigard/ui/practices.html"]),
     ("aigard/ui/css", ["aigard/ui/css/design-system.css",
                        "aigard/ui/css/components.css",
                        "aigard/ui/css/usage.css",
@@ -22,12 +24,14 @@ DATA_FILES = [
                        "aigard/ui/js/usage-charts.js",
                        "aigard/ui/js/usage-pricing.js",
                        "aigard/ui/js/usage-icons.js"]),
-    ("",             ["config.toml"]),
+    ("aigard/data",  ["aigard/data/tools.json",
+                      "aigard/data/practices.json"]),
+    ("",             ["config.toml", "main.py", "alert_history.py"]),
     ("assets",       ["assets/icon.icns", "assets/menubar_icon.png", "assets/menubar_icon_color.png"]),
 ]
 
 OPTIONS = {
-    "argv_emulation": False,   # rumps App 不需要 argv emulation
+    "argv_emulation": False,   # 原生 App 不需要 argv emulation
     "iconfile":       "assets/icon.icns",
     "plist": {
         # App 身份
@@ -36,8 +40,8 @@ OPTIONS = {
         "CFBundleIdentifier":         "com.xaiver.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
-        # 只在菜单栏显示，不出现在 Dock
-        "LSUIElement":                True,
+        # 临时禁用 LSUIElement,让应用同时显示在 Dock 和菜单栏
+        # "LSUIElement":                True,
         "NSHighResolutionCapable":    True,
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":
@@ -54,7 +58,6 @@ OPTIONS = {
         "fastapi",
         "hypercorn",
         "psutil",
-        "rumps",
         "starlette",
         "anyio",
         "pydantic",
@@ -73,6 +76,8 @@ OPTIONS = {
         "packaging",
         "httpx",
         "httpcore",
+        "WebKit",
+        "objc",
     ],
     "includes": [
         "hypercorn.asyncio",

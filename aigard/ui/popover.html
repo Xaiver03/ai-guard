@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Guard</title>
+<style>
+:root {
+  --bg: #1c1c1e;
+  --card: #2c2c2e;
+  --text: #ffffff;
+  --muted: #8e8e93;
+  --blue: #0a84ff;
+  --green: #30d158;
+  --red: #ff453a;
+  --yellow: #ffd60a;
+  --border: #38383a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text);
+  padding: 12px;
+  width: 360px;
+}
+
+.section {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 6px;
+}
+
+.btn:last-child {
+  margin-bottom: 0;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.8;
+}
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: #3a3a3c;
+}
+
+.btn-danger {
+  background: var(--red);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.8;
+}
+
+.toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+.toast.success {
+  background: var(--green);
+  color: white;
+}
+
+.toast.error {
+  background: var(--red);
+  color: white;
+}
+</style>
+</head>
+<body>
+
+<!-- 系统状态 -->
+<div class="section">
+  <div class="section-title">系统状态</div>
+  <div class="stat-row">
+    <span class="stat-label">CPU</span>
+    <span class="stat-value" id="cpu">--</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">内存</span>
+    <span class="stat-value" id="mem">--</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">Swap</span>
+    <span class="stat-value" id="swap">--</span>
+  </div>
+  <div class="stat-row">
+    <span class="stat-label">磁盘</span>
+    <span class="stat-value" id="disk">--</span>
+  </div>
+</div>
+
+<!-- 快捷操作 -->
+<div class="section">
+  <div class="section-title">快捷操作</div>
+  <button class="btn btn-primary" onclick="openDashboard()">📊 监控面板</button>
+  <button class="btn btn-secondary" onclick="openUsage()">📈 使用统计</button>
+  <button class="btn btn-danger" onclick="killSafe()">⚡ 一键终止安全进程</button>
+</div>
+
+<!-- Toast 通知 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// Toast 通知
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 2000);
+}
+
+// 打开监控面板
+async function openDashboard() {
+  try {
+    const response = await fetch('/api/launch/dashboard', { method: 'POST' });
+    const result = await response.json();
+    if (result.success) {
+      showToast('监控面板已打开', 'success');
+    }
+  } catch (error) {
+    showToast('打开失败: ' + error.message, 'error');
+  }
+}
+
+// 打开使用统计
+async function openUsage() {
+  try {
+    const response = await fetch('/api/launch/usage', { method: 'POST' });
+    const result = await response.json();
+    if (result.success) {
+      showToast('使用统计已打开', 'success');
+    }
+  } catch (error) {
+    showToast('打开失败: ' + error.message, 'error');
+  }
+}
+
+// 一键终止安全进程
+async function killSafe() {
+  if (!confirm('确定要终止所有安全进程吗?')) return;
+
+  try {
+    const response = await fetch('/api/processes/batch/kill-safe', { method: 'POST' });
+    const result = await response.json();
+    if (result.killed > 0) {
+      showToast(`已终止 ${result.killed} 个进程`, 'success');
+      loadMetrics();
+    } else {
+      showToast('没有可终止的安全进程', 'error');
+    }
+  } catch (error) {
+    showToast('操作失败: ' + error.message, 'error');
+  }
+}
+
+// 加载系统指标
+async function loadMetrics() {
+  try {
+    const response = await fetch('/api/metrics');
+    const data = await response.json();
+
+    document.getElementById('cpu').textContent = `${data.cpu_percent.toFixed(1)}%`;
+    document.getElementById('mem').textContent = `${data.mem_percent.toFixed(1)}%`;
+    document.getElementById('swap').textContent = `${data.swap_percent.toFixed(1)}%`;
+    document.getElementById('disk').textContent = `${data.disk_percent.toFixed(1)}%`;
+  } catch (error) {
+    console.error('加载指标失败:', error);
+  }
+}
+
+// 初始化
+loadMetrics();
+setInterval(loadMetrics, 2000);
+</script>
+</body>
+</html>

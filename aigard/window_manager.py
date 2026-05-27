@@ -7,12 +7,12 @@ from AppKit import (
     NSWindowStyleMaskMiniaturizable, NSWindowStyleMaskResizable,
     NSBackingStoreBuffered, NSApp
 )
-from WebKit import WKWebView
+from WebKit import WKWebView, WKWebViewConfiguration, WKPreferences
 from Foundation import NSMakeRect, NSURL, NSURLRequest
 
 
 class DashboardWindow:
-    """监控面板窗口（原生 macOS 窗口 + WebView）"""
+    """监控面板窗口(原生 macOS 窗口 + WebView)"""
 
     _instance = None  # 单例模式
 
@@ -32,15 +32,16 @@ class DashboardWindow:
 
     def _create_window(self):
         """创建原生窗口"""
-        # 窗口样式：标题栏 + 关闭 + 最小化 + 可调整大小
+        # 窗口样式:标题栏 + 关闭 + 最小化 + 可调整大小 + 全屏
         style_mask = (
             NSWindowStyleMaskTitled |
             NSWindowStyleMaskClosable |
             NSWindowStyleMaskMiniaturizable |
-            NSWindowStyleMaskResizable
+            NSWindowStyleMaskResizable |
+            (1 << 14)  # NSWindowStyleMaskFullScreen
         )
 
-        # 窗口尺寸和位置（居中显示）
+        # 窗口尺寸和位置(居中显示)
         window_rect = NSMakeRect(0, 0, 1200, 800)
 
         # 创建窗口
@@ -56,10 +57,36 @@ class DashboardWindow:
         self.window.center()  # 居中显示
         self.window.setMinSize_((800, 600))  # 最小尺寸
 
+        # 允许全屏 - 使用正确的常量
+        self.window.setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary = 1 << 7 = 128
+
+        # 配置 WebView - 启用 JavaScript 和本地存储
+        config = WKWebViewConfiguration.alloc().init()
+        preferences = WKPreferences.alloc().init()
+        preferences.setJavaScriptEnabled_(True)
+        preferences.setJavaScriptCanOpenWindowsAutomatically_(True)
+        config.setPreferences_(preferences)
+
+        # 启用开发者工具(调试用)
+        config.preferences().setValue_forKey_(True, "developerExtrasEnabled")
+
+        # 允许跨域请求(localhost)
+        try:
+            config.setValue_forKey_(True, "allowUniversalAccessFromFileURLs")
+        except:
+            pass
+
         # 创建 WebView
         webview_rect = NSMakeRect(0, 0, 1200, 800)
-        self.webview = WKWebView.alloc().initWithFrame_(webview_rect)
+        self.webview = WKWebView.alloc().initWithFrame_configuration_(webview_rect, config)
         self.webview.setAutoresizingMask_(18)  # NSViewWidthSizable | NSViewHeightSizable
+
+        # 允许滚动
+        try:
+            self.webview.enclosingScrollView().setHasVerticalScroller_(True)
+            self.webview.enclosingScrollView().setHasHorizontalScroller_(False)
+        except:
+            pass
 
         # 加载 URL
         request = NSURLRequest.requestWithURL_(NSURL.URLWithString_(self.url))

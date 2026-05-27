@@ -6,13 +6,22 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from aigard.bookmarks import BookmarkManager, BookmarkAnalyzer, get_ai_config
+from aigard.bookmarks import (
+    BookmarkManager, BookmarkAnalyzer, get_ai_config,
+    BookmarkModifier, BrowserStateDetector, BookmarkFixer,
+    BackupManager, OperationLog
+)
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 
 # 全局实例
 bookmark_manager = BookmarkManager()
 bookmark_analyzer = BookmarkAnalyzer()
+bookmark_modifier = BookmarkModifier()
+state_detector = BrowserStateDetector()
+bookmark_fixer = BookmarkFixer()
+backup_manager = BackupManager()
+operation_log = OperationLog()
 
 
 # ── 请求/响应模型 ──────────────────────────────────────────────
@@ -219,4 +228,149 @@ def reload_ai_config_endpoint():
     return {
         "message": "AI 配置已重新加载",
         "config": config.to_dict()
+    }
+
+
+# ── 新功能：浏览器状态检测 ────────────────────────────────────
+class BrowserStateRequest(BaseModel):
+    browser: str
+
+
+@router.post("/state/check")
+def check_browser_state(req: BrowserStateRequest):
+    """检测浏览器运行状态"""
+    strategy = state_detector.get_modification_strategy(req.browser)
+    return {
+        "browser": req.browser,
+        "state": strategy
+    }
+
+
+@router.get("/state/all")
+def get_all_browsers_state():
+    """获取所有浏览器状态"""
+    status = state_detector.get_all_browsers_status()
+    return {
+        "browsers": status
+    }
+
+
+# ── 新功能：智能修复 ──────────────────────────────────────────
+class SmartFixRequest(BaseModel):
+    browser: str
+
+
+@router.post("/fix/plan")
+def generate_fix_plan(req: SmartFixRequest):
+    """生成智能修复计划"""
+    if req.browser not in bookmark_manager.detected_browsers:
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+
+    # 检查浏览器状态
+    strategy = state_detector.get_modification_strategy(req.browser)
+    if not strategy['safe']:
+        return {
+            "browser": req.browser,
+            "can_proceed": False,
+            "warning": strategy['message'],
+            "recommendation": strategy['recommendation']
+        }
+
+    # 读取书签
+    bookmarks_data = bookmark_manager.read_bookmarks(req.browser)
+    if not bookmarks_data:
+        raise HTTPException(status_code=500, detail=f"读取 {req.browser} 书签失败")
+
+    # 生成修复计划
+    plan = bookmark_fixer.generate_smart_fix_plan(bookmarks_data)
+
+    return {
+        "browser": req.browser,
+        "can_proceed": True,
+        "plan": plan
+    }
+
+
+class ExecuteFixRequest(BaseModel):
+    browser: str
+    operations: List[dict]
+
+
+@router.post("/fix/execute")
+def execute_fix(req: ExecuteFixRequest):
+    """执行修复操作"""
+    if req.browser not in bookmark_manager.detected_browsers:
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+
+    # 再次检查浏览器状态
+    strategy = state_detector.get_modification_strategy(req.browser)
+    if not strategy['safe']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"浏览器正在运行，无法安全修改。{strategy['recommendation']}"
+        )
+
+    # 执行修改
+    result = bookmark_modifier.modify(req.browser, req.operations)
+
+    return {
+        "browser": req.browser,
+        "result": result
+    }
+
+
+# ── 新功能：备份管理 ──────────────────────────────────────────
+@router.get("/backups")
+def list_backups(browser: Optional[str] = None, limit: int = 20):
+    """列出备份"""
+    backups = backup_manager.list_backups(browser, limit)
+    return {
+        "backups": backups,
+        "count": len(backups)
+    }
+
+
+class RestoreBackupRequest(BaseModel):
+    browser: str
+    backup_id: str
+
+
+@router.post("/backups/restore")
+def restore_backup(req: RestoreBackupRequest):
+    """恢复备份"""
+    from pathlib import Path
+
+    if req.browser not in bookmark_manager.detected_browsers:
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+
+    # 检查浏览器状态
+    strategy = state_detector.get_modification_strategy(req.browser)
+    if not strategy['safe']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"浏览器正在运行，无法恢复备份。{strategy['recommendation']}"
+        )
+
+    # 恢复备份
+    target_path = Path(bookmark_modifier.BROWSER_PATHS[req.browser]).expanduser()
+    success = backup_manager.restore_backup(req.backup_id, target_path)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="恢复备份失败")
+
+    return {
+        "browser": req.browser,
+        "backup_id": req.backup_id,
+        "message": "备份已恢复，请重启浏览器查看效果"
+    }
+
+
+# ── 新功能：操作历史 ──────────────────────────────────────────
+@router.get("/history")
+def get_operation_history(browser: Optional[str] = None, limit: int = 20):
+    """获取操作历史"""
+    history = operation_log.get_history(browser, limit)
+    return {
+        "history": history,
+        "count": len(history)
     }

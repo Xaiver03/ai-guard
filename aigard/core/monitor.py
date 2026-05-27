@@ -10,6 +10,11 @@ from typing import Any, Optional, List
 import psutil
 
 
+# 网络速度计算 - 保存上一次的统计数据
+_last_net_io = None
+_last_net_time = None
+
+
 @dataclass(slots=True)
 class ProcessInfo:
     """进程信息"""
@@ -42,6 +47,9 @@ class Metrics:
     disk_percent: float
     # CPU
     cpu_percent: float
+    # 网络 (KB/s)
+    net_sent_kbs: float = 0.0
+    net_recv_kbs: float = 0.0
     # 告警等级: normal / warn / crit
     alert_level: str = "normal"
 
@@ -51,6 +59,47 @@ class Metrics:
 
 def _gb(b: float) -> float:
     return round(b / (1024 ** 3), 2)
+
+
+def _calculate_net_speed() -> tuple:
+    """
+    计算网络速度 (KB/s)
+
+    Returns:
+        (sent_kbs, recv_kbs)
+    """
+    global _last_net_io, _last_net_time
+
+    try:
+        current_io = psutil.net_io_counters()
+        current_time = time.time()
+
+        if _last_net_io is None or _last_net_time is None:
+            # 第一次调用,保存数据但返回 0
+            _last_net_io = current_io
+            _last_net_time = current_time
+            return (0.0, 0.0)
+
+        # 计算时间差
+        time_delta = current_time - _last_net_time
+        if time_delta <= 0:
+            return (0.0, 0.0)
+
+        # 计算字节差
+        sent_bytes = current_io.bytes_sent - _last_net_io.bytes_sent
+        recv_bytes = current_io.bytes_recv - _last_net_io.bytes_recv
+
+        # 计算速度 (KB/s)
+        sent_kbs = (sent_bytes / time_delta) / 1024
+        recv_kbs = (recv_bytes / time_delta) / 1024
+
+        # 更新上一次的数据
+        _last_net_io = current_io
+        _last_net_time = current_time
+
+        return (round(sent_kbs, 1), round(recv_kbs, 1))
+    except Exception:
+        return (0.0, 0.0)
 
 
 def _get_memory_from_vm_stat() -> tuple:
@@ -133,6 +182,9 @@ def collect_metrics() -> Metrics:
     disk = psutil.disk_usage("/")
     cpu = psutil.cpu_percent(interval=0)
 
+    # 计算网络速度
+    net_sent_kbs, net_recv_kbs = _calculate_net_speed()
+
     # 修复磁盘百分比：macOS APFS 中 disk.used 不包含快照/预留空间
     # 正确算法: (total - free) / total，反映用户实际可用空间占比
     disk_percent_corrected = round(((disk.total - disk.free) / disk.total) * 100, 1) if disk.total > 0 else 0.0
@@ -151,6 +203,8 @@ def collect_metrics() -> Metrics:
         disk_free_gb=_gb(disk.free),
         disk_percent=disk_percent_corrected,
         cpu_percent=cpu,
+        net_sent_kbs=net_sent_kbs,
+        net_recv_kbs=net_recv_kbs,
     )
 
 

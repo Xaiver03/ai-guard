@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 编程最佳实践 — AI Guard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='2.5' fill='none' stroke='%233b82f6' stroke-width='1.75'/><path d='M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M11 3.6l-1.4 1.4M4.6 11l-1.4 1.4' stroke='%233b82f6' stroke-width='1.75' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/components.css">
+<style>
+/* 最佳实践专用样式 */
+.practices-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+}
+
+.category-nav {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.category-item:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.category-item.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.category-icon {
+  font-size: 18px;
+}
+
+.practices-content {
+  min-width: 0;
+}
+
+.practice-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.practice-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+.practice-content {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.practice-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.practice-examples {
+  margin-top: 20px;
+}
+
+.example-item {
+  margin-bottom: 16px;
+}
+
+.example-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.category-header-icon {
+  font-size: 32px;
+}
+
+.category-header-text h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.category-header-text p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.search-box {
+  margin-bottom: 24px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .practices-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .category-nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+  }
+
+  .category-item {
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- 统一顶部导航 -->
+<header>
+  <div class="header-left">
+    <h1 class="logo">AI <span>Guard</span></h1>
+    <nav class="nav-tabs">
+      <a href="/" class="nav-tab">监控面板</a>
+      <a href="/usage.html" class="nav-tab">Claude 统计</a>
+      <a href="/bookmarks.html" class="nav-tab">书签管理</a>
+      <a href="/tools.html" class="nav-tab">工具导航</a>
+      <a href="/practices.html" class="nav-tab active">最佳实践</a>
+    </nav>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="切换主题"></button>
+  </div>
+</header>
+
+<!-- Toast 通知 -->
+<div id="toast"></div>
+
+<!-- 主内容区 -->
+<main class="app">
+  <div class="page-header">
+    <h2>AI 编程最佳实践</h2>
+    <p style="color: var(--text-secondary); margin-top: 8px;">
+      提升 AI 编程效率的实用技巧和经验总结
+    </p>
+  </div>
+
+  <!-- 搜索框 -->
+  <div class="search-box">
+    <input
+      type="text"
+      class="search-input"
+      id="search-input"
+      placeholder="搜索最佳实践..."
+    >
+  </div>
+
+  <!-- 布局 -->
+  <div class="practices-layout">
+    <!-- 侧边栏分类导航 -->
+    <aside class="sidebar">
+      <nav class="category-nav" id="category-nav">
+        <!-- 动态加载 -->
+      </nav>
+    </aside>
+
+    <!-- 内容区 -->
+    <div class="practices-content">
+      <div id="practices-container">
+        <!-- 动态加载 -->
+      </div>
+
+      <!-- 空状态 -->
+      <div class="empty-state" id="empty-state" style="display: none;">
+        <p>未找到匹配的实践</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// 主题切换
+function toggleTheme() {
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const btn = document.getElementById('theme-btn');
+  const theme = document.documentElement.getAttribute('data-theme');
+  btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+// 初始化主题
+const savedTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+updateThemeIcon();
+
+// Toast 通知
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// 加载最佳实践数据
+let allCategories = [];
+let currentCategoryId = null;
+let searchQuery = '';
+
+async function loadPractices() {
+  try {
+    const response = await fetch('/api/practices');
+    const data = await response.json();
+    allCategories = data.categories || [];
+
+    if (allCategories.length > 0) {
+      currentCategoryId = allCategories[0].id;
+    }
+
+    renderCategoryNav();
+    renderPractices();
+  } catch (error) {
+    console.error('加载最佳实践失败:', error);
+    showToast('加载最佳实践失败', 'error');
+  }
+}
+
+function renderCategoryNav() {
+  const nav = document.getElementById('category-nav');
+  nav.innerHTML = allCategories.map(cat => `
+    <div
+      class="category-item ${cat.id === currentCategoryId ? 'active' : ''}"
+      data-category="${cat.id}"
+      onclick="selectCategory('${cat.id}')"
+    >
+      <span class="category-icon">${cat.icon}</span>
+      <span>${cat.name}</span>
+    </div>
+  `).join('');
+}
+
+function selectCategory(categoryId) {
+  currentCategoryId = categoryId;
+  renderCategoryNav();
+  renderPractices();
+}
+
+function renderPractices() {
+  const container = document.getElementById('practices-container');
+  const emptyState = document.getElementById('empty-state');
+
+  const category = allCategories.find(c => c.id === currentCategoryId);
+  if (!category) {
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+
+  // 筛选实践
+  let practices = category.practices;
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    practices = practices.filter(p =>
+      p.title.toLowerCase().includes(query) ||
+      p.content.toLowerCase().includes(query)
+    );
+  }
+
+  if (practices.length === 0) {
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  // 渲染分类头部
+  const headerHtml = `
+    <div class="category-header">
+      <span class="category-header-icon">${category.icon}</span>
+      <div class="category-header-text">
+        <h2>${category.name}</h2>
+        <p>${category.description}</p>
+      </div>
+    </div>
+  `;
+
+  // 渲染实践列表
+  const practicesHtml = practices.map(practice => `
+    <div class="practice-card">
+      <h3 class="practice-title">${practice.title}</h3>
+      <div class="practice-content">${practice.content}</div>
+      ${practice.examples && practice.examples.length > 0 ? `
+        <div class="practice-examples">
+          ${practice.examples.map(ex => `
+            <div class="example-item">
+              <div class="example-label">${ex.label}</div>
+              <pre class="example-code">${ex.code}</pre>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  container.innerHTML = headerHtml + practicesHtml;
+}
+
+// 搜索
+document.getElementById('search-input').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  renderPractices();
+});
+
+// 初始化
+loadPractices();
+</script>
+
+</body>
+</html>
