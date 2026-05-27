@@ -1,19 +1,18 @@
 """
-原生 NSView 布局构建器 - 构建 Popover UI
+原生 NSView 布局构建器 - 构建 Popover UI（iStat Menus 风格）
 
-参考设计：iStatistica Pro 风格
-- 语义颜色进度条（绿/黄/橙/红）
-- SF Symbols 图标
-- 详细数值（XX.X / YY.Y GB 格式）
+设计特点：
+- 卡片式布局（2×2 网格 + 全宽卡片）
+- 信息密度高（主要数值 + 详细信息）
+- 视觉层次清晰（大号数值 + 小号详情）
 """
 from AppKit import (
-    NSTextField, NSProgressIndicator, NSButton, NSBox, NSImage,
+    NSTextField, NSButton, NSBox, NSImage,
     NSImageView, NSFont, NSColor, NSRightTextAlignment,
     NSLeftTextAlignment, NSCenterTextAlignment
 )
 
 
-# ── 语义颜色 ──────────────────────────────────────────────
 def _semantic_color(percent):
     """根据百分比返回语义颜色"""
     if percent < 50:
@@ -29,144 +28,139 @@ def _semantic_color(percent):
 def _format_gb(used, total):
     """格式化 GB 显示"""
     if total >= 100:
-        return f"{used:.0f} / {total:.0f} GB"
+        return f"{used:.0f}/{total:.0f}GB"
     else:
-        return f"{used:.1f} / {total:.1f} GB"
+        return f"{used:.1f}/{total:.1f}GB"
 
 
 def build_popover_ui(container, controller):
-    """构建 Popover 原生 UI（纯 AppKit 控件）
+    """构建 Popover 原生 UI（iStat Menus 风格）
 
     布局：
-    ┌────────────────────────────────┐
-    │  🛡 AI Guard Status            │  ← 标题 + SF Symbol
-    ├────────────────────────────────┤
-    │  ▸ CPU     13%  ██░░░░░░░░░   │  ← 指标区（语义颜色 + 详细值）
-    │            8.3 / 64.0 GB      │
-    │  ▸ Memory  64%  █████████░░   │
-    │            41.0 / 64.0 GB     │
-    │  ▸ Swap    74%  ██████████░   │
-    │            4.4 / 6.0 GB       │
-    │  ▸ Disk    55%  ██████░░░░░   │
-    │            504.8 / 926.4 GB   │
-    ├────────────────────────────────┤
-    │  ✦ Token 838.0M · $4368.25 ↻  │  ← Claude 统计
-    ├────────────────────────────────┤
-    │  [🔪 一键终止]  [⚡ 自动: 关]  │  ← 快捷按钮
-    │  [📊 打开完整面板]             │
-    │  [退出 AI Guard]               │
-    └────────────────────────────────┘
+    ┌─────────────────────────────────────┐
+    │  AI Guard                      70%  │
+    ├─────────────────────────────────────┤
+    │  ┌───────────┐  ┌───────────┐      │
+    │  │ CPU       │  │ Memory    │      │
+    │  │ 14%       │  │ 70%       │      │
+    │  │ 38.0°C    │  │ 44.8/64GB │      │
+    │  └───────────┘  └───────────┘      │
+    │  ┌───────────┐  ┌───────────┐      │
+    │  │ Swap      │  │ Disk      │      │
+    │  │ 60%       │  │ 55%       │      │
+    │  │ 3.6/6 GB  │  │ 505/926GB │      │
+    │  └───────────┘  └───────────┘      │
+    │  ┌─────────────────────────────┐   │
+    │  │ Claude Usage                │   │
+    │  │ Token 7.1M · $9.81          │   │
+    │  └─────────────────────────────┘   │
+    │  [一键终止] [自动:关] [完整面板]   │
+    └─────────────────────────────────────┘
     """
 
-    W = 300  # 容器宽度
-    PAD = 14  # 边距
+    W = 320  # 容器宽度（比原来 300px 稍宽）
+    PAD = 12  # 外边距
     INNER_W = W - 2 * PAD  # 内容区宽度
-    H = 480  # 容器高度
+    H = 450  # 容器高度
 
-    y = H - 10  # 从顶部开始布局（留 10px 顶部边距）
+    y = H - 10  # 从顶部开始布局
 
     metrics_labels = {}
     progress_bars = {}
 
-    # ── 1. 标题栏 ──────────────────────────────────────────
-    # SF Symbol 图标
-    shield_img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
-        "shield.fill", "AI Guard"
-    )
-    if shield_img:
-        icon_view = NSImageView.alloc().initWithFrame_(((PAD, y - 20), (18, 18)))
-        icon_view.setImage_(shield_img)
-        icon_view.setContentTintColor_(NSColor.systemBlueColor())
-        container.addSubview_(icon_view)
-
-    title = _label(((PAD + 22, y - 22), (INNER_W - 22, 22)),
-                   "AI Guard Status",
-                   NSFont.systemFontOfSize_weight_(14, 0.6),
+    # ── 1. 标题栏（紧凑）──────────────────────────────────
+    title = _label(((PAD, y - 18), (INNER_W // 2, 18)),
+                   "AI Guard",
+                   NSFont.systemFontOfSize_weight_(13, 0.6),
                    NSColor.labelColor())
     container.addSubview_(title)
-    y -= 32
+
+    # 当前内存百分比（右对齐）
+    mem_badge = _label(((W - PAD - 60, y - 18), (60, 18)),
+                       "70%",
+                       NSFont.monospacedSystemFontOfSize_weight_(13, 0.6),
+                       NSColor.secondaryLabelColor(),
+                       NSRightTextAlignment)
+    metrics_labels['mem_badge'] = mem_badge
+    container.addSubview_(mem_badge)
+
+    y -= 28
 
     # 分隔线
-    container.addSubview_(_separator(y, W))
+    sep = NSBox.alloc().initWithFrame_(((0, y), (W, 1)))
+    sep.setBoxType_(3)  # NSBoxSeparator
+    container.addSubview_(sep)
     y -= 16
 
-    # ── 2. 系统指标区（4 组，每组 2 行）──────────────────────
-    metric_configs = [
-        ('cpu', 'CPU', 'cpu.fill'),
-        ('mem', 'Memory', 'memorychip'),
-        ('swap', 'Swap', 'arrow.triangle.swap'),
-        ('disk', 'Disk', 'internaldrive.fill'),
+    # ── 2. 卡片区（2×2 网格）──────────────────────────────
+    CARD_W = 140
+    CARD_H = 80
+    GAP = 10
+
+    # 卡片配置：(key, title, x, y)
+    card_configs = [
+        ('cpu', 'CPU', PAD, y - CARD_H),
+        ('mem', 'Memory', PAD + CARD_W + GAP, y - CARD_H),
+        ('swap', 'Swap', PAD, y - CARD_H * 2 - GAP),
+        ('disk', 'Disk', PAD + CARD_W + GAP, y - CARD_H * 2 - GAP),
     ]
 
-    for key, text, sf_name in metric_configs:
-        # SF Symbol 图标
-        sym_img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(sf_name, text)
-        if sym_img:
-            sym_view = NSImageView.alloc().initWithFrame_(((PAD, y - 1), (14, 14)))
-            sym_view.setImage_(sym_img)
-            sym_view.setContentTintColor_(NSColor.secondaryLabelColor())
-            container.addSubview_(sym_view)
+    for key, title_text, x, card_y in card_configs:
+        # 创建卡片容器
+        card = NSBox.alloc().initWithFrame_(((x, card_y), (CARD_W, CARD_H)))
+        card.setBoxType_(4)  # NSBoxCustom
+        card.setCornerRadius_(10)
+        card.setFillColor_(NSColor.secondarySystemFillColor())
+        card.setBorderWidth_(0)
+        card.setTitlePosition_(0)  # NSNoTitle
+        container.addSubview_(card)
 
-        # 名称标签
-        container.addSubview_(_label(
-            ((PAD + 18, y), (55, 16)), text,
-            NSFont.systemFontOfSize_weight_(11, 0.5), NSColor.labelColor()
-        ))
+        # 卡片内布局
+        card_pad = 10
 
-        # 百分比标签（右对齐）
-        val_label = _label(((W - PAD - 50, y), (50, 16)), "0%",
-                     NSFont.monospacedSystemFontOfSize_weight_(12, 0.6),
-                     NSColor.labelColor(),
-                     alignment=NSRightTextAlignment)
-        metrics_labels[key] = val_label
-        container.addSubview_(val_label)
+        # 标题（小号，次要色）
+        title_lbl = _label(((card_pad, CARD_H - card_pad - 14), (CARD_W - 2 * card_pad, 14)),
+                           title_text,
+                           NSFont.systemFontOfSize_weight_(10, 0.5),
+                           NSColor.secondaryLabelColor())
+        card.addSubview_(title_lbl)
 
-        y -= 18
+        # 主要数值（大号，高对比度）
+        value_lbl = _label(((card_pad, CARD_H - card_pad - 42), (CARD_W - 2 * card_pad, 28)),
+                           "0%",
+                           NSFont.monospacedSystemFontOfSize_weight_(24, 0.6),
+                           NSColor.labelColor())
+        metrics_labels[key] = value_lbl
+        card.addSubview_(value_lbl)
 
-        # 进度条（加宽）
-        progress = NSProgressIndicator.alloc().initWithFrame_(((PAD + 18, y + 2), (INNER_W - 68, 6)))
-        progress.setStyle_(0)  # bar
-        progress.setIndeterminate_(False)
-        progress.setMinValue_(0)
-        progress.setMaxValue_(100)
-        progress_bars[key] = progress
-        container.addSubview_(progress)
+        # 详细信息（小号，次要色）
+        detail_lbl = _label(((card_pad, card_pad), (CARD_W - 2 * card_pad, 14)),
+                            "",
+                            NSFont.monospacedSystemFontOfSize_weight_(10, 0.3),
+                            NSColor.tertiaryLabelColor())
+        metrics_labels[f'{key}_detail'] = detail_lbl
+        card.addSubview_(detail_lbl)
 
-        y -= 14
+    y -= CARD_H * 2 + GAP + 16
 
-        # 详细数值标签（第二行）
-        detail_label = _label(((PAD + 18, y), (INNER_W - 18, 14)), "",
-                     NSFont.monospacedSystemFontOfSize_weight_(10, 0.3),
-                     NSColor.tertiaryLabelColor())
-        metrics_labels[f'{key}_detail'] = detail_label
-        container.addSubview_(detail_label)
+    # ── 3. Claude 使用统计卡片（全宽）──────────────────────
+    claude_card = NSBox.alloc().initWithFrame_(((PAD, y - 60), (INNER_W, 60)))
+    claude_card.setBoxType_(4)
+    claude_card.setCornerRadius_(10)
+    claude_card.setFillColor_(NSColor.secondarySystemFillColor())
+    claude_card.setBorderWidth_(0)
+    claude_card.setTitlePosition_(0)
+    container.addSubview_(claude_card)
 
-        y -= 20
+    # 标题
+    claude_title = _label(((10, 60 - 10 - 14), (INNER_W - 60, 14)),
+                          "Claude Usage",
+                          NSFont.systemFontOfSize_weight_(10, 0.5),
+                          NSColor.secondaryLabelColor())
+    claude_card.addSubview_(claude_title)
 
-    y -= 4
-
-    # ── 3. 分隔线 ──────────────────────────────────────────
-    container.addSubview_(_separator(y, W))
-    y -= 16
-
-    # ── 4. Claude 使用统计 + 刷新按钮 ──────────────────────
-    # Token 图标
-    token_img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
-        "sparkle", "Token"
-    )
-    if token_img:
-        token_icon = NSImageView.alloc().initWithFrame_(((PAD, y - 1), (14, 14)))
-        token_icon.setImage_(token_img)
-        token_icon.setContentTintColor_(NSColor.systemPurpleColor())
-        container.addSubview_(token_icon)
-
-    usage_lbl = _label(((PAD + 18, y), (INNER_W - 50, 16)), "Token 0 · $0.00",
-                       NSFont.systemFontOfSize_(11), NSColor.secondaryLabelColor())
-    metrics_labels['usage'] = usage_lbl
-    container.addSubview_(usage_lbl)
-
-    # 刷新按钮（使用 SF Symbol）
-    refresh_btn = NSButton.alloc().initWithFrame_(((W - PAD - 32, y - 4), (32, 22)))
+    # 刷新按钮（右上角）
+    refresh_btn = NSButton.alloc().initWithFrame_(((INNER_W - 32, 60 - 10 - 22), (28, 22)))
     refresh_img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
         "arrow.clockwise", "Refresh"
     )
@@ -179,63 +173,56 @@ def build_popover_ui(container, controller):
     refresh_btn.setBordered_(False)
     refresh_btn.setTarget_(controller)
     refresh_btn.setAction_("refreshUsage:")
-    container.addSubview_(refresh_btn)
+    claude_card.addSubview_(refresh_btn)
 
-    y -= 28
+    # 使用统计（大号）
+    usage_lbl = _label(((10, 10), (INNER_W - 20, 28)),
+                       "Token 0 · $0.00",
+                       NSFont.monospacedSystemFontOfSize_weight_(14, 0.5),
+                       NSColor.labelColor())
+    metrics_labels['usage'] = usage_lbl
+    claude_card.addSubview_(usage_lbl)
 
-    # ── 5. 分隔线 ──────────────────────────────────────────
-    container.addSubview_(_separator(y, W))
-    y -= 16
+    y -= 76
 
-    # ── 6. 快捷按钮区 ──────────────────────────────────────
-    kill_btn = _icon_button(
-        ((PAD, y), (INNER_W // 2 - 4, 30)),
-        "一键终止", "xmark.circle.fill",
-        NSColor.systemRedColor(),
+    # ── 4. 快捷按钮行 ──────────────────────────────────────
+    btn_w = (INNER_W - GAP * 2) // 3
+    btn_h = 28
+
+    kill_btn = _compact_button(
+        ((PAD, y), (btn_w, btn_h)),
+        "一键终止",
         controller, "killSafeProcesses:"
     )
     container.addSubview_(kill_btn)
 
-    autokill_btn = _icon_button(
-        ((PAD + INNER_W // 2 + 4, y), (INNER_W // 2 - 4, 30)),
-        "自动: 关", "bolt.fill",
-        NSColor.systemYellowColor(),
+    autokill_btn = _compact_button(
+        ((PAD + btn_w + GAP, y), (btn_w, btn_h)),
+        "自动:关",
         controller, "toggleAutokill:"
     )
     metrics_labels['autokill_btn'] = autokill_btn
     container.addSubview_(autokill_btn)
-    y -= 38
 
-    dashboard_btn = _icon_button(
-        ((PAD, y), (INNER_W, 30)),
-        "打开完整面板", "chart.bar.xaxis",
-        NSColor.systemBlueColor(),
+    dashboard_btn = _compact_button(
+        ((PAD + (btn_w + GAP) * 2, y), (btn_w, btn_h)),
+        "完整面板",
         controller, "openDashboard:"
     )
     container.addSubview_(dashboard_btn)
+
     y -= 38
 
-    quit_btn = _icon_button(
-        ((PAD, y), (INNER_W, 30)),
-        "退出 AI Guard", "power",
-        NSColor.secondaryLabelColor(),
-        controller, "quitApp:"
-    )
-    container.addSubview_(quit_btn)
-    y -= 38
-
-    # ── 7. 状态标签（用于显示操作反馈）──────────────────────
+    # ── 5. 状态标签（用于显示操作反馈）──────────────────────
     status_label = _label(
-        ((PAD, y), (INNER_W, 20)),
-        "",  # 初始为空
-        NSFont.systemFontOfSize_(11),
+        ((PAD, y), (INNER_W, 16)),
+        "",
+        NSFont.systemFontOfSize_(10),
         NSColor.secondaryLabelColor(),
         NSCenterTextAlignment
     )
     container.addSubview_(status_label)
     metrics_labels['status'] = status_label
-
-    # 调整容器高度（不改变，保持初始值）
 
     return metrics_labels, progress_bars
 
@@ -257,37 +244,12 @@ def _label(frame, text, font, color, alignment=None):
     return lbl
 
 
-def _separator(y, width):
-    """创建分隔线"""
-    sep = NSBox.alloc().initWithFrame_(((0, y), (width, 1)))
-    sep.setBoxType_(3)  # NSBoxSeparator
-    return sep
-
-
-def _button(frame, title, target, action):
-    """创建 NSButton"""
+def _compact_button(frame, title, target, action):
+    """创建紧凑按钮"""
     btn = NSButton.alloc().initWithFrame_(frame)
     btn.setTitle_(title)
     btn.setBezelStyle_(1)  # NSBezelStyleRounded
-    btn.setTarget_(target)
-    btn.setAction_(action)
-    return btn
-
-
-def _icon_button(frame, title, sf_symbol_name, tint_color, target, action):
-    """创建带 SF Symbol 图标的 NSButton"""
-    btn = NSButton.alloc().initWithFrame_(frame)
-    btn.setTitle_(f"  {title}")
-    btn.setBezelStyle_(1)  # NSBezelStyleRounded
-    btn.setFont_(NSFont.systemFontOfSize_(12))
-
-    # 添加 SF Symbol 图标
-    img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(sf_symbol_name, title)
-    if img:
-        btn.setImage_(img)
-        btn.setImagePosition_(2)  # NSImageLeft
-        btn.setContentTintColor_(tint_color)
-
+    btn.setFont_(NSFont.systemFontOfSize_(11))
     btn.setTarget_(target)
     btn.setAction_(action)
     return btn

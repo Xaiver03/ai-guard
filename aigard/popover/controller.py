@@ -35,9 +35,9 @@ class PopoverViewController(NSViewController):
 
     def loadView(self):
         """构建原生 NSView 布局"""
-        # 创建主容器
+        # 创建主容器（新尺寸：320×450）
         container = NSView.alloc().initWithFrame_(
-            ((0, 0), (300, 480))
+            ((0, 0), (320, 450))
         )
 
         # 使用 view_builder 构建 UI
@@ -56,7 +56,7 @@ class PopoverViewController(NSViewController):
         if not latest:
             return
 
-        # 更新进度条、百分比和详细数值
+        # 更新各卡片的主要数值和详细信息
         metric_details = {
             'cpu': ('cpu_percent', None, None),
             'mem': ('mem_percent', 'mem_used_gb', 'mem_total_gb'),
@@ -67,23 +67,24 @@ class PopoverViewController(NSViewController):
         for key, (pct_key, used_key, total_key) in metric_details.items():
             value = latest.get(pct_key, 0)
 
-            # 更新进度条颜色和值
-            if key in self.progress_bars:
-                bar = self.progress_bars[key]
-                bar.setDoubleValue_(value)
-
-            # 更新百分比标签和颜色
+            # 更新主要数值（大号百分比）
             if key in self.metrics_labels:
                 lbl = self.metrics_labels[key]
                 lbl.setStringValue_(f"{value:.0f}%")
                 lbl.setTextColor_(_semantic_color(value))
 
-            # 更新详细数值（used / total GB）
+            # 更新详细信息（used / total GB）
             detail_key = f'{key}_detail'
             if detail_key in self.metrics_labels and used_key and total_key:
                 used = latest.get(used_key, 0)
                 total = latest.get(total_key, 0)
                 self.metrics_labels[detail_key].setStringValue_(_format_gb(used, total))
+
+        # 更新标题栏的内存徽章
+        if 'mem_badge' in self.metrics_labels:
+            mem = latest.get('mem_percent', 0)
+            self.metrics_labels['mem_badge'].setStringValue_(f"{mem:.0f}%")
+            self.metrics_labels['mem_badge'].setTextColor_(_semantic_color(mem))
 
     def update_usage(self):
         """更新 Claude 使用统计"""

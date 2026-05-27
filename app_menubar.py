@@ -75,9 +75,9 @@ class AIGuardApp(rumps.App):
     def __init__(self):
         super().__init__(
             name="AI Guard",
-            title=None,  # 只显示图标
-            icon=_sf_symbol_to_png(_SYMBOLS["normal"]),
-            template=True,     # 模板图片：系统自动处理深色/浅色
+            title="--",  # 初始显示占位符
+            icon=None,  # 不使用图标，只显示文字
+            template=False,
             quit_button=None,
         )
 
@@ -87,9 +87,9 @@ class AIGuardApp(rumps.App):
         self._url = f"http://{host}:{port}"
         self._last_level = "normal"
 
-        # 预生成三种状态图标缓存
-        for name in _SYMBOLS.values():
-            _sf_symbol_to_png(name)
+        # 创建原生窗口（单例）
+        from aigard.window_manager import DashboardWindow
+        self._dashboard_window = DashboardWindow.get_instance(self._url)
 
         # 持有菜单项引用
         self._status_item = rumps.MenuItem("状态: 启动中...")
@@ -207,11 +207,12 @@ class AIGuardApp(rumps.App):
     # ── 定时刷新 ──────────────────────────────────────────────
 
     def _refresh_status(self, _):
-        """每 15 秒从 history 读最新指标，更新菜单栏图标和状态行"""
+        """每 15 秒从 history 读最新指标，更新菜单栏显示"""
         latest = _main_mod.history.latest
         if not latest:
             # 服务启动中，显示等待状态
             self._status_item.title = "状态: 等待数据..."
+            self.title = "..."
             return
 
         cpu   = latest.get("cpu_percent", 0)
@@ -220,13 +221,15 @@ class AIGuardApp(rumps.App):
         disk  = latest.get("disk_percent", 0)
         level = latest.get("alert_level", "normal")
 
-        # 仅在等级变化时切换图标
-        if level != self._last_level:
-            symbol_name = _SYMBOLS.get(level, _SYMBOLS["normal"])
-            icon_path = _sf_symbol_to_png(symbol_name)
-            if icon_path:
-                self.icon = icon_path
-            self._last_level = level
+        # 菜单栏标题：只显示内存百分比，根据告警等级添加前缀
+        if level == "crit":
+            self.title = f"⚠︎{mem:.0f}%"  # 危险：警告符号
+        elif level == "warn":
+            self.title = f"△{mem:.0f}%"  # 警告：三角形
+        else:
+            self.title = f"{mem:.0f}%"  # 正常：纯数字
+
+        self._last_level = level
 
         # 状态行 - 详细信息（在下拉菜单中显示）
         usage = _main_mod.threads.get_today_usage()
