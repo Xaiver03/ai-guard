@@ -81,13 +81,42 @@ class AIGuardDelegate(NSObject):
         self.statusItem.setVisible_(True)
         print(f"✅ 状态栏项可见性: {self.statusItem.isVisible()}")
 
-        # 创建 Popover (使用 PopoverManager)
-        from aigard.popover_manager import PopoverManager
-        self.popover_manager = PopoverManager.get_instance(self.statusItem)
+        # 创建 Popover (使用原生 AppKit 控件)
+        print("=== 创建 Popover ===")
+        try:
+            from aigard.popover import PopoverViewController
+            print("✅ PopoverViewController 导入成功")
+
+            # 创建视图控制器
+            self.popover_controller = PopoverViewController.alloc().initWithThreadsManager_serverUrl_(
+                _main_mod.threads,
+                self.url
+            )
+            print(f"✅ PopoverViewController 创建成功")
+
+            # 创建 Popover
+            from AppKit import NSPopover
+            self.popover = NSPopover.alloc().init()
+            self.popover.setContentViewController_(self.popover_controller)
+            self.popover.setBehavior_(1)  # NSPopoverBehaviorTransient
+            from Foundation import NSMakeSize
+            self.popover.setContentSize_(NSMakeSize(360, 500))
+            print(f"✅ Popover 创建成功")
+        except Exception as e:
+            print(f"❌ Popover 创建失败: {e}")
+            import traceback
+            traceback.print_exc()
 
         # 创建原生窗口管理器（用于显示监控面板）
-        from aigard.window_manager import DashboardWindow
-        self.dashboard_window = DashboardWindow.get_instance(self.url)
+        print("=== 创建 DashboardWindow ===")
+        try:
+            from aigard.window_manager import DashboardWindow
+            self.dashboard_window = DashboardWindow.get_instance(self.url)
+            print(f"✅ DashboardWindow 创建成功: {self.dashboard_window}")
+        except Exception as e:
+            print(f"❌ DashboardWindow 创建失败: {e}")
+            import traceback
+            traceback.print_exc()
 
         # 绑定点击事件
         self.statusItem.button().setAction_("togglePopover:")
@@ -184,12 +213,29 @@ class AIGuardDelegate(NSObject):
 
     def togglePopover_(self, sender):
         """切换 Popover 显示/隐藏"""
-        button = self.statusItem.button()
-        self.popover_manager.toggle(
-            button.bounds(),
-            button,
-            3  # NSRectEdgeMinY - 从下方弹出
-        )
+        print(f"=== togglePopover_ 被调用,sender: {sender} ===")
+        try:
+            if self.popover.isShown():
+                print("关闭 Popover")
+                self.popover.close()
+            else:
+                print("显示 Popover")
+                button = self.statusItem.button()
+                print(f"按钮: {button}, bounds: {button.bounds()}")
+                self.popover.showRelativeToRect_ofView_preferredEdge_(
+                    button.bounds(),
+                    button,
+                    3  # NSRectEdgeMinY - 从下方弹出
+                )
+                # 更新数据
+                self.popover_controller.update_metrics()
+                self.popover_controller.update_usage()
+                self.popover_controller.update_autokill_button()
+                print("✅ Popover 显示完成")
+        except Exception as e:
+            print(f"❌ togglePopover_ 失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def rightMouseDown_(self, event):
         """右键点击显示菜单"""
