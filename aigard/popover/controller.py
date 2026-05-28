@@ -35,18 +35,23 @@ class PopoverViewController(NSViewController):
 
     def loadView(self):
         """构建原生 NSView 布局"""
+        print("=== PopoverViewController.loadView() 被调用 ===")
         # 创建主容器（尺寸：360×500）
         container = NSView.alloc().initWithFrame_(
             ((0, 0), (360, 500))
         )
+        print(f"✅ 容器创建成功: {container}, frame: {container.frame()}")
 
         # 使用 view_builder 构建 UI
         from .view_builder import build_popover_ui
+        print("开始构建 UI...")
         self.metrics_labels, self.progress_bars = build_popover_ui(
             container, self
         )
+        print(f"✅ UI 构建完成, labels: {len(self.metrics_labels)}, bars: {len(self.progress_bars)}")
 
         self.setView_(container)
+        print(f"✅ setView 完成, view: {self.view()}")
 
     def update_metrics(self):
         """更新指标数据（从 threads.history.latest 读取）"""
@@ -127,30 +132,68 @@ class PopoverViewController(NSViewController):
     @objc.selector
     def killSafeProcesses_(self, sender):
         """一键终止安全进程"""
-        from aigard.core import kill_process
+        print(f"=== killSafeProcesses_ 被调用 ===")
+        try:
+            import os
+            from aigard.core import kill_process
 
-        with self.threads.lock:
-            safe_procs = [p for p in self.threads.latest_processes if p.get("risk") == "safe"]
+            # 获取当前进程 PID (自我保护)
+            current_pid = os.getpid()
+            print(f"当前应用 PID: {current_pid}")
 
-        if not safe_procs:
-            self._show_status("当前没有可安全终止的进程")
-            return
+            print(f"threads: {self.threads}")
+            if not self.threads:
+                msg = "后台服务未启动"
+                print(f"❌ {msg}")
+                self._send_notification("AI Guard", msg)
+                return
 
-        killed = 0
-        total_freed = 0.0
-        for proc in safe_procs:
-            r = kill_process(proc["pid"])
-            if r.success:
-                killed += 1
-                total_freed += r.mem_freed_mb
+            print(f"threads.lock: {self.threads.lock}")
+            print(f"threads.latest_processes: {hasattr(self.threads, 'latest_processes')}")
 
-        msg = f"已终止 {killed} 个进程，释放 {total_freed:.0f} MB"
-        self._show_status(msg)
-        self._send_notification("AI Guard", msg)
+            with self.threads.lock:
+                # 过滤掉当前进程 (自我保护)
+                safe_procs = [
+                    p for p in self.threads.latest_processes
+                    if p.get("risk") == "safe" and p.get("pid") != current_pid
+                ]
+
+            print(f"找到 {len(safe_procs)} 个安全进程 (已排除当前进程)")
+
+            if not safe_procs:
+                msg = "当前没有可安全终止的进程"
+                print(f"⚠️ {msg}")
+                self._send_notification("AI Guard", msg)
+                return
+
+            killed = 0
+            total_freed = 0.0
+            for proc in safe_procs:
+                pid = proc['pid']
+                name = proc.get('name', 'unknown')
+                print(f"终止进程: {pid} - {name}")
+                r = kill_process(pid)
+                if r.success:
+                    killed += 1
+                    total_freed += r.mem_freed_mb
+                    print(f"  ✅ 已终止,释放 {r.mem_freed_mb:.0f} MB")
+                else:
+                    print(f"  ❌ 终止失败")
+
+            msg = f"已终止 {killed} 个进程，释放 {total_freed:.0f} MB"
+            print(f"✅ {msg}")
+            self._send_notification("AI Guard", msg)
+        except Exception as e:
+            msg = f"终止进程失败: {str(e)}"
+            print(f"❌ {msg}")
+            import traceback
+            traceback.print_exc()
+            self._send_notification("AI Guard", msg)
 
     @objc.selector
     def toggleAutokill_(self, sender):
         """切换自动终止开关"""
+        print(f"=== toggleAutokill_ 被调用 ===")
         with self.threads.lock:
             self.threads.autokill_enabled = not self.threads.autokill_enabled
             state = self.threads.autokill_enabled
@@ -160,14 +203,26 @@ class PopoverViewController(NSViewController):
 
         # 反馈
         status = "已开启" if state else "已关闭"
-        self._show_status(f"自动终止{status}")
+        msg = f"自动终止{status}"
+        print(f"✅ {msg}")
+        self._show_status(msg)
+        self._send_notification("AI Guard", msg)
 
     @objc.selector
     def openDashboard_(self, sender):
         """打开完整监控面板 - 使用原生窗口"""
-        from aigard.window_manager import DashboardWindow
-        dashboard = DashboardWindow.get_instance(self.server_url)
-        dashboard.show()
+        print(f"=== openDashboard_ 被调用 ===")
+        try:
+            from aigard.window_manager import DashboardWindow
+            dashboard = DashboardWindow.get_instance(self.server_url)
+            dashboard.show()
+            print("✅ Dashboard 窗口已打开")
+            self._send_notification("AI Guard", "监控面板已打开")
+        except Exception as e:
+            print(f"❌ 打开 Dashboard 失败: {e}")
+            import traceback
+            traceback.print_exc()
+            self._send_notification("AI Guard", f"打开失败: {str(e)}")
 
     @objc.selector
     def refreshUsage_(self, sender):
