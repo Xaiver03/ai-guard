@@ -103,7 +103,7 @@ class PopoverViewController(NSViewController):
         if usage and usage.get('total_tokens', 0) > 0:
             tokens = usage['total_tokens']
             cost = usage.get('total_cost', 0)
-            requests = usage.get('request_count', 0)
+            requests = usage.get('request_count', 0) or usage.get('total_requests', 0)  # 兼容两种字段名
 
             # 格式化 Token 显示
             if tokens >= 1_000_000:

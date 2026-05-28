@@ -118,17 +118,18 @@ def _format_gb(used, total):
 
 
 def build_popover_ui(container, controller):
-    """构建 Popover 原生 UI - 简洁黑白配色
+    """构建 Popover 原生 UI - 仿 iStat Menus 风格
 
     尺寸: 360×500px
     """
+    from AppKit import NSVisualEffectView, NSVisualEffectMaterialPopover, NSVisualEffectBlendingModeBehindWindow
 
     W = 360.0
     H = 500.0
-    PAD = DesignTokens.SPACE_4
-    GAP = DesignTokens.SPACE_3
+    PAD = DesignTokens.SPACE_4  # 16px
+    GAP = DesignTokens.SPACE_3  # 12px
 
-    # 磨砂玻璃背景
+    # 渐变磨砂玻璃背景
     blur_view = NSVisualEffectView.alloc().initWithFrame_(((0, 0), (W, H)))
     blur_view.setMaterial_(NSVisualEffectMaterialPopover)
     blur_view.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
@@ -138,9 +139,11 @@ def build_popover_ui(container, controller):
     metrics_labels = {}
     progress_bars = {}
 
-    card_w = (W - 2 * PAD - GAP) / 2.0
-    card_h = 110.0
-    y = H - PAD
+    # 卡片尺寸 - 合理的高度
+    card_w = (W - 2 * PAD - GAP) / 2.0  # 156px
+    card_h = 110.0  # 固定高度
+
+    y = H - PAD  # 从顶部开始
 
     # ── 1. CPU 卡片 ──
     cpu_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
