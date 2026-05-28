@@ -8,7 +8,7 @@
 """
 
 from .monitor import collect_metrics, collect_ai_processes, collect_all_processes, MetricsHistory, Metrics, ProcessInfo
-from .advisor import advise, advise_list, ProcessAdvice, CPU_CAUTION_PCT, IDLE_MIN_HOURS
+from .advisor import advise, advise_list, ProcessAdvice, CPU_CAUTION_PCT, IDLE_MIN_MINUTES
 from .killer import pause_process, resume_process, kill_process, ActionResult
 from .alerter import Alerter
 from .whitelist import WhitelistManager
@@ -26,7 +26,7 @@ __all__ = [
     'advise_list',
     'ProcessAdvice',
     'CPU_CAUTION_PCT',
-    'IDLE_MIN_HOURS',
+    'IDLE_MIN_MINUTES',
     # killer
     'pause_process',
     'resume_process',

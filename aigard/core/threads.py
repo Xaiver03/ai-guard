@@ -46,6 +46,9 @@ class BackgroundThreads:
 
     def start_all(self):
         """启动所有后台线程"""
+        # 应用评分配置到 advisor 模块
+        self._apply_scoring_config()
+
         self._threads = [
             threading.Thread(target=self._monitor_loop, daemon=True),
             threading.Thread(target=self._auto_kill_loop, daemon=True),
@@ -55,6 +58,17 @@ class BackgroundThreads:
         ]
         for t in self._threads:
             t.start()
+
+    def _apply_scoring_config(self):
+        """将配置应用到 advisor 模块"""
+        import aigard.core.advisor as advisor_mod
+
+        with self.settings_lock:
+            scoring = self.settings.get("scoring", {})
+            if "cpu_caution_pct" in scoring:
+                advisor_mod.CPU_CAUTION_PCT = scoring["cpu_caution_pct"]
+            if "idle_min_minutes" in scoring:
+                advisor_mod.IDLE_MIN_MINUTES = scoring["idle_min_minutes"]
 
     def _monitor_loop(self):
         """监控线程：采集指标和进程列表"""

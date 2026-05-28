@@ -44,6 +44,13 @@ safe_keywords = [
     "launchd",
 ]
 
+# 进程安全评分阈值
+[processes.scoring]
+# CPU 占用超过此值（%）会被评为 caution（谨慎）
+cpu_caution_pct = 20
+# 运行时间超过此值（分钟）且 CPU < 1% 会被评为 safe（可终止）
+idle_min_minutes = 10
+
 [whitelist]
 # 进程名白名单（精确匹配，不区分大小写）
 process_names = []

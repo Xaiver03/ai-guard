@@ -8,7 +8,7 @@ import psutil
 
 # ── 评分规则可配置参数（可由 main.py 运行时动态修改）──────────
 CPU_CAUTION_PCT = 20      # CPU > 此值 → caution
-IDLE_MIN_HOURS  = 1.0     # 运行 > 此值（小时）且 CPU<1% 且 mem>200MB → safe
+IDLE_MIN_MINUTES = 10     # 运行 > 此值（分钟）且 CPU<1% → safe
 
 
 @dataclass(slots=True)
@@ -54,14 +54,46 @@ _DANGER_PATTERNS = [
 # MCP 进程特征（Claude Code 的子进程，可以按正常规则评分）
 # 注意：必须在 DANGER 检查之前判断，避免误杀会话窗口
 _MCP_PATTERNS = [
+    # 通用 MCP 模式
     "mcp-server",
     "mcp_server",
     "/mcp/",
     "/.claude/mcp",
+    "/.pencil/mcp",
+    "@modelcontextprotocol/server",  # npm exec @modelcontextprotocol/server-*
+    "modelcontextprotocol",
+
+    # 官方 MCP 服务器
+    "server-filesystem",
+    "server-github",
+    "server-memory",
+    "server-git",
+    "server-fetch",
+    "server-time",
+
+    # 搜索引擎 MCP
     "open-websearch",
+    "brave-search-mcp-server",
+    "@brave/brave-search",
     "search-baidu",
     "search-bing",
+    "search-duckduckgo",
+    "search-csdn",
+    "search-juejin",
+    "search-startpage",
     "search-bilibili",
+
+    # Pencil 设计工具 MCP
+    "pencil.app/contents/resources",
+    "mcp-server-darwin-arm64",
+
+    # 其他常见 MCP 服务器
+    "server-postgres",
+    "server-sqlite",
+    "server-puppeteer",
+    "server-slack",
+    "server-linear",
+    "server-notion",
 ]
 
 # 构建/编译/测试工具：可安全终止，重新运行即可
@@ -146,13 +178,13 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     haystack = f"{name} {cmdline}"
 
     reasons = []
-    risk = "safe"
-    action = "kill"
+    risk = "caution"  # 默认谨慎，需要满足条件才能变为 safe
+    action = "pause"
 
     # ── 规则 MCP：MCP 子进程优先按正常规则评分（不受 danger 保护）──
     is_mcp = _match_any(haystack, _MCP_PATTERNS)
     if is_mcp:
-        reasons.append("Claude Code MCP 子进程，可按正常规则评分")
+        reasons.append("Claude Code MCP 子进程")
         # 跳过 danger 检查，继续后续规则
     else:
         # ── 规则 D：高危进程（立即返回，不被后续规则覆盖）──────────
@@ -189,23 +221,25 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
         action = "kill"
 
     # ── 规则 S3：多个同名进程（冗余实例）────────────────────────
+    # 注意：MCP 进程不适用此规则，因为多个 node 进程可能都在工作
     # 使用预计算的 name_counts，避免每个进程都扫描一次
-    if name_counts is not None:
-        same_count = name_counts.get(proc_info["name"].lower(), 1)
-    else:
-        same_count = _count_same_name(proc_info["name"])
+    if not is_mcp:
+        if name_counts is not None:
+            same_count = name_counts.get(proc_info["name"].lower(), 1)
+        else:
+            same_count = _count_same_name(proc_info["name"])
 
-    if same_count >= 3:
-        reasons.append(f"同名进程共 {same_count} 个，存在冗余实例，关闭部分通常不影响主流程")
-        if risk != "danger":
-            risk = "safe"
-            action = "kill"
+        if same_count >= 3:
+            reasons.append(f"同名进程共 {same_count} 个，存在冗余实例，关闭部分通常不影响主流程")
+            if risk != "danger":
+                risk = "safe"
+                action = "kill"
 
     # ── 规则 S4：长时间空转 ──────────────────────────────────
-    uptime_h = _uptime_hours(create_time)
-    if uptime_h > IDLE_MIN_HOURS and cpu < 1 and mem_mb > 200:
+    uptime_minutes = (time.time() - create_time) / 60
+    if uptime_minutes > IDLE_MIN_MINUTES and cpu < 1:
         reasons.append(
-            f"运行 {uptime_h:.1f}h，CPU ≈ 0，内存 {mem_mb:.0f} MB，判定为空转进程"
+            f"运行 {uptime_minutes:.0f} 分钟，CPU ≈ 0，判定为空转进程"
         )
         if risk != "danger":
             risk = "safe"

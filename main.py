@@ -67,13 +67,16 @@ whitelist = WhitelistManager(WHITELIST_CFG)
 threads = BackgroundThreads(CFG, history, alerter, whitelist)
 
 # 初始化运行时配置
+PROCESSES_CFG = CFG.get("processes", {})
+SCORING_CFG = PROCESSES_CFG.get("scoring", {})
+
 threads.settings = {
     "alert": dict(ALERT_CFG),
     "auto_kill": dict(AUTO_KILL_CFG),
     "monitor": {"interval_sec": MONITOR_CFG.get("interval_sec", 15)},
     "scoring": {
-        "cpu_caution_pct": 20,
-        "idle_min_hours": 1.0,
+        "cpu_caution_pct": SCORING_CFG.get("cpu_caution_pct", 20),
+        "idle_min_minutes": SCORING_CFG.get("idle_min_minutes", 10),
     },
 }
 
