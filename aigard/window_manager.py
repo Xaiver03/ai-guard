@@ -32,13 +32,12 @@ class DashboardWindow:
 
     def _create_window(self):
         """创建原生窗口"""
-        # 窗口样式:标题栏 + 关闭 + 最小化 + 可调整大小 + 全屏
+        # 窗口样式:标题栏 + 关闭 + 最小化 + 可调整大小
         style_mask = (
             NSWindowStyleMaskTitled |
             NSWindowStyleMaskClosable |
             NSWindowStyleMaskMiniaturizable |
-            NSWindowStyleMaskResizable |
-            (1 << 14)  # NSWindowStyleMaskFullScreen
+            NSWindowStyleMaskResizable
         )
 
         # 窗口尺寸和位置(居中显示)
@@ -56,9 +55,20 @@ class DashboardWindow:
         self.window.setTitle_("AI Guard - 监控面板")
         self.window.center()  # 居中显示
         self.window.setMinSize_((800, 600))  # 最小尺寸
+        self.window.setMovable_(True)  # 允许移动
+        self.window.setMovableByWindowBackground_(True)  # 允许通过背景拖动
 
-        # 允许全屏 - 使用正确的常量
-        self.window.setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary = 1 << 7 = 128
+        # 允许全屏
+        self.window.setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary
+
+        # 确保窗口可以成为主窗口
+        self.window.setReleasedWhenClosed_(False)
+
+        # 打印调试信息
+        print(f"窗口创建完成:")
+        print(f"  - 样式掩码: {style_mask}")
+        print(f"  - 可移动: {self.window.isMovable()}")
+        print(f"  - 可调整大小: {bool(style_mask & NSWindowStyleMaskResizable)}")
 
         # 配置 WebView - 启用 JavaScript 和本地存储
         config = WKWebViewConfiguration.alloc().init()
@@ -79,7 +89,17 @@ class DashboardWindow:
         # 创建 WebView
         webview_rect = NSMakeRect(0, 0, 1200, 800)
         self.webview = WKWebView.alloc().initWithFrame_configuration_(webview_rect, config)
+
+        # 自动调整大小 - 跟随窗口大小变化
         self.webview.setAutoresizingMask_(18)  # NSViewWidthSizable | NSViewHeightSizable
+
+        # 关键修复:允许鼠标事件穿透到窗口标题栏
+        # 这样用户可以拖动窗口
+        try:
+            # 不要让 WebView 拦截所有鼠标事件
+            self.webview.setAcceptsTouchEvents_(False)
+        except:
+            pass
 
         # 允许滚动
         try:

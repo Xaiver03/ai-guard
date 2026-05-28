@@ -277,11 +277,13 @@ class PopoverViewController(NSViewController):
         threading.Timer(3.0, _clear).start()
 
     def _send_notification(self, title, message):
-        """发送 macOS 系统通知（作为补充反馈）"""
+        """发送 macOS 系统通知"""
         try:
-            notification = NSUserNotification.alloc().init()
-            notification.setTitle_(title)
-            notification.setInformativeText_(message)
-            NSUserNotificationCenter.defaultUserNotificationCenter().deliverNotification_(notification)
-        except Exception:
+            import subprocess
+            # 使用 osascript 发送通知 (兼容所有 macOS 版本)
+            script = f'display notification "{message}" with title "{title}"'
+            subprocess.run(['osascript', '-e', script], check=False, capture_output=True)
+            print(f"✅ 通知已发送: {title} - {message}")
+        except Exception as e:
+            print(f"❌ 通知发送失败: {e}")
             pass  # 系统通知失败不影响功能

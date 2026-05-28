@@ -98,7 +98,7 @@ class AIGuardDelegate(NSObject):
             from AppKit import NSPopover
             self.popover = NSPopover.alloc().init()
             self.popover.setContentViewController_(self.popover_controller)
-            self.popover.setBehavior_(0)  # NSPopoverBehaviorApplicationDefined - 允许移动和全屏
+            self.popover.setBehavior_(0)  # NSPopoverBehaviorApplicationDefined
             from Foundation import NSMakeSize
             self.popover.setContentSize_(NSMakeSize(360, 500))
             print(f"✅ Popover 创建成功")
