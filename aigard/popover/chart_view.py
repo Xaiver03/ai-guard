@@ -2,25 +2,21 @@
 折线图视图 - 使用 Core Graphics 绘制 Token 历史趋势
 """
 import objc
-from AppKit import NSView, NSColor, NSBezierPath, NSFont
-from Foundation import NSRect, NSMakeRect, NSMakePoint
+from AppKit import NSView, NSColor, NSBezierPath
+from Foundation import NSMakePoint
 
 
 class LineChartView(NSView):
     """折线图视图"""
 
-    def initWithFrame_data_(self, frame, data):
-        """初始化方法
-
-        Args:
-            frame: 视图框架
-            data: 数据点列表 [(x, y), ...]
-        """
+    def initWithFrame_(self, frame):
+        """标准初始化方法"""
         self = objc.super(LineChartView, self).initWithFrame_(frame)
         if self is None:
             return None
 
-        self.data = data if data else []
+        self.data = []
+        print(f"LineChartView 初始化成功: frame={frame}")
         return self
 
     def drawRect_(self, rect):
@@ -30,12 +26,15 @@ class LineChartView(NSView):
         height = bounds.size.height
 
         # 绘制背景 (半透明白色)
-        NSColor.colorWithWhite_alpha_(1.0, 0.05).setFill()
+        NSColor.colorWithWhite_alpha_(1.0, 0.1).setFill()
         NSBezierPath.fillRect_(bounds)
 
         # 如果没有数据,显示占位文本
         if not self.data or len(self.data) < 2:
+            print(f"折线图没有数据: data={self.data}")
             return
+
+        print(f"绘制折线图: {len(self.data)} 个数据点")
 
         # 计算数据范围
         values = [y for x, y in self.data]
@@ -64,4 +63,5 @@ class LineChartView(NSView):
     def setData_(self, data):
         """更新数据并重绘"""
         self.data = data if data else []
+        print(f"折线图数据已更新: {len(self.data)} 个数据点")
         self.setNeedsDisplay_(True)

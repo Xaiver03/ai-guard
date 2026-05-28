@@ -300,15 +300,19 @@ def build_popover_ui(container, controller):
     # Token 历史折线图
     try:
         from aigard.popover.chart_view import LineChartView
+        from Foundation import NSMakeRect
         chart_frame = NSMakeRect(
             DesignTokens.SPACE_3,
             DesignTokens.SPACE_3 + 20,
             card_w - DesignTokens.SPACE_3 * 2,
             50
         )
-        chart_view = LineChartView.alloc().initWithFrame_data_(chart_frame, [])
+        print(f"创建折线图: frame={chart_frame}")
+        chart_view = LineChartView.alloc().initWithFrame_(chart_frame)
+        print(f"折线图创建成功: {chart_view}")
         metrics_labels['token_chart'] = chart_view
         claude_card.addSubview_(chart_view)
+        print(f"折线图已添加到卡片")
     except Exception as e:
         print(f"❌ 折线图创建失败: {e}")
         import traceback
