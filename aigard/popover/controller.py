@@ -124,6 +124,11 @@ class PopoverViewController(NSViewController):
                 self.metrics_labels['usage_cost'].setStringValue_(f"费用: ${cost:.2f}")
             if 'usage_requests' in self.metrics_labels:
                 self.metrics_labels['usage_requests'].setStringValue_(f"请求: {requests} 次")
+
+            # 更新折线图
+            if 'token_chart' in self.metrics_labels:
+                chart_data = self._get_token_history()
+                self.metrics_labels['token_chart'].setData_(chart_data)
         else:
             if 'usage_token' in self.metrics_labels:
                 self.metrics_labels['usage_token'].setStringValue_("Token: 0")
@@ -131,6 +136,20 @@ class PopoverViewController(NSViewController):
                 self.metrics_labels['usage_cost'].setStringValue_("费用: $0.00")
             if 'usage_requests' in self.metrics_labels:
                 self.metrics_labels['usage_requests'].setStringValue_("请求: 0 次")
+
+    def _get_token_history(self):
+        """获取最近 7 天的 Token 历史数据"""
+        try:
+            import requests
+            response = requests.get(f"{self.server_url}/api/usage/daily?preset=last7days", timeout=2)
+            if response.status_code == 200:
+                daily_data = response.json()
+                # 转换为折线图数据格式 [(x, y), ...]
+                chart_data = [(i, d.get('total_tokens', 0)) for i, d in enumerate(daily_data[-7:])]
+                return chart_data
+        except Exception as e:
+            print(f"获取 Token 历史失败: {e}")
+        return []
 
     def update_autokill_button(self):
         """更新自动终止按钮文本"""

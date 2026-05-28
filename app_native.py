@@ -100,7 +100,7 @@ class AIGuardDelegate(NSObject):
             self.popover.setContentViewController_(self.popover_controller)
             self.popover.setBehavior_(0)  # NSPopoverBehaviorApplicationDefined
             from Foundation import NSMakeSize
-            self.popover.setContentSize_(NSMakeSize(360, 500))
+            self.popover.setContentSize_(NSMakeSize(360, 550))  # 增加高度以容纳折线图
             print(f"✅ Popover 创建成功")
         except Exception as e:
             print(f"❌ Popover 创建失败: {e}")

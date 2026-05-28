@@ -120,12 +120,12 @@ def _format_gb(used, total):
 def build_popover_ui(container, controller):
     """构建 Popover 原生 UI - 仿 iStat Menus 风格
 
-    尺寸: 360×500px
+    尺寸: 360×550px (增加高度以容纳折线图)
     """
     from AppKit import NSVisualEffectView, NSVisualEffectMaterialPopover, NSVisualEffectBlendingModeBehindWindow
 
     W = 360.0
-    H = 500.0
+    H = 550.0  # 增加高度
     PAD = DesignTokens.SPACE_4  # 16px
     GAP = DesignTokens.SPACE_3  # 12px
 
@@ -142,6 +142,7 @@ def build_popover_ui(container, controller):
     # 卡片尺寸 - 合理的高度
     card_w = (W - 2 * PAD - GAP) / 2.0  # 156px
     card_h = 110.0  # 固定高度
+    claude_card_h = 160.0  # Claude 卡片更高,容纳折线图
 
     y = H - PAD  # 从顶部开始
 
@@ -261,12 +262,12 @@ def build_popover_ui(container, controller):
     metrics_labels['swap'] = swap_value
     ram_card.addSubview_(swap_value)
 
-    # ── 4. Claude 卡片 (显示更多信息) ──
-    claude_card = _create_card(((PAD + card_w + GAP, y - card_h), (card_w, card_h)))
+    # ── 4. Claude 卡片 (显示更多信息 + 折线图) ──
+    claude_card = _create_card(((PAD + card_w + GAP, y - claude_card_h), (card_w, claude_card_h)))
     blur_view.addSubview_(claude_card)
 
     claude_title = _label(
-        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
+        ((DesignTokens.SPACE_3, claude_card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
         "Claude 今日",
         NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_SM, DesignTokens.WEIGHT_SEMIBOLD),
         DesignTokens.TEXT_SECONDARY
@@ -275,7 +276,7 @@ def build_popover_ui(container, controller):
 
     # Token 数量
     usage_token = _label(
-        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 36), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        ((DesignTokens.SPACE_3, claude_card_h - DesignTokens.SPACE_3 - 36), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "Token: 26.3M",
         NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
         DesignTokens.TEXT_PRIMARY
@@ -285,13 +286,30 @@ def build_popover_ui(container, controller):
 
     # 费用
     usage_cost = _label(
-        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 52), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        ((DesignTokens.SPACE_3, claude_card_h - DesignTokens.SPACE_3 - 52), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "费用: $41.93",
         NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
         DesignTokens.TEXT_PRIMARY
     )
     metrics_labels['usage_cost'] = usage_cost
     claude_card.addSubview_(usage_cost)
+
+    # Token 历史折线图
+    try:
+        from aigard.popover.chart_view import LineChartView
+        chart_frame = NSMakeRect(
+            DesignTokens.SPACE_3,
+            DesignTokens.SPACE_3 + 20,
+            card_w - DesignTokens.SPACE_3 * 2,
+            50
+        )
+        chart_view = LineChartView.alloc().initWithFrame_data_(chart_frame, [])
+        metrics_labels['token_chart'] = chart_view
+        claude_card.addSubview_(chart_view)
+    except Exception as e:
+        print(f"❌ 折线图创建失败: {e}")
+        import traceback
+        traceback.print_exc()
 
     # 请求次数
     usage_requests = _label(
@@ -303,7 +321,7 @@ def build_popover_ui(container, controller):
     metrics_labels['usage_requests'] = usage_requests
     claude_card.addSubview_(usage_requests)
 
-    y -= card_h + GAP
+    y -= claude_card_h + GAP
 
     # ── 5. 按钮 ──
     btn_w = (W - 2 * PAD - 2 * GAP) / 3.0
