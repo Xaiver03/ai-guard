@@ -215,9 +215,12 @@ def build_popover_ui(container, controller):
     metrics_labels['disk_io'] = disk_io
     disk_card.addSubview_(disk_io)
 
-    y -= card_h + GAP
-
     # ── 3. 内存卡片 ──
+    # 注意:内存卡片在左侧,使用 card_h
+    # Claude 卡片在右侧,使用 claude_card_h (更高)
+    # 所以这里 y 要减去较大的高度,确保下一行对齐
+    y -= max(card_h, claude_card_h) + GAP
+
     ram_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
     blur_view.addSubview_(ram_card)
 
