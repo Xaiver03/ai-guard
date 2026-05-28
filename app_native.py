@@ -118,11 +118,11 @@ class AIGuardDelegate(NSObject):
             import traceback
             traceback.print_exc()
 
-        # 绑定点击事件
+        # 绑定点击事件 - 左键显示 Popover
         self.statusItem.button().setAction_("togglePopover:")
         self.statusItem.button().setTarget_(self)
 
-        # 创建菜单（右键或长按显示）
+        # 创建菜单
         self.menu = NSMenu.alloc().init()
         self._build_menu()
 
@@ -141,38 +141,47 @@ class AIGuardDelegate(NSObject):
 
     def _build_menu(self):
         """构建菜单"""
-        # 打开监控面板
+        # 关于
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "打开监控面板", "openPanel:", ""
-        )
-        item.setTarget_(self)
-        self.menu.addItem_(item)
-
-        # Claude 使用统计
-        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Claude 使用统计", "openUsage:", ""
+            "关于 AI Guard", "showAbout:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 状态行
+        # 监控面板
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "监控面板", "openPanel:", ""
+        )
+        item.setTarget_(self)
+        self.menu.addItem_(item)
+
+        # 使用统计
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "使用统计", "openUsage:", ""
+        )
+        item.setTarget_(self)
+        self.menu.addItem_(item)
+
+        self.menu.addItem_(NSMenuItem.separatorItem())
+
+        # 状态行 (简化显示)
         self.statusMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "状态: 启动中...", None, ""
+            "CPU 0% · 内存 0% · Swap 0%", None, ""
         )
         self.menu.addItem_(self.statusMenuItem)
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 一键终止安全进程
+        # 一键终止
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "一键终止安全进程", "killSafe:", ""
+            "一键终止", "killSafe:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 自动终止开关
+        # 自动终止
         self.autoKillMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "自动终止: 关", "toggleAutoKill:", ""
         )
@@ -183,23 +192,23 @@ class AIGuardDelegate(NSObject):
 
         # 检查更新
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "检查更新", "checkUpdate:", ""
+            "检查更新...", "checkUpdate:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 偏好设置
+        # 偏好设置 (添加快捷键 ⌘,)
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "偏好设置", "openConfig:", ""
+            "偏好设置...", "openConfig:", ","
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 退出
+        # 退出 (添加快捷键 ⌘Q)
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "退出 AI Guard", "terminate:", ""
+            "退出 AI Guard", "terminate:", "q"
         )
         item.setTarget_(NSApp)
         self.menu.addItem_(item)
@@ -237,9 +246,25 @@ class AIGuardDelegate(NSObject):
             import traceback
             traceback.print_exc()
 
-    def rightMouseDown_(self, event):
-        """右键点击显示菜单"""
+    def showMenu_(self, sender):
+        """显示菜单"""
         self.statusItem.popUpStatusItemMenu_(self.menu)
+
+    def showAbout_(self, sender):
+        """显示关于对话框"""
+        from AppKit import NSAlert, NSAlertStyleInformational
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("关于 AI Guard")
+        alert.setInformativeText_(
+            f"版本: {_main_mod.VERSION}\n\n"
+            "Mac AI 开发资源守护工具\n"
+            "监控 + 告警 + 安全干预 + 使用统计\n\n"
+            "© 2026 AI Guard\n"
+            "https://github.com/Xaiver03/ai-guard"
+        )
+        alert.setAlertStyle_(NSAlertStyleInformational)
+        alert.addButtonWithTitle_("确定")
+        alert.runModal()
 
     def openPanel_(self, sender):
         """打开监控面板（浏览器）"""
@@ -313,22 +338,9 @@ class AIGuardDelegate(NSObject):
         else:
             self.statusItem.button().setTitle_(f"{mem:.0f}%")
 
-        # 状态行
-        usage = _main_mod.threads.get_today_usage()
-        usage_str = ""
-        if usage and usage.get('total_tokens', 0) > 0:
-            tokens = usage['total_tokens']
-            cost = usage.get('total_cost', 0)
-            if tokens >= 1_000_000:
-                token_str = f"{tokens / 1_000_000:.1f}M"
-            elif tokens >= 1000:
-                token_str = f"{tokens / 1000:.0f}K"
-            else:
-                token_str = str(tokens)
-            usage_str = f" | Token {token_str} ${cost:.2f}"
-
+        # 状态行 (简化显示)
         self.statusMenuItem.setTitle_(
-            f"CPU {cpu:.0f}% / Mem {mem:.0f}% / Swap {swap:.0f}% / Disk {disk:.0f}%{usage_str}"
+            f"CPU {cpu:.0f}% · 内存 {mem:.0f}% · Swap {swap:.0f}%"
         )
 
         # 同步自动终止开关
