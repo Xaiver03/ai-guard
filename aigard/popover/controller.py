@@ -35,9 +35,9 @@ class PopoverViewController(NSViewController):
 
     def loadView(self):
         """构建原生 NSView 布局"""
-        # 创建主容器（新尺寸：320×450）
+        # 创建主容器（尺寸：360×500）
         container = NSView.alloc().initWithFrame_(
-            ((0, 0), (320, 450))
+            ((0, 0), (360, 500))
         )
 
         # 使用 view_builder 构建 UI
@@ -92,7 +92,9 @@ class PopoverViewController(NSViewController):
         if usage and usage.get('total_tokens', 0) > 0:
             tokens = usage['total_tokens']
             cost = usage.get('total_cost', 0)
-            # 格式化显示
+            requests = usage.get('request_count', 0)
+
+            # 格式化 Token 显示
             if tokens >= 1_000_000:
                 token_str = f"{tokens/1_000_000:.1f}M"
             elif tokens >= 1000:
@@ -100,13 +102,19 @@ class PopoverViewController(NSViewController):
             else:
                 token_str = str(tokens)
 
-            if 'usage' in self.metrics_labels:
-                self.metrics_labels['usage'].setStringValue_(
-                    f"Token {token_str} · ${cost:.2f}"
-                )
+            if 'usage_token' in self.metrics_labels:
+                self.metrics_labels['usage_token'].setStringValue_(f"Token: {token_str}")
+            if 'usage_cost' in self.metrics_labels:
+                self.metrics_labels['usage_cost'].setStringValue_(f"费用: ${cost:.2f}")
+            if 'usage_requests' in self.metrics_labels:
+                self.metrics_labels['usage_requests'].setStringValue_(f"请求: {requests} 次")
         else:
-            if 'usage' in self.metrics_labels:
-                self.metrics_labels['usage'].setStringValue_("Token 0 · $0.00")
+            if 'usage_token' in self.metrics_labels:
+                self.metrics_labels['usage_token'].setStringValue_("Token: 0")
+            if 'usage_cost' in self.metrics_labels:
+                self.metrics_labels['usage_cost'].setStringValue_("费用: $0.00")
+            if 'usage_requests' in self.metrics_labels:
+                self.metrics_labels['usage_requests'].setStringValue_("请求: 0 次")
 
     def update_autokill_button(self):
         """更新自动终止按钮文本"""
@@ -156,8 +164,10 @@ class PopoverViewController(NSViewController):
 
     @objc.selector
     def openDashboard_(self, sender):
-        """打开完整监控面板"""
-        webbrowser.open(self.server_url)
+        """打开完整监控面板 - 使用原生窗口"""
+        from aigard.window_manager import DashboardWindow
+        dashboard = DashboardWindow.get_instance(self.server_url)
+        dashboard.show()
 
     @objc.selector
     def refreshUsage_(self, sender):

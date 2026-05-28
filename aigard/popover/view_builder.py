@@ -1,28 +1,112 @@
 """
-原生 NSView 布局构建器 - 构建 Popover UI（iStat Menus 风格）
+原生 NSView 布局构建器 - 遵循 AI Guard 设计系统
 
-设计特点：
-- 卡片式布局（2×2 网格 + 全宽卡片）
-- 信息密度高（主要数值 + 详细信息）
-- 视觉层次清晰（大号数值 + 小号详情）
+设计规范:
+- 简洁黑白配色 + 语义色(仅用于警告)
+- 间距: 4px 基准 (space-2=8px, space-3=12px, space-4=16px)
+- 圆角: radius-xl=12px (卡片), radius-md=8px (按钮)
+- 字体: text-xs=11px, text-sm=13px, text-2xl=24px
+- 磨砂玻璃背景
+- 禁止 Emoji,使用纯文本
 """
 from AppKit import (
-    NSTextField, NSButton, NSBox, NSImage,
-    NSImageView, NSFont, NSColor, NSRightTextAlignment,
-    NSLeftTextAlignment, NSCenterTextAlignment
+    NSTextField, NSButton, NSBox, NSView,
+    NSFont, NSColor, NSRightTextAlignment,
+    NSLeftTextAlignment, NSCenterTextAlignment,
+    NSProgressIndicator, NSProgressIndicatorStyleBar,
+    NSVisualEffectView, NSVisualEffectMaterialPopover, NSVisualEffectBlendingModeBehindWindow,
+    NSAttributedString, NSForegroundColorAttributeName
 )
+from Foundation import NSRect, NSPoint, NSDictionary
+
+
+# ============================================================
+# 设计令牌 (Design Tokens)
+# ============================================================
+
+class DesignTokens:
+    """设计系统令牌 - 简洁黑白配色"""
+
+    # 间距 (4px 基准)
+    SPACE_2 = 8.0   # 小间距
+    SPACE_3 = 12.0  # 中间距
+    SPACE_4 = 16.0  # 标准间距
+
+    # 圆角
+    RADIUS_MD = 8.0   # 按钮
+    RADIUS_XL = 12.0  # 卡片
+
+    # 字体大小
+    TEXT_XS = 11.0   # 辅助信息
+    TEXT_SM = 13.0   # 正文
+    TEXT_2XL = 28.0  # 数值 (加大)
+
+    # 字重
+    WEIGHT_NORMAL = 0.0    # 400
+    WEIGHT_MEDIUM = 0.23   # 500
+    WEIGHT_SEMIBOLD = 0.3  # 600
+
+    # 颜色 - 简洁黑白配色 + 语义色
+    TEXT_PRIMARY = NSColor.labelColor()           # 系统主文本色 (自动适配亮暗)
+    TEXT_SECONDARY = NSColor.secondaryLabelColor()  # 系统次要文本色
+    TEXT_TERTIARY = NSColor.tertiaryLabelColor()    # 系统三级文本色
+
+    # 语义色 (用于数值和警告)
+    ACCENT_BLUE = NSColor.systemBlueColor()      # 正常状态
+    ACCENT_GREEN = NSColor.systemGreenColor()    # 良好状态
+    ACCENT_YELLOW = NSColor.systemYellowColor()  # 警告
+    ACCENT_RED = NSColor.systemRedColor()        # 危险
+
+
+def _create_card(frame, corner_radius=None):
+    """创建圆角卡片"""
+    if corner_radius is None:
+        corner_radius = DesignTokens.RADIUS_XL
+
+    card = NSBox.alloc().initWithFrame_(frame)
+    card.setBoxType_(4)  # NSBoxCustom
+    card.setCornerRadius_(corner_radius)
+    card.setFillColor_(NSColor.controlBackgroundColor())  # 系统卡片背景色
+    card.setBorderWidth_(0)
+    card.setTitlePosition_(0)
+    return card
+
+
+def _label(frame, text, font, color, alignment=NSLeftTextAlignment):
+    """创建文本标签"""
+    label = NSTextField.alloc().initWithFrame_(frame)
+    label.setStringValue_(text)
+    label.setFont_(font)
+    label.setTextColor_(color)
+    label.setAlignment_(alignment)
+    label.setBezeled_(False)
+    label.setDrawsBackground_(False)
+    label.setEditable_(False)
+    label.setSelectable_(False)
+    return label
+
+
+def _progress_bar(frame):
+    """创建进度条"""
+    bar = NSProgressIndicator.alloc().initWithFrame_(frame)
+    bar.setStyle_(NSProgressIndicatorStyleBar)
+    bar.setIndeterminate_(False)
+    bar.setMinValue_(0)
+    bar.setMaxValue_(100)
+    bar.setDoubleValue_(0)
+    return bar
 
 
 def _semantic_color(percent):
     """根据百分比返回语义颜色"""
-    if percent < 50:
-        return NSColor.systemGreenColor()
-    elif percent < 70:
-        return NSColor.systemYellowColor()
-    elif percent < 85:
-        return NSColor.systemOrangeColor()
+    if percent >= 85:
+        return DesignTokens.ACCENT_RED
+    elif percent >= 70:
+        return DesignTokens.ACCENT_YELLOW
+    elif percent >= 50:
+        return DesignTokens.ACCENT_BLUE
     else:
-        return NSColor.systemRedColor()
+        return DesignTokens.ACCENT_GREEN
 
 
 def _format_gb(used, total):
@@ -34,222 +118,207 @@ def _format_gb(used, total):
 
 
 def build_popover_ui(container, controller):
-    """构建 Popover 原生 UI（iStat Menus 风格）
+    """构建 Popover 原生 UI - 简洁黑白配色
 
-    布局：
-    ┌─────────────────────────────────────┐
-    │  AI Guard                      70%  │
-    ├─────────────────────────────────────┤
-    │  ┌───────────┐  ┌───────────┐      │
-    │  │ CPU       │  │ Memory    │      │
-    │  │ 14%       │  │ 70%       │      │
-    │  │ 38.0°C    │  │ 44.8/64GB │      │
-    │  └───────────┘  └───────────┘      │
-    │  ┌───────────┐  ┌───────────┐      │
-    │  │ Swap      │  │ Disk      │      │
-    │  │ 60%       │  │ 55%       │      │
-    │  │ 3.6/6 GB  │  │ 505/926GB │      │
-    │  └───────────┘  └───────────┘      │
-    │  ┌─────────────────────────────┐   │
-    │  │ Claude Usage                │   │
-    │  │ Token 7.1M · $9.81          │   │
-    │  └─────────────────────────────┘   │
-    │  [一键终止] [自动:关] [完整面板]   │
-    └─────────────────────────────────────┘
+    尺寸: 360×500px
     """
 
-    W = 320  # 容器宽度（比原来 300px 稍宽）
-    PAD = 12  # 外边距
-    INNER_W = W - 2 * PAD  # 内容区宽度
-    H = 450  # 容器高度
+    W = 360.0
+    H = 500.0
+    PAD = DesignTokens.SPACE_4
+    GAP = DesignTokens.SPACE_3
 
-    y = H - 10  # 从顶部开始布局
+    # 磨砂玻璃背景
+    blur_view = NSVisualEffectView.alloc().initWithFrame_(((0, 0), (W, H)))
+    blur_view.setMaterial_(NSVisualEffectMaterialPopover)
+    blur_view.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+    blur_view.setState_(1)
+    container.addSubview_(blur_view)
 
     metrics_labels = {}
     progress_bars = {}
 
-    # ── 1. 标题栏（紧凑）──────────────────────────────────
-    title = _label(((PAD, y - 18), (INNER_W // 2, 18)),
-                   "AI Guard",
-                   NSFont.systemFontOfSize_weight_(13, 0.6),
-                   NSColor.labelColor())
-    container.addSubview_(title)
+    card_w = (W - 2 * PAD - GAP) / 2.0
+    card_h = 110.0
+    y = H - PAD
 
-    # 当前内存百分比（右对齐）
-    mem_badge = _label(((W - PAD - 60, y - 18), (60, 18)),
-                       "70%",
-                       NSFont.monospacedSystemFontOfSize_weight_(13, 0.6),
-                       NSColor.secondaryLabelColor(),
-                       NSRightTextAlignment)
-    metrics_labels['mem_badge'] = mem_badge
-    container.addSubview_(mem_badge)
+    # ── 1. CPU 卡片 ──
+    cpu_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
+    blur_view.addSubview_(cpu_card)
 
-    y -= 28
+    cpu_title = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
+        "CPU",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_SM, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_SECONDARY
+    )
+    cpu_card.addSubview_(cpu_title)
 
-    # 分隔线
-    sep = NSBox.alloc().initWithFrame_(((0, y), (W, 1)))
-    sep.setBoxType_(3)  # NSBoxSeparator
-    container.addSubview_(sep)
-    y -= 16
+    cpu_value = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 50), (card_w - DesignTokens.SPACE_3 * 2, 32)),
+        "0%",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_2XL, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_PRIMARY
+    )
+    metrics_labels['cpu'] = cpu_value
+    cpu_card.addSubview_(cpu_value)
 
-    # ── 2. 卡片区（2×2 网格）──────────────────────────────
-    CARD_W = 140
-    CARD_H = 80
-    GAP = 10
+    cpu_detail = _label(
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "Apple M4 Max",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_TERTIARY
+    )
+    cpu_card.addSubview_(cpu_detail)
 
-    # 卡片配置：(key, title, x, y)
-    card_configs = [
-        ('cpu', 'CPU', PAD, y - CARD_H),
-        ('mem', 'Memory', PAD + CARD_W + GAP, y - CARD_H),
-        ('swap', 'Swap', PAD, y - CARD_H * 2 - GAP),
-        ('disk', 'Disk', PAD + CARD_W + GAP, y - CARD_H * 2 - GAP),
-    ]
+    # ── 2. 磁盘卡片 ──
+    disk_card = _create_card(((PAD + card_w + GAP, y - card_h), (card_w, card_h)))
+    blur_view.addSubview_(disk_card)
 
-    for key, title_text, x, card_y in card_configs:
-        # 创建卡片容器
-        card = NSBox.alloc().initWithFrame_(((x, card_y), (CARD_W, CARD_H)))
-        card.setBoxType_(4)  # NSBoxCustom
-        card.setCornerRadius_(10)
-        card.setFillColor_(NSColor.secondarySystemFillColor())
-        card.setBorderWidth_(0)
-        card.setTitlePosition_(0)  # NSNoTitle
-        container.addSubview_(card)
+    disk_title = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
+        "磁盘",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_SM, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_SECONDARY
+    )
+    disk_card.addSubview_(disk_title)
 
-        # 卡片内布局
-        card_pad = 10
+    disk_value = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 50), (card_w - DesignTokens.SPACE_3 * 2, 32)),
+        "0%",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_2XL, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_PRIMARY
+    )
+    metrics_labels['disk'] = disk_value
+    disk_card.addSubview_(disk_value)
 
-        # 标题（小号，次要色）
-        title_lbl = _label(((card_pad, CARD_H - card_pad - 14), (CARD_W - 2 * card_pad, 14)),
-                           title_text,
-                           NSFont.systemFontOfSize_weight_(10, 0.5),
-                           NSColor.secondaryLabelColor())
-        card.addSubview_(title_lbl)
+    disk_detail = _label(
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "504/926GB",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_TERTIARY
+    )
+    metrics_labels['disk_detail'] = disk_detail
+    disk_card.addSubview_(disk_detail)
 
-        # 主要数值（大号，高对比度）
-        value_lbl = _label(((card_pad, CARD_H - card_pad - 42), (CARD_W - 2 * card_pad, 28)),
-                           "0%",
-                           NSFont.monospacedSystemFontOfSize_weight_(24, 0.6),
-                           NSColor.labelColor())
-        metrics_labels[key] = value_lbl
-        card.addSubview_(value_lbl)
+    y -= card_h + GAP
 
-        # 详细信息（小号，次要色）
-        detail_lbl = _label(((card_pad, card_pad), (CARD_W - 2 * card_pad, 14)),
-                            "",
-                            NSFont.monospacedSystemFontOfSize_weight_(10, 0.3),
-                            NSColor.tertiaryLabelColor())
-        metrics_labels[f'{key}_detail'] = detail_lbl
-        card.addSubview_(detail_lbl)
+    # ── 3. 内存卡片 ──
+    ram_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
+    blur_view.addSubview_(ram_card)
 
-    y -= CARD_H * 2 + GAP + 16
+    ram_title = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
+        "内存",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_SM, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_SECONDARY
+    )
+    ram_card.addSubview_(ram_title)
 
-    # ── 3. Claude 使用统计卡片（全宽）──────────────────────
-    claude_card = NSBox.alloc().initWithFrame_(((PAD, y - 60), (INNER_W, 60)))
-    claude_card.setBoxType_(4)
-    claude_card.setCornerRadius_(10)
-    claude_card.setFillColor_(NSColor.secondarySystemFillColor())
-    claude_card.setBorderWidth_(0)
-    claude_card.setTitlePosition_(0)
-    container.addSubview_(claude_card)
+    ram_detail = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 36), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "62.0/64.0GB",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_SECONDARY
+    )
+    metrics_labels['mem_detail'] = ram_detail
+    ram_card.addSubview_(ram_detail)
 
-    # 标题
-    claude_title = _label(((10, 60 - 10 - 14), (INNER_W - 60, 14)),
-                          "Claude Usage",
-                          NSFont.systemFontOfSize_weight_(10, 0.5),
-                          NSColor.secondaryLabelColor())
+    ram_bar = _progress_bar(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 52), (card_w - DesignTokens.SPACE_3 * 2, 6))
+    )
+    progress_bars['mem'] = ram_bar
+    ram_card.addSubview_(ram_bar)
+
+    swap_label = _label(
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (40, 14)),
+        "Swap",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_TERTIARY
+    )
+    ram_card.addSubview_(swap_label)
+
+    swap_value = _label(
+        ((50, DesignTokens.SPACE_2), (card_w - 50 - DesignTokens.SPACE_3, 14)),
+        "55%",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_SECONDARY,
+        NSRightTextAlignment
+    )
+    metrics_labels['swap'] = swap_value
+    ram_card.addSubview_(swap_value)
+
+    # ── 4. Claude 卡片 (显示更多信息) ──
+    claude_card = _create_card(((PAD + card_w + GAP, y - card_h), (card_w, card_h)))
+    blur_view.addSubview_(claude_card)
+
+    claude_title = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 16), (card_w - DesignTokens.SPACE_3 * 2, 16)),
+        "Claude 今日",
+        NSFont.systemFontOfSize_weight_(DesignTokens.TEXT_SM, DesignTokens.WEIGHT_SEMIBOLD),
+        DesignTokens.TEXT_SECONDARY
+    )
     claude_card.addSubview_(claude_title)
 
-    # 刷新按钮（右上角）
-    refresh_btn = NSButton.alloc().initWithFrame_(((INNER_W - 32, 60 - 10 - 22), (28, 22)))
-    refresh_img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(
-        "arrow.clockwise", "Refresh"
+    # Token 数量
+    usage_token = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 36), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "Token: 26.3M",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_PRIMARY
     )
-    if refresh_img:
-        refresh_btn.setImage_(refresh_img)
-        refresh_btn.setImagePosition_(1)  # NSImageOnly
-    else:
-        refresh_btn.setTitle_("↻")
-    refresh_btn.setBezelStyle_(1)
-    refresh_btn.setBordered_(False)
-    refresh_btn.setTarget_(controller)
-    refresh_btn.setAction_("refreshUsage:")
-    claude_card.addSubview_(refresh_btn)
+    metrics_labels['usage_token'] = usage_token
+    claude_card.addSubview_(usage_token)
 
-    # 使用统计（大号）
-    usage_lbl = _label(((10, 10), (INNER_W - 20, 28)),
-                       "Token 0 · $0.00",
-                       NSFont.monospacedSystemFontOfSize_weight_(14, 0.5),
-                       NSColor.labelColor())
-    metrics_labels['usage'] = usage_lbl
-    claude_card.addSubview_(usage_lbl)
-
-    y -= 76
-
-    # ── 4. 快捷按钮行 ──────────────────────────────────────
-    btn_w = (INNER_W - GAP * 2) // 3
-    btn_h = 28
-
-    kill_btn = _compact_button(
-        ((PAD, y), (btn_w, btn_h)),
-        "一键终止",
-        controller, "killSafeProcesses:"
+    # 费用
+    usage_cost = _label(
+        ((DesignTokens.SPACE_3, card_h - DesignTokens.SPACE_3 - 52), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "费用: $41.93",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_PRIMARY
     )
-    container.addSubview_(kill_btn)
+    metrics_labels['usage_cost'] = usage_cost
+    claude_card.addSubview_(usage_cost)
 
-    autokill_btn = _compact_button(
-        ((PAD + btn_w + GAP, y), (btn_w, btn_h)),
-        "自动:关",
-        controller, "toggleAutokill:"
+    # 请求次数
+    usage_requests = _label(
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "请求: 0 次",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_TERTIARY
     )
-    metrics_labels['autokill_btn'] = autokill_btn
-    container.addSubview_(autokill_btn)
+    metrics_labels['usage_requests'] = usage_requests
+    claude_card.addSubview_(usage_requests)
 
-    dashboard_btn = _compact_button(
-        ((PAD + (btn_w + GAP) * 2, y), (btn_w, btn_h)),
-        "完整面板",
-        controller, "openDashboard:"
-    )
-    container.addSubview_(dashboard_btn)
+    y -= card_h + GAP
 
-    y -= 38
+    # ── 5. 按钮 ──
+    btn_w = (W - 2 * PAD - 2 * GAP) / 3.0
+    btn_h = 36.0
 
-    # ── 5. 状态标签（用于显示操作反馈）──────────────────────
-    status_label = _label(
-        ((PAD, y), (INNER_W, 16)),
-        "",
-        NSFont.systemFontOfSize_(10),
-        NSColor.secondaryLabelColor(),
-        NSCenterTextAlignment
-    )
-    container.addSubview_(status_label)
-    metrics_labels['status'] = status_label
+    kill_btn = NSButton.alloc().initWithFrame_(((PAD, y - btn_h), (btn_w, btn_h)))
+    kill_btn.setTitle_("一键终止")
+    kill_btn.setBezelStyle_(1)
+    kill_btn.setFont_(NSFont.systemFontOfSize_(DesignTokens.TEXT_SM))
+    kill_btn.setTarget_(controller)
+    kill_btn.setAction_("killSafeProcesses:")
+    blur_view.addSubview_(kill_btn)
+
+    auto_btn = NSButton.alloc().initWithFrame_(((PAD + btn_w + GAP, y - btn_h), (btn_w, btn_h)))
+    auto_btn.setTitle_("自动: 关")
+    auto_btn.setBezelStyle_(1)
+    auto_btn.setFont_(NSFont.systemFontOfSize_(DesignTokens.TEXT_SM))
+    auto_btn.setTarget_(controller)
+    auto_btn.setAction_("toggleAutokill:")
+    metrics_labels['autokill_btn'] = auto_btn
+    blur_view.addSubview_(auto_btn)
+
+    panel_btn = NSButton.alloc().initWithFrame_(((PAD + 2 * (btn_w + GAP), y - btn_h), (btn_w, btn_h)))
+    panel_btn.setTitle_("面板")
+    panel_btn.setBezelStyle_(1)
+    panel_btn.setFont_(NSFont.systemFontOfSize_(DesignTokens.TEXT_SM))
+    panel_btn.setTarget_(controller)
+    panel_btn.setAction_("openDashboard:")
+    blur_view.addSubview_(panel_btn)
 
     return metrics_labels, progress_bars
-
-
-# ── 辅助函数 ──────────────────────────────────────────────
-
-def _label(frame, text, font, color, alignment=None):
-    """创建 NSTextField 标签"""
-    lbl = NSTextField.alloc().initWithFrame_(frame)
-    lbl.setStringValue_(text)
-    lbl.setFont_(font)
-    lbl.setTextColor_(color)
-    lbl.setBezeled_(False)
-    lbl.setDrawsBackground_(False)
-    lbl.setEditable_(False)
-    lbl.setSelectable_(False)
-    if alignment:
-        lbl.setAlignment_(alignment)
-    return lbl
-
-
-def _compact_button(frame, title, target, action):
-    """创建紧凑按钮"""
-    btn = NSButton.alloc().initWithFrame_(frame)
-    btn.setTitle_(title)
-    btn.setBezelStyle_(1)  # NSBezelStyleRounded
-    btn.setFont_(NSFont.systemFontOfSize_(11))
-    btn.setTarget_(target)
-    btn.setAction_(action)
-    return btn
