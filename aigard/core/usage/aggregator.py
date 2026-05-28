@@ -105,6 +105,7 @@ class UsageAggregator:
         total_tokens = self.calculator.calculate_total_tokens(entries)
         total_cost = self.calculator.calculate_total_cost(entries)
         models_used = list(set(entry.model for entry in entries))
+        request_count = sum(mb.request_count for mb in model_breakdowns)
 
         return HourlySummary(
             hour=hour,
@@ -115,7 +116,8 @@ class UsageAggregator:
             total_tokens=total_tokens,
             total_cost=total_cost,
             models_used=models_used,
-            model_breakdowns=model_breakdowns
+            model_breakdowns=model_breakdowns,
+            request_count=request_count
         )
 
     def _create_daily_summary(self, date: str, entries: List[UsageEntry]) -> DailySummary:
@@ -125,6 +127,7 @@ class UsageAggregator:
         total_tokens = self.calculator.calculate_total_tokens(entries)
         total_cost = self.calculator.calculate_total_cost(entries)
         models_used = list(set(entry.model for entry in entries))
+        request_count = sum(mb.request_count for mb in model_breakdowns)
 
         return DailySummary(
             date=date,
@@ -135,7 +138,8 @@ class UsageAggregator:
             total_tokens=total_tokens,
             total_cost=total_cost,
             models_used=models_used,
-            model_breakdowns=model_breakdowns
+            model_breakdowns=model_breakdowns,
+            request_count=request_count
         )
 
     def _create_monthly_summary(self, month: str, entries: List[UsageEntry]) -> MonthlySummary:
@@ -145,6 +149,7 @@ class UsageAggregator:
         total_tokens = self.calculator.calculate_total_tokens(entries)
         total_cost = self.calculator.calculate_total_cost(entries)
         models_used = list(set(entry.model for entry in entries))
+        request_count = sum(mb.request_count for mb in model_breakdowns)
 
         # 生成该月的每日数据
         daily_summaries = self.aggregate_by_day(entries)
@@ -159,7 +164,8 @@ class UsageAggregator:
             total_cost=total_cost,
             models_used=models_used,
             model_breakdowns=model_breakdowns,
-            daily_data=daily_summaries
+            daily_data=daily_summaries,
+            request_count=request_count
         )
 
     def filter_by_date_range(

@@ -33,6 +33,7 @@ class UsageCache:
                     total_cost REAL DEFAULT 0,
                     models_used TEXT DEFAULT '[]',
                     model_breakdowns TEXT DEFAULT '[]',
+                    request_count INTEGER DEFAULT 0,
                     updated_at TEXT
                 )
             """)
@@ -47,6 +48,7 @@ class UsageCache:
                     total_cost REAL DEFAULT 0,
                     models_used TEXT DEFAULT '[]',
                     model_breakdowns TEXT DEFAULT '[]',
+                    request_count INTEGER DEFAULT 0,
                     updated_at TEXT
                 )
             """)
@@ -83,8 +85,8 @@ class UsageCache:
                     INSERT OR REPLACE INTO daily_usage
                     (date, input_tokens, output_tokens, cache_creation_tokens,
                      cache_read_tokens, total_tokens, total_cost,
-                     models_used, model_breakdowns, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     models_used, model_breakdowns, request_count, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     item['date'],
                     item.get('input_tokens', 0),
@@ -95,6 +97,7 @@ class UsageCache:
                     item.get('total_cost', 0),
                     json.dumps(item.get('models_used', [])),
                     json.dumps(item.get('model_breakdowns', [])),
+                    item.get('request_count', 0),
                     datetime.now().isoformat()
                 ))
             conn.commit()
@@ -107,8 +110,8 @@ class UsageCache:
                     INSERT OR REPLACE INTO hourly_usage
                     (hour, input_tokens, output_tokens, cache_creation_tokens,
                      cache_read_tokens, total_tokens, total_cost,
-                     models_used, model_breakdowns, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     models_used, model_breakdowns, request_count, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     item['hour'],
                     item.get('input_tokens', 0),
@@ -119,6 +122,7 @@ class UsageCache:
                     item.get('total_cost', 0),
                     json.dumps(item.get('models_used', [])),
                     json.dumps(item.get('model_breakdowns', [])),
+                    item.get('request_count', 0),
                     datetime.now().isoformat()
                 ))
             conn.commit()
@@ -177,7 +181,8 @@ class UsageCache:
                         COALESCE(SUM(cache_read_tokens), 0),
                         COALESCE(SUM(total_tokens), 0),
                         COALESCE(SUM(total_cost), 0),
-                        COUNT(*) as active_days
+                        COUNT(*) as active_days,
+                        COALESCE(SUM(request_count), 0)
                     FROM daily_usage WHERE date >= ? AND date <= ?
                 """, (start_date, end_date)).fetchone()
             elif start_date:
@@ -189,7 +194,8 @@ class UsageCache:
                         COALESCE(SUM(cache_read_tokens), 0),
                         COALESCE(SUM(total_tokens), 0),
                         COALESCE(SUM(total_cost), 0),
-                        COUNT(*) as active_days
+                        COUNT(*) as active_days,
+                        COALESCE(SUM(request_count), 0)
                     FROM daily_usage WHERE date >= ?
                 """, (start_date,)).fetchone()
             else:
@@ -201,7 +207,8 @@ class UsageCache:
                         COALESCE(SUM(cache_read_tokens), 0),
                         COALESCE(SUM(total_tokens), 0),
                         COALESCE(SUM(total_cost), 0),
-                        COUNT(*) as active_days
+                        COUNT(*) as active_days,
+                        COALESCE(SUM(request_count), 0)
                     FROM daily_usage
                 """).fetchone()
 
@@ -220,7 +227,8 @@ class UsageCache:
                 'total_cost': round(row[5], 4),
                 'active_days': row[6],
                 'models_count': models_count,
-                'total_requests': 0,
+                'total_requests': row[7],  # 使用查询结果中的 request_count
+                'request_count': row[7],   # 同时提供 request_count 字段
                 'coverage': coverage,
             }
 
@@ -257,6 +265,7 @@ class UsageCache:
             'total_cost': round(row['total_cost'], 4),
             'models_used': json.loads(row['models_used']),
             'model_breakdowns': json.loads(row['model_breakdowns']),
+            'request_count': row['request_count'] if 'request_count' in row.keys() else 0,
         }
 
     def _row_to_hourly_dict(self, row) -> Dict:
@@ -270,6 +279,7 @@ class UsageCache:
             'total_tokens': row['total_tokens'],
             'total_cost': round(row['total_cost'], 4),
             'models_used': json.loads(row['models_used']),
+            'request_count': row['request_count'] if 'request_count' in row.keys() else 0,
         }
         try:
             result['model_breakdowns'] = json.loads(row['model_breakdowns'])

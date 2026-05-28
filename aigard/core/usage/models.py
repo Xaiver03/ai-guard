@@ -46,6 +46,7 @@ class HourlySummary:
     total_cost: float
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
+    request_count: int = 0  # 总请求次数
 
 
 @dataclass(slots=True)
@@ -60,6 +61,7 @@ class DailySummary:
     total_cost: float
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
+    request_count: int = 0  # 总请求次数
 
 
 @dataclass(slots=True)
@@ -75,6 +77,7 @@ class MonthlySummary:
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
     daily_data: List[DailySummary]
+    request_count: int = 0  # 总请求次数
 
 
 @dataclass(slots=True)

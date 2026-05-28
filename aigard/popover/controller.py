@@ -78,6 +78,11 @@ class PopoverViewController(NSViewController):
                 lbl.setStringValue_(f"{value:.0f}%")
                 lbl.setTextColor_(_semantic_color(value))
 
+            # 更新进度条
+            if key in self.progress_bars:
+                bar = self.progress_bars[key]
+                bar.setDoubleValue_(value)
+
             # 更新详细信息（used / total GB）
             detail_key = f'{key}_detail'
             if detail_key in self.metrics_labels and used_key and total_key:

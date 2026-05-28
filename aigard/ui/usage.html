@@ -600,6 +600,7 @@ function initTimeRangeButtons() {
   document.querySelectorAll('.time-range button[data-range]').forEach(btn => {
     btn.addEventListener('click', () => {
       const range = btn.getAttribute('data-range');
+      console.log('🔍 时间筛选器点击:', range, '当前 _timeRange:', _timeRange);
       if (range === 'custom') {
         document.getElementById('start-date').style.display = 'inline-block';
         document.querySelector('.custom-range span').style.display = 'inline';
@@ -612,6 +613,7 @@ function initTimeRangeButtons() {
       document.querySelectorAll('.time-range button[data-range]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _timeRange = range;
+      console.log('🔍 更新后 _timeRange:', _timeRange);
       loadData();
     });
   });
@@ -792,6 +794,7 @@ async function loadData() {
   try {
     const preset = _timeRange || undefined;
     const isHourly = isHourlyRange(_timeRange);
+    console.log('🔍 loadData 调用 - preset:', preset, 'isHourly:', isHourly, '_timeRange:', _timeRange);
 
     // 构建查询参数
     const buildParams = (base = {}) => {
@@ -803,12 +806,16 @@ async function loadData() {
       return qs ? '?' + qs : '';
     };
 
+    const summaryUrl = `/api/usage/summary${buildParams()}`;
+    console.log('🔍 请求 URL:', summaryUrl);
+
     if (isHourly) {
       const [summary, hourly, models] = await Promise.all([
         fetch(`/api/usage/summary${buildParams()}`).then(r => r.json()),
         fetch(`/api/usage/hourly${buildParams()}`).then(r => r.json()),
         fetch(`/api/usage/models${buildParams()}`).then(r => r.json()),
       ]);
+      console.log('🔍 收到数据 (hourly) - summary:', summary.total_tokens, 'hourly:', hourly.length);
       _summaryData = summary;
       _hourlyData = buildHourlyBuckets(hourly);
       _dailyData = [];
@@ -819,6 +826,7 @@ async function loadData() {
         fetch(`/api/usage/daily${buildParams()}`).then(r => r.json()),
         fetch(`/api/usage/models${buildParams()}`).then(r => r.json()),
       ]);
+      console.log('🔍 收到数据 (daily) - summary:', summary.total_tokens, 'daily:', daily.length);
       _summaryData = summary;
       _dailyData = daily;
       _hourlyData = [];

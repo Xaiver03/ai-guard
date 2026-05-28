@@ -373,9 +373,6 @@ class BackgroundThreads:
 
     def _summary_to_dict(self, summary, kind):
         """将 DailySummary/HourlySummary 转为字典"""
-        # 计算总请求次数
-        total_requests = sum(mb.request_count for mb in summary.model_breakdowns) if hasattr(summary, 'model_breakdowns') else 0
-
         base = {
             'input_tokens': summary.input_tokens,
             'output_tokens': summary.output_tokens,
@@ -384,7 +381,7 @@ class BackgroundThreads:
             'total_tokens': summary.total_tokens,
             'total_cost': summary.total_cost,
             'models_used': summary.models_used,
-            'request_count': total_requests,  # 添加总请求次数
+            'request_count': getattr(summary, 'request_count', 0),  # 使用数据模型的 request_count
         }
         if kind == 'daily':
             base['date'] = summary.date
