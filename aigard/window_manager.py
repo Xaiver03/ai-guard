@@ -58,8 +58,10 @@ class DashboardWindow:
         self.window.setMovable_(True)  # 允许移动
         self.window.setMovableByWindowBackground_(True)  # 允许通过背景拖动
 
-        # 允许全屏
-        self.window.setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary
+        # 不使用全屏模式,改用最大化
+        # 这样菜单栏和 Dock 会一直显示
+        # 如果需要全屏,用户可以按 Ctrl+Cmd+F
+        # self.window.setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary
 
         # 确保窗口可以成为主窗口
         self.window.setReleasedWhenClosed_(False)
