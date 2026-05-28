@@ -14,6 +14,10 @@ import psutil
 _last_net_io = None
 _last_net_time = None
 
+# 磁盘 I/O 速度计算 - 保存上一次的统计数据
+_last_disk_io = None
+_last_disk_time = None
+
 
 @dataclass(slots=True)
 class ProcessInfo:
@@ -47,6 +51,12 @@ class Metrics:
     disk_percent: float
     # CPU
     cpu_percent: float
+    cpu_user_percent: float = 0.0      # 用户态 CPU
+    cpu_system_percent: float = 0.0    # 系统态 CPU
+    cpu_idle_percent: float = 0.0      # 空闲 CPU
+    # 磁盘 I/O (KB/s)
+    disk_read_kbs: float = 0.0
+    disk_write_kbs: float = 0.0
     # 网络 (KB/s)
     net_sent_kbs: float = 0.0
     net_recv_kbs: float = 0.0
@@ -98,6 +108,47 @@ def _calculate_net_speed() -> tuple:
         _last_net_time = current_time
 
         return (round(sent_kbs, 1), round(recv_kbs, 1))
+    except Exception:
+        return (0.0, 0.0)
+
+
+def _calculate_disk_io_speed() -> tuple:
+    """
+    计算磁盘 I/O 速度 (KB/s)
+
+    Returns:
+        (read_kbs, write_kbs)
+    """
+    global _last_disk_io, _last_disk_time
+
+    try:
+        current_io = psutil.disk_io_counters()
+        current_time = time.time()
+
+        if _last_disk_io is None or _last_disk_time is None:
+            # 第一次调用,保存数据但返回 0
+            _last_disk_io = current_io
+            _last_disk_time = current_time
+            return (0.0, 0.0)
+
+        # 计算时间差
+        time_delta = current_time - _last_disk_time
+        if time_delta <= 0:
+            return (0.0, 0.0)
+
+        # 计算字节差
+        read_bytes = current_io.read_bytes - _last_disk_io.read_bytes
+        write_bytes = current_io.write_bytes - _last_disk_io.write_bytes
+
+        # 计算速度 (KB/s)
+        read_kbs = (read_bytes / time_delta) / 1024
+        write_kbs = (write_bytes / time_delta) / 1024
+
+        # 更新上一次的数据
+        _last_disk_io = current_io
+        _last_disk_time = current_time
+
+        return (round(read_kbs, 1), round(write_kbs, 1))
     except Exception:
         return (0.0, 0.0)
 
@@ -182,8 +233,17 @@ def collect_metrics() -> Metrics:
     disk = psutil.disk_usage("/")
     cpu = psutil.cpu_percent(interval=0)
 
+    # 获取 CPU 详细信息 (用户态/系统态/空闲)
+    cpu_times = psutil.cpu_times_percent(interval=0)
+    cpu_user = getattr(cpu_times, 'user', 0.0)
+    cpu_system = getattr(cpu_times, 'system', 0.0)
+    cpu_idle = getattr(cpu_times, 'idle', 0.0)
+
     # 计算网络速度
     net_sent_kbs, net_recv_kbs = _calculate_net_speed()
+
+    # 计算磁盘 I/O 速度
+    disk_read_kbs, disk_write_kbs = _calculate_disk_io_speed()
 
     # 修复磁盘百分比：macOS APFS 中 disk.used 不包含快照/预留空间
     # 正确算法: (total - free) / total，反映用户实际可用空间占比
@@ -203,6 +263,11 @@ def collect_metrics() -> Metrics:
         disk_free_gb=_gb(disk.free),
         disk_percent=disk_percent_corrected,
         cpu_percent=cpu,
+        cpu_user_percent=round(cpu_user, 1),
+        cpu_system_percent=round(cpu_system, 1),
+        cpu_idle_percent=round(cpu_idle, 1),
+        disk_read_kbs=disk_read_kbs,
+        disk_write_kbs=disk_write_kbs,
         net_sent_kbs=net_sent_kbs,
         net_recv_kbs=net_recv_kbs,
     )

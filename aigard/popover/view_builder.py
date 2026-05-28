@@ -193,13 +193,23 @@ def build_popover_ui(container, controller):
     disk_card.addSubview_(disk_value)
 
     disk_detail = _label(
-        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2 + 16), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "504/926GB",
         NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
         DesignTokens.TEXT_TERTIARY
     )
     metrics_labels['disk_detail'] = disk_detail
     disk_card.addSubview_(disk_detail)
+
+    # 磁盘 I/O 速度
+    disk_io = _label(
+        ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
+        "R: 0 KB/s  W: 0 KB/s",
+        NSFont.systemFontOfSize_(DesignTokens.TEXT_XS),
+        DesignTokens.TEXT_TERTIARY
+    )
+    metrics_labels['disk_io'] = disk_io
+    disk_card.addSubview_(disk_io)
 
     y -= card_h + GAP
 

@@ -85,6 +85,12 @@ class PopoverViewController(NSViewController):
                 total = latest.get(total_key, 0)
                 self.metrics_labels[detail_key].setStringValue_(_format_gb(used, total))
 
+        # 更新磁盘 I/O 速度
+        if 'disk_io' in self.metrics_labels:
+            read_kbs = latest.get('disk_read_kbs', 0)
+            write_kbs = latest.get('disk_write_kbs', 0)
+            self.metrics_labels['disk_io'].setStringValue_(f"R: {read_kbs:.0f} KB/s  W: {write_kbs:.0f} KB/s")
+
         # 更新标题栏的内存徽章
         if 'mem_badge' in self.metrics_labels:
             mem = latest.get('mem_percent', 0)
