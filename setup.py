@@ -7,7 +7,7 @@
 """
 from setuptools import setup
 
-APP = ["app_native.py"]
+APP = ["app_menubar.py"]
 
 DATA_FILES = [
     ("aigard/ui",    ["aigard/ui/index.html",
@@ -40,8 +40,8 @@ OPTIONS = {
         "CFBundleIdentifier":         "com.xaiver.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
-        # 临时禁用 LSUIElement,让应用同时显示在 Dock 和菜单栏
-        # "LSUIElement":                True,
+        # 启用 LSUIElement，只显示菜单栏，不显示 Dock 图标
+        "LSUIElement":                True,
         "NSHighResolutionCapable":    True,
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":
@@ -55,6 +55,7 @@ OPTIONS = {
         "aigard.core.usage",
         "aigard.api",
         "aigard.bookmarks",
+        "aigard.popover",
         "fastapi",
         "hypercorn",
         "psutil",

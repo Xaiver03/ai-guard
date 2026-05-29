@@ -45,7 +45,7 @@ class AIGuardDelegate(NSObject):
 
     def init(self):
         import sys
-        sys.stdout = open('/tmp/aigard_native.log', 'w', buffering=1)
+        sys.stdout = open('/tmp/aigard_native.log', 'w', encoding='utf-8', buffering=1)
         sys.stderr = sys.stdout
 
         print("=== AIGuardDelegate.init() 开始 ===")
@@ -62,6 +62,12 @@ class AIGuardDelegate(NSObject):
         self.url = f"http://{host}:{port}"
         print(f"✅ 服务地址: {self.url}")
 
+        return self
+
+    def applicationDidFinishLaunching_(self, notification):
+        """应用启动完成后的回调"""
+        print("=== applicationDidFinishLaunching_ 被调用 ===")
+
         # 创建状态栏项
         print("=== 创建状态栏项 ===")
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(
@@ -73,13 +79,55 @@ class AIGuardDelegate(NSObject):
         button = self.statusItem.button()
         print(f"按钮: {button}")
         if button:
-            button.setTitle_("AI Guard")
+            # 先设置一个文字标题作为后备
+            button.setTitle_("AG")
+
+            # 加载图标
+            try:
+                from AppKit import NSImage
+                import os
+                icon_path = os.path.join(
+                    os.path.dirname(__file__),
+                    "assets/menubar_icon.png"
+                )
+                print(f"图标路径: {icon_path}")
+                print(f"图标文件存在: {os.path.exists(icon_path)}")
+
+                if os.path.exists(icon_path):
+                    icon = NSImage.alloc().initWithContentsOfFile_(icon_path)
+                    if icon:
+                        # 设置图标尺寸（菜单栏标准尺寸）
+                        from Foundation import NSMakeSize
+                        icon.setSize_(NSMakeSize(18, 18))
+                        # 设置为模板图标（自动适配亮暗模式）
+                        icon.setTemplate_(True)
+                        button.setImage_(icon)
+                        # 清除文字，只显示图标
+                        button.setTitle_("")
+                        print(f"✅ 图标已设置: {icon_path}, size: {icon.size()}, template: {icon.isTemplate()}")
+                    else:
+                        print("❌ 图标对象创建失败，保留文字 AG")
+                else:
+                    print(f"❌ 图标文件不存在: {icon_path}，保留文字 AG")
+            except Exception as e:
+                print(f"❌ 图标加载异常: {e}，保留文字 AG")
+                import traceback
+                traceback.print_exc()
+
             button.setEnabled_(True)
             print("✅ 按钮已设置")
 
         # 确保状态栏项可见
         self.statusItem.setVisible_(True)
+        self.statusItem.setLength_(NSVariableStatusItemLength)
         print(f"✅ 状态栏项可见性: {self.statusItem.isVisible()}")
+        print(f"✅ 状态栏项长度: {self.statusItem.length()}")
+
+        # 强制刷新状态栏
+        button = self.statusItem.button()
+        if button:
+            button.setNeedsDisplay_(True)
+            print("✅ 强制刷新按钮显示")
 
         # 创建 Popover (使用原生 AppKit 控件)
         print("=== 创建 Popover ===")
@@ -134,10 +182,7 @@ class AIGuardDelegate(NSObject):
             5.0, self, "refreshStatus:", None, True
         )
 
-        # 强制激活应用并显示菜单栏
-        NSApp.activateIgnoringOtherApps_(True)
-
-        return self
+        print("=== applicationDidFinishLaunching_ 完成 ===")
 
     def _build_menu(self):
         """构建菜单"""
@@ -321,7 +366,7 @@ class AIGuardDelegate(NSObject):
         """刷新状态"""
         latest = _main_mod.history.latest
         if not latest:
-            self.statusItem.button().setTitle_("...")
+            # 不设置 title，保留图标
             return
 
         mem = latest.get("mem_percent", 0)
@@ -330,13 +375,8 @@ class AIGuardDelegate(NSObject):
         disk = latest.get("disk_percent", 0)
         level = latest.get("alert_level", "normal")
 
-        # 菜单栏标题
-        if level == "crit":
-            self.statusItem.button().setTitle_(f"⚠︎{mem:.0f}%")
-        elif level == "warn":
-            self.statusItem.button().setTitle_(f"△{mem:.0f}%")
-        else:
-            self.statusItem.button().setTitle_(f"{mem:.0f}%")
+        # 不修改菜单栏按钮的显示（保留图标）
+        # 只更新菜单项中的状态信息
 
         # 状态行 (简化显示)
         self.statusMenuItem.setTitle_(
@@ -349,7 +389,12 @@ class AIGuardDelegate(NSObject):
 
 
 def main():
+    from AppKit import NSApplicationActivationPolicyAccessory
     app = NSApplication.sharedApplication()
+
+    # 设置为 Accessory 模式（只显示菜单栏，不显示 Dock 图标）
+    app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+
     delegate = AIGuardDelegate.alloc().init()
     if delegate is None:
         return
