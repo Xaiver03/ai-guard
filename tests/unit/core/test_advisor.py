@@ -124,7 +124,7 @@ class TestSafeRules:
             name="node",
             cpu_percent=0.5,
             mem_mb=300,
-            create_time=time.time() - 1800,  # 0.5 hours, < IDLE_MIN_HOURS
+            create_time=time.time() - 300,  # 5 minutes, < IDLE_MIN_MINUTES (10)
         ))
         # Should not trigger idle rule
         assert not any("空转" in r for r in result.reasons)
@@ -152,7 +152,8 @@ class TestFallback:
             mem_mb=50,
             create_time=time.time() - 600,  # 10 min
         ))
-        assert result.risk == "safe"
+        # 默认 risk = "caution"，不满足任何 safe 条件时保持 caution
+        assert result.risk == "caution"
         assert any("普通进程" in r for r in result.reasons)
 
 

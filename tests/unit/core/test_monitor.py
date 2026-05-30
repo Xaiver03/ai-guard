@@ -21,15 +21,11 @@ class TestGbConversion:
 
 
 class TestCollectMetrics:
+    @patch("aigard.core.monitor._get_memory_from_vm_stat", return_value=(10.0, 62.5, 6.0, 16.0))
     @patch("aigard.core.monitor.psutil.cpu_percent", return_value=25.0)
     @patch("aigard.core.monitor.psutil.disk_usage")
     @patch("aigard.core.monitor.psutil.swap_memory")
-    @patch("aigard.core.monitor.psutil.virtual_memory")
-    def test_returns_valid_metrics(self, mock_mem, mock_swap, mock_disk, mock_cpu):
-        mock_mem.return_value = MagicMock(
-            total=16 * 1024**3, used=10 * 1024**3,
-            available=6 * 1024**3, percent=62.5
-        )
+    def test_returns_valid_metrics(self, mock_swap, mock_disk, mock_cpu, mock_vm_stat):
         mock_swap.return_value = MagicMock(
             total=4 * 1024**3, used=1 * 1024**3, percent=25.0
         )

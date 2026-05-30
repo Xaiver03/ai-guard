@@ -210,10 +210,11 @@ class TestUsageProjects:
 
 
 class TestUsageRefresh:
-    @patch("aigard.api.usage._rebuild_cache")
+    @patch("aigard.api.usage.loader")
     @patch("aigard.api.usage.cache")
-    def test_refresh(self, mock_cache, mock_rebuild):
+    def test_refresh(self, mock_cache, mock_loader):
         mock_cache.get_last_update_time.return_value = "2026-05-24T14:00:00"
+        mock_loader.load_all_usage.return_value = []  # 返回空列表，避免实际加载数据
         from fastapi.testclient import TestClient
         from aigard.api.usage import router
         from fastapi import FastAPI
@@ -223,4 +224,5 @@ class TestUsageRefresh:
             resp = c.post("/api/usage/refresh")
             assert resp.status_code == 200
             assert resp.json()["status"] == "success"
-            mock_rebuild.assert_called_once()
+            mock_cache.clear.assert_called_once()
+            mock_loader.load_all_usage.assert_called_once()
