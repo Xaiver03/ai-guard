@@ -70,12 +70,20 @@ export function filterDailyByRange(dailyData, range, startDate, endDate) {
 }
 
 /** 构建完整小时槽位（填充缺失小时） */
-export function buildHourlyBuckets(rawHourly) {
-  const dates = new Set();
-  for (const item of rawHourly) {
-    if (item.hour && item.hour.length >= 10) dates.add(item.hour.substring(0, 10));
+export function buildHourlyBuckets(rawHourly, forceDate = null) {
+  // 如果指定了日期（如今天），只创建该日期的 24 个桶
+  // 否则根据数据中出现的日期创建桶
+  let datesToUse;
+  if (forceDate) {
+    datesToUse = [forceDate];
+  } else {
+    const dates = new Set();
+    for (const item of rawHourly) {
+      if (item.hour && item.hour.length >= 10) dates.add(item.hour.substring(0, 10));
+    }
+    const sortedDates = Array.from(dates).sort();
+    datesToUse = sortedDates.length > 0 ? sortedDates : [new Date().toLocaleDateString('en-CA')];
   }
-  const sortedDates = Array.from(dates).sort();
 
   const buckets = {};
   const emptyBucket = () => ({
@@ -83,7 +91,6 @@ export function buildHourlyBuckets(rawHourly) {
     totalTokens: 0, totalCost: 0, modelsUsed: [], modelBreakdowns: [],
   });
 
-  const datesToUse = sortedDates.length > 0 ? sortedDates : [new Date().toLocaleDateString('en-CA')];
   for (const dateStr of datesToUse) {
     for (let h = 0; h < 24; h++) {
       const key = `${dateStr}T${String(h).padStart(2, '0')}`;
@@ -93,7 +100,6 @@ export function buildHourlyBuckets(rawHourly) {
 
   for (const item of rawHourly) {
     if (buckets[item.hour]) {
-      // 转换 snake_case 到 camelCase
       buckets[item.hour] = {
         hour: item.hour,
         inputTokens: item.input_tokens || 0,

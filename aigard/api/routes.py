@@ -145,6 +145,22 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
+    @app.get("/settings.html", response_class=HTMLResponse)
+    def settings_page():
+        dev_path = base_dir / "aigard" / "ui" / "settings.html"
+        pkg_path = base_dir / "ui" / "settings.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    @app.get("/about.html", response_class=HTMLResponse)
+    def about_page():
+        dev_path = base_dir / "aigard" / "ui" / "about.html"
+        pkg_path = base_dir / "ui" / "about.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
     # ── 工具导航 API ──────────────────────────────────────────
     @app.get("/api/tools")
     def get_tools():
@@ -505,9 +521,16 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/processes/batch/kill-safe")
     def batch_kill_safe():
-        """一键终止所有评分为 safe 的进程"""
+        """一键终止所有评分为 safe 的进程（排除当前进程）"""
+        import os
+        current_pid = os.getpid()
+
         with threads_manager.lock:
-            safe_procs = [p for p in threads_manager.latest_processes if p.get("risk") == "safe"]
+            # 排除当前进程
+            safe_procs = [
+                p for p in threads_manager.latest_processes
+                if p.get("risk") == "safe" and p["pid"] != current_pid
+            ]
         results = []
         total_freed = 0.0
         for proc in safe_procs:
@@ -524,6 +547,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 total_freed += r.mem_freed_mb
         return {
             "killed": len([r for r in results if r["success"]]),
+            "killed_count": len([r for r in results if r["success"]]),  # 兼容前端
             "total_freed_mb": round(total_freed, 1),
             "results": results,
         }

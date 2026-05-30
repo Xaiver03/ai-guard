@@ -810,15 +810,23 @@ async function loadData() {
     console.log('🔍 请求 URL:', summaryUrl);
 
     if (isHourly) {
-      const [summary, hourly, models] = await Promise.all([
+      // 每小时视图:强制使用 24h preset
+      const hourlyParams = buildParams({ preset: '24h' });
+      // 同时加载每日数据用于"最近每日使用记录"表格
+      const dailyParams = buildParams({ preset: 'last_7_days' });
+      const [summary, hourly, daily, models] = await Promise.all([
         fetch(`/api/usage/summary${buildParams()}`).then(r => r.json()),
-        fetch(`/api/usage/hourly${buildParams()}`).then(r => r.json()),
+        fetch(`/api/usage/hourly${hourlyParams}`).then(r => r.json()),
+        fetch(`/api/usage/daily${dailyParams}`).then(r => r.json()),
         fetch(`/api/usage/models${buildParams()}`).then(r => r.json()),
       ]);
-      console.log('🔍 收到数据 (hourly) - summary:', summary.total_tokens, 'hourly:', hourly.length);
+      console.log('🔍 收到数据 (hourly) - summary:', summary.total_tokens, 'hourly:', hourly.length, 'daily:', daily.length);
       _summaryData = summary;
-      _hourlyData = buildHourlyBuckets(hourly);
-      _dailyData = [];
+      // 24h 视图:使用 buildHourlyBuckets 填充今天完整 24 小时
+      const today = new Date().toLocaleDateString('en-CA');
+      _hourlyData = buildHourlyBuckets(hourly, today);
+      console.log('🔍 填充后 _hourlyData 长度:', _hourlyData.length);
+      _dailyData = daily;  // 保留每日数据用于表格显示
       _modelData = models;
     } else {
       const [summary, daily, models] = await Promise.all([
@@ -1046,19 +1054,23 @@ function updateCharts() {
 }
 
 function updatePieChart() {
-  const isHourly = isHourlyRange(_timeRange);
-  const sourceData = isHourly ? _hourlyData : _dailyData;
-  const sortedModels = aggregateModelStats(sourceData);
-  const labels = sortedModels.map(([name]) => name);
-  const values = sortedModels.map(([, v]) => v.tokens);
-
   const ctxP = document.getElementById('chart-pie').getContext('2d');
   if (_chartPie) _chartPie.destroy();
 
-  if (labels.length === 0) {
+  // 直接使用 _modelData,过滤掉 <synthetic>
+  if (!_modelData || _modelData.length === 0) {
     document.getElementById('model-legend').innerHTML = `<p style="color:var(--text-secondary);text-align:center;">${t().noData}</p>`;
     return;
   }
+
+  const models = _modelData.filter(m => m.model_name !== '<synthetic>');
+  if (models.length === 0) {
+    document.getElementById('model-legend').innerHTML = `<p style="color:var(--text-secondary);text-align:center;">${t().noData}</p>`;
+    return;
+  }
+
+  const labels = models.map(m => shortenModelName(m.model_name));
+  const values = models.map(m => m.total_tokens || 0);
 
   _chartPie = createPieChart(ctxP, {
     labels, datasets: [{ data: values, backgroundColor: MODEL_COLORS.slice(0, labels.length), borderColor: 'transparent', borderWidth: 0 }],
@@ -1074,26 +1086,32 @@ function updatePieChart() {
 
 // ===== 更新模型统计表 =====
 function updateModelTable() {
-  const isHourly = isHourlyRange(_timeRange);
-  const sourceData = isHourly ? _hourlyData : _dailyData;
-  const sortedModels = aggregateModelStats(sourceData);
   const tbody = document.getElementById('model-stats-body');
 
-  if (sortedModels.length === 0) {
+  // 直接使用 _modelData,不需要再聚合
+  if (!_modelData || _modelData.length === 0) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = sortedModels.map(([name, stats], i) => `
+  // 过滤掉 <synthetic> 模型
+  const models = _modelData.filter(m => m.model_name !== '<synthetic>');
+
+  if (models.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = models.map((model, i) => `
     <tr>
-      <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${MODEL_COLORS[i % MODEL_COLORS.length]};margin-right:8px;vertical-align:middle;"></span>${name}</td>
-      <td style="color:var(--accent-blue);font-weight:500;">${(stats.requestCount || 0).toLocaleString()}</td>
-      <td>${fmt(stats.input)}</td>
-      <td>${fmt(stats.output)}</td>
-      <td>${fmt(stats.cacheWrite)}</td>
-      <td>${fmt(stats.cacheRead)}</td>
-      <td style="font-weight:600;">${fmt(stats.tokens)}</td>
-      <td>$${stats.cost.toFixed(2)}</td>
+      <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${MODEL_COLORS[i % MODEL_COLORS.length]};margin-right:8px;vertical-align:middle;"></span>${shortenModelName(model.model_name)}</td>
+      <td style="color:var(--accent-blue);font-weight:500;">${(model.request_count || 0).toLocaleString()}</td>
+      <td>${fmt(model.input_tokens || 0)}</td>
+      <td>${fmt(model.output_tokens || 0)}</td>
+      <td>${fmt(model.cache_creation_tokens || 0)}</td>
+      <td>${fmt(model.cache_read_tokens || 0)}</td>
+      <td style="font-weight:600;">${fmt(model.total_tokens || 0)}</td>
+      <td>$${(model.cost || 0).toFixed(2)}</td>
     </tr>
   `).join('');
 }
@@ -1104,7 +1122,8 @@ function updateRecentTable() {
   const tbody = document.getElementById('recent-body');
 
   if (isHourly) {
-    const recent = [..._hourlyData].reverse().slice(0, 10);
+    // 显示最近 24 小时(包括 0 值)
+    const recent = [..._hourlyData].reverse().slice(0, 24);
     if (recent.length === 0) {
       tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">${t().noData}</td></tr>`;
       return;

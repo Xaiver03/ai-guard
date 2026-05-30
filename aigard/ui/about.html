@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于 - AI Guard</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <style>
+        body {
+            margin: 0;
+            padding: var(--space-6);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 64px;
+            margin-bottom: var(--space-4);
+        }
+
+        h1 {
+            font-size: var(--text-2xl);
+            font-weight: var(--weight-semibold);
+            margin-bottom: var(--space-2);
+        }
+
+        .version {
+            font-size: var(--text-lg);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-6);
+        }
+
+        .description {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-6);
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+            text-align: left;
+        }
+
+        .section-title {
+            font-size: var(--text-lg);
+            font-weight: var(--weight-semibold);
+            margin-bottom: var(--space-3);
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-list li {
+            padding: var(--space-2) 0;
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: "✓ ";
+            color: var(--accent-green);
+            font-weight: bold;
+            margin-right: var(--space-2);
+        }
+
+        .links {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: center;
+            margin-top: var(--space-6);
+        }
+
+        .link-btn {
+            padding: var(--space-3) var(--space-4);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: var(--text-sm);
+            transition: background 0.2s;
+        }
+
+        .link-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .copyright {
+            margin-top: var(--space-6);
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛡️</div>
+        <h1>AI Guard</h1>
+        <div class="version" id="version">v1.1.3</div>
+
+        <div class="description">
+            Mac AI 开发资源守护工具 — 监控 + 告警 + 安全干预 + 使用统计
+        </div>
+
+        <div class="section">
+            <div class="section-title">核心功能</div>
+            <ul class="feature-list">
+                <li>实时监控内存、Swap、磁盘、CPU 压力</li>
+                <li>分级告警（macOS 原生通知）</li>
+                <li>可视化仪表盘（实时折线图）</li>
+                <li>安全进程干预（暂停/恢复/终止）</li>
+                <li>进程白名单（永不自动终止）</li>
+                <li>Claude 使用统计（Token 用量、费用分析）</li>
+                <li>书签管理（智能分析和整理）</li>
+                <li>菜单栏托盘驻留（开机自启）</li>
+                <li>自动更新检查</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">技术栈</div>
+            <ul class="feature-list">
+                <li>后端：Python 3.11+, FastAPI, hypercorn, psutil</li>
+                <li>前端：Vanilla JS + Chart.js</li>
+                <li>菜单栏：PyObjC（原生 macOS API）</li>
+                <li>打包：py2app（独立 .app）</li>
+                <li>持久化：SQLite</li>
+            </ul>
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/Xaiver03/AI-Guard" class="link-btn" target="_blank">
+                GitHub 仓库
+            </a>
+            <a href="#" class="link-btn" onclick="checkUpdate(); return false;">
+                检查更新
+            </a>
+        </div>
+
+        <div class="copyright">
+            © 2026 Xaiver03. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        // 加载版本信息
+        async function loadVersion() {
+            try {
+                const resp = await fetch('/api/update/current-version');
+                const data = await resp.json();
+                document.getElementById('version').textContent = 'v' + data.version;
+            } catch (e) {
+                console.error('加载版本失败:', e);
+            }
+        }
+
+        // 检查更新
+        async function checkUpdate() {
+            try {
+                const resp = await fetch('/api/update/check');
+                const data = await resp.json();
+
+                if (data.has_update) {
+                    alert(`发现新版本 v${data.latest_version}（当前 v${data.current_version}）\n\n点击确定前往下载页面`);
+                    if (data.download_url) {
+                        window.open(data.download_url, '_blank');
+                    }
+                } else {
+                    alert(`已是最新版本 v${data.current_version}`);
+                }
+            } catch (e) {
+                alert('检查更新失败: ' + e.message);
+            }
+        }
+
+        // 页面加载时初始化
+        loadVersion();
+    </script>
+</body>
+</html>
