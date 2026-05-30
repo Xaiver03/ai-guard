@@ -107,11 +107,20 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # [CN] # ── 书签管理页面 ──────────────────────────────────────────
+    # ── 书签管理页面 ──────────────────────────────────────────
     @app.get("/bookmarks.html", response_class=HTMLResponse)
     def bookmarks_page():
         dev_path = base_dir / "aigard" / "ui" / "bookmarks.html"
         pkg_path = base_dir / "ui" / "bookmarks.html"
+        html_path = dev_path if dev_path.exists() else pkg_path
+        html = html_path.read_text(encoding="utf-8")
+        return HTMLResponse(html)
+
+    # ── 书签管理页面 v2 (OneNav 风格) ────────────────────────────
+    @app.get("/bookmarks_v2.html", response_class=HTMLResponse)
+    def bookmarks_v2_page():
+        dev_path = base_dir / "aigard" / "ui" / "bookmarks_v2.html"
+        pkg_path = base_dir / "ui" / "bookmarks_v2.html"
         html_path = dev_path if dev_path.exists() else pkg_path
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
