@@ -7,14 +7,16 @@
 """
 from setuptools import setup
 
-APP = ["app_menubar.py"]
+APP = ["app_native.py"]
 
 DATA_FILES = [
     ("aigard/ui",    ["aigard/ui/index.html",
                       "aigard/ui/bookmarks.html",
                       "aigard/ui/usage.html",
                       "aigard/ui/tools.html",
-                      "aigard/ui/practices.html"]),
+                      "aigard/ui/practices.html",
+                      "aigard/ui/settings.html",
+                      "aigard/ui/about.html"]),
     ("aigard/ui/css", ["aigard/ui/css/design-system.css",
                        "aigard/ui/css/components.css",
                        "aigard/ui/css/usage.css",
@@ -40,8 +42,7 @@ OPTIONS = {
         "CFBundleIdentifier":         "com.xaiver.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
-        # 启用 LSUIElement，只显示菜单栏，不显示 Dock 图标
-        "LSUIElement":                True,
+        # "LSUIElement":                True,  # 禁用：与 rumps 框架冲突导致菜单栏图标不显示
         "NSHighResolutionCapable":    True,
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":
@@ -56,6 +57,7 @@ OPTIONS = {
         "aigard.api",
         "aigard.bookmarks",
         "aigard.popover",
+        "rumps",
         "fastapi",
         "hypercorn",
         "psutil",
@@ -81,6 +83,7 @@ OPTIONS = {
         "objc",
     ],
     "includes": [
+        "PyObjCTools.AppHelper",
         "hypercorn.asyncio",
         "hypercorn.config",
         "hypercorn.protocol.h11",

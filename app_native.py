@@ -209,6 +209,20 @@ class AIGuardDelegate(NSObject):
         item.setTarget_(self)
         self.menu.addItem_(item)
 
+        # AI 工具导航
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "AI 工具导航", "openTools:", ""
+        )
+        item.setTarget_(self)
+        self.menu.addItem_(item)
+
+        # 最佳实践
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "最佳实践", "openPractices:", ""
+        )
+        item.setTarget_(self)
+        self.menu.addItem_(item)
+
         self.menu.addItem_(NSMenuItem.separatorItem())
 
         # 状态行 (简化显示)
@@ -318,6 +332,16 @@ class AIGuardDelegate(NSObject):
     def openUsage_(self, sender):
         """打开使用统计（原生窗口）"""
         self.dashboard_window.load_url(f"{self.url}/usage.html")
+        self.dashboard_window.show()
+
+    def openTools_(self, sender):
+        """打开 AI 工具导航（原生窗口）"""
+        self.dashboard_window.load_url(f"{self.url}/tools.html")
+        self.dashboard_window.show()
+
+    def openPractices_(self, sender):
+        """打开最佳实践（原生窗口）"""
+        self.dashboard_window.load_url(f"{self.url}/practices.html")
         self.dashboard_window.show()
 
     def killSafe_(self, sender):
