@@ -51,32 +51,40 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     # [CN] """创建 FastAPI 应用实例"""
     app = FastAPI(title="AI Guard", version="1.0.0")
 
-    # [CN] # 懒加载标记
-    _routers_loaded = {"whitelist": False, "bookmarks": False, "usage": False}
+    # 懒加载标记
+    _routers_loaded = {"whitelist": False, "bookmarks": False, "bookmarks_v2": False, "usage": False}
     _routers_lock = threading.Lock()
 
-    # [CN] # 注册白名单路由（轻量级，立即加载）
+    # 注册白名单路由（轻量级，立即加载）
     from aigard.api.whitelist import router as whitelist_router
     app.include_router(whitelist_router)
     _routers_loaded["whitelist"] = True
 
-    # [CN] # 懒加载中间件：按需加载重量级路由
+    # 懒加载中间件：按需加载重量级路由
     @app.middleware("http")
     async def lazy_load_middleware(request, call_next):
         path = request.url.path
 
-        # [CN] # 书签管理路由（重量级）
+        # 书签管理路由 v1（旧版，浏览器导入）
         if not _routers_loaded["bookmarks"] and (
-            path.startswith("/api/bookmarks") or path == "/bookmarks.html"
+            path.startswith("/api/bookmarks") and not path.startswith("/api/bookmarks/v2")
+            or path == "/bookmarks.html"
         ):
             with _routers_lock:
                 if not _routers_loaded["bookmarks"]:
                     from aigard.api.bookmarks import router as bookmarks_router
                     app.include_router(bookmarks_router)
                     _routers_loaded["bookmarks"] = True
-                    # [CN] print("[lazy-load] 书签管理模块已加载")
 
-        # [CN] # Claude 使用统计路由（重量级）
+        # 书签管理路由 v2（新版，OneNav 风格）
+        if not _routers_loaded["bookmarks_v2"] and path.startswith("/api/bookmarks/v2"):
+            with _routers_lock:
+                if not _routers_loaded["bookmarks_v2"]:
+                    from aigard.api.bookmarks_v2 import router as bookmarks_v2_router
+                    app.include_router(bookmarks_v2_router)
+                    _routers_loaded["bookmarks_v2"] = True
+
+        # Claude 使用统计路由（重量级）
         if not _routers_loaded["usage"] and (
             path.startswith("/api/usage") or path == "/usage.html"
         ):
@@ -85,7 +93,6 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     from aigard.api.usage import router as usage_router
                     app.include_router(usage_router)
                     _routers_loaded["usage"] = True
-                    # [CN] print("[lazy-load] 使用统计模块已加载")
 
         return await call_next(request)
 
