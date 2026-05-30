@@ -52,6 +52,14 @@ def resume_process(pid: int) -> ActionResult:
 
 def kill_process(pid: int) -> ActionResult:
     """SIGTERM 优雅终止进程（先恢复再终止，避免 STOP 状态下无法处理信号）"""
+    # 自我保护：禁止终止当前进程或父进程
+    current_pid = os.getpid()
+    parent_pid = os.getppid()
+    if pid == current_pid:
+        return ActionResult(False, f"拒绝终止：PID {pid} 是 AI Guard 自身进程")
+    if pid == parent_pid:
+        return ActionResult(False, f"拒绝终止：PID {pid} 是 AI Guard 父进程")
+
     proc = _get_proc(pid)
     if not proc:
         return ActionResult(False, f"进程 {pid} 不存在")
