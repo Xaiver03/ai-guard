@@ -1,6 +1,6 @@
 """
-AI Guard - 智能内存守护
-主入口文件
+AI Guard - Intelligent Memory Guardian
+Main entry file
 """
 
 import os
@@ -19,31 +19,31 @@ from aigard.core.threads import BackgroundThreads
 from aigard.api import create_app
 
 
-# ── 配置加载 ──────────────────────────────────────────────────
+# ── Configuration Loading ──────────────────────────────────────
 def _find_config() -> Path:
-    """查找 config.toml，支持开发模式和 py2app 打包模式"""
-    # 1. 开发模式：与 main.py 同级
+    """Find config.toml, support dev mode and py2app packaging mode"""
+    # 1. Dev mode: same level as main.py
     dev_path = Path(__file__).parent / "config.toml"
     if dev_path.exists():
         return dev_path
 
-    # 2. py2app 打包模式：Resources/ 目录
-    # py2app 将 .py 打包进 zip，__file__ 指向 zip 内，需要向上找到 Resources/
+    # 2. py2app packaging mode: Resources/ directory
+    # py2app packages .py into zip, __file__ points to zip, need to find Resources/
     exe = Path(sys.executable)
-    # 典型路径: dist/AI Guard.app/Contents/MacOS/AI Guard
-    # Resources 在: dist/AI Guard.app/Contents/Resources/
+    # Typical path: dist/AI Guard.app/Contents/MacOS/AI Guard
+    # Resources at: dist/AI Guard.app/Contents/Resources/
     if "Contents/MacOS" in str(exe):
         resources = exe.parent.parent / "Resources"
         bundled = resources / "config.toml"
         if bundled.exists():
             return bundled
 
-    # 3. 兜底：当前工作目录
+    # 3. Fallback: current working directory
     cwd_path = Path("config.toml").resolve()
     if cwd_path.exists():
         return cwd_path
 
-    raise FileNotFoundError("config.toml 未找到（开发模式或打包模式均失败）")
+    raise FileNotFoundError("config.toml not found (both dev mode and packaging mode failed)")
 
 
 BASE_DIR = Path(__file__).parent
@@ -58,15 +58,15 @@ AUTO_KILL_CFG = CFG.get("auto_kill", {})
 WHITELIST_CFG = CFG.get("whitelist", {})
 
 
-# ── 初始化核心组件 ────────────────────────────────────────────
+# ── Initialize Core Components ────────────────────────────────
 history = MetricsHistory(maxlen=MONITOR_CFG.get("history_points", 150))
 alerter = Alerter(ALERT_CFG)
 whitelist = WhitelistManager(WHITELIST_CFG)
 
-# 初始化后台线程管理器
+# Initialize background thread manager
 threads = BackgroundThreads(CFG, history, alerter, whitelist)
 
-# 初始化运行时配置
+# Initialize runtime configuration
 PROCESSES_CFG = CFG.get("processes", {})
 SCORING_CFG = PROCESSES_CFG.get("scoring", {})
 
@@ -81,17 +81,17 @@ threads.settings = {
 }
 
 
-# ── 创建 FastAPI 应用 ─────────────────────────────────────────
-# py2app 打包后 BASE_DIR 指向 zip 内，需要找到实际的 Resources 目录
-# 用于定位 index.html 等静态资源
+# ── Create FastAPI Application ─────────────────────────────────
+# After py2app packaging, BASE_DIR points to zip, need to find actual Resources directory
+# Used to locate static resources like index.html
 def _resolve_base_dir() -> Path:
-    """解析正确的 base_dir，支持开发模式和 py2app 打包模式"""
-    # 开发模式
+    """Parse correct base_dir, support dev mode and py2app packaging mode"""
+    # Dev mode
     dev_path = Path(__file__).parent
     if (dev_path / "config.toml").exists():
         return dev_path
 
-    # py2app 打包模式
+    # py2app packaging mode
     exe = Path(sys.executable)
     if "Contents/MacOS" in str(exe):
         resources = exe.parent.parent / "Resources"
@@ -107,7 +107,7 @@ app = create_app(RESOLVED_BASE_DIR, threads)
 
 @app.on_event("startup")
 def on_startup():
-    """启动所有后台线程"""
+    """Start all background threads"""
     threads.start_all()
 
     host = SERVER_CFG.get("host", "127.0.0.1")
@@ -117,19 +117,19 @@ def on_startup():
         threading.Timer(1.0, lambda: webbrowser.open(f"http://{host}:{port}")).start()
 
 
-# ── 启动函数 ──────────────────────────────────────────────────
+# ── Startup Function ──────────────────────────────────────────
 def start_server(host: str = None, port: int = None):
-    """供外部调用的启动函数"""
+    """Startup function for external calls"""
     _host = host or SERVER_CFG.get("host", "127.0.0.1")
     _port = port or SERVER_CFG.get("port", 8765)
-    print(f"AI Guard 服务启动中 → http://{_host}:{_port}")
+    print(f"AI Guard service starting → http://{_host}:{_port}")
 
-    # 使用 hypercorn 替代 uvicorn，避免 mypyc 编译模块问题
+    # Use hypercorn instead of uvicorn to avoid mypyc compiled module issues
     config = Config()
     config.bind = [f"{_host}:{_port}"]
     config.loglevel = "WARNING"
 
-    # 在子线程中运行时，禁用信号处理器（避免 RuntimeError）
+    # Disable signal handlers when running in subthread (avoid RuntimeError)
     import threading
     if threading.current_thread() is not threading.main_thread():
         config.use_reloader = False

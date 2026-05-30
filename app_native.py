@@ -1,12 +1,18 @@
-"""app_native.py — 原生 macOS 菜单栏应用（纯 PyObjC，支持 Popover）
+"""app_native.py - Native macOS menubar app (Pure PyObjC with Popover support)
 
-运行方式：
-    python app_native.py          # 开发模式
-    open "dist/AI Guard.app"      # 打包后
+Usage:
+    python app_native.py          # Development mode
+    open "dist/AI Guard.app"      # After packaging
 """
 
 import os
 import sys
+
+# Set UTF-8 encoding BEFORE any other imports to prevent UnicodeEncodeError
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['LC_ALL'] = 'en_US.UTF-8'
+os.environ['LANG'] = 'en_US.UTF-8'
+
 import threading
 import webbrowser
 from pathlib import Path
@@ -21,68 +27,78 @@ from AppKit import (
 )
 from WebKit import WKWebView
 
-# 禁止 main.py 的 on_startup 自动打开浏览器
+# Prevent main.py's on_startup from auto-opening browser
 os.environ["AIGARD_NO_BROWSER"] = "1"
 
-# 确保能 import 到同级的 main.py
-# 打包后 main.py 在 Resources 目录下
+# Ensure we can import main.py from the same directory
+# After packaging, main.py is in the Resources directory
 if getattr(sys, 'frozen', False):
-    # 打包后的路径
+    # Path after packaging
     bundle_dir = Path(sys._MEIPASS if hasattr(sys, '_MEIPASS') else sys.executable).parent
     if (bundle_dir / 'Resources').exists():
         sys.path.insert(0, str(bundle_dir / 'Resources'))
     else:
         sys.path.insert(0, str(bundle_dir))
 else:
-    # 开发模式
+    # Development mode
     sys.path.insert(0, str(Path(__file__).parent))
 
 import main as _main_mod
 
 
 class AIGuardDelegate(NSObject):
-    """应用委托"""
+    """Application delegate"""
 
     def init(self):
         import sys
-        sys.stdout = open('/tmp/aigard_native.log', 'w', encoding='utf-8', buffering=1)
+        import io
+        import os
+
+        # Set environment variables for UTF-8 encoding
+        os.environ['PYTHONIOENCODING'] = 'utf-8'
+        os.environ['LC_ALL'] = 'en_US.UTF-8'
+        os.environ['LANG'] = 'en_US.UTF-8'
+
+        # Use io.TextIOWrapper with explicit UTF-8 encoding
+        log_file = open('/tmp/aigard_native.log', 'wb', buffering=0)
+        sys.stdout = io.TextIOWrapper(log_file, encoding='utf-8', line_buffering=True, write_through=True)
         sys.stderr = sys.stdout
 
-        print("=== AIGuardDelegate.init() 开始 ===")
+        print("=== AIGuardDelegate.init() started ===")
         self = objc.super(AIGuardDelegate, self).init()
         if self is None:
-            print("❌ super().init() 返回 None")
+            print("ERROR: super().init() returned None")
             return None
 
-        print("✅ super().init() 成功")
+        print("SUCCESS: super().init() completed")
 
-        # 读取服务地址
+        # Read service address
         host = _main_mod.SERVER_CFG.get("host", "127.0.0.1")
         port = _main_mod.SERVER_CFG.get("port", 8765)
         self.url = f"http://{host}:{port}"
-        print(f"✅ 服务地址: {self.url}")
+        print(f"Service URL: {self.url}")
 
         return self
 
     def applicationDidFinishLaunching_(self, notification):
-        """应用启动完成后的回调"""
-        print("=== applicationDidFinishLaunching_ 被调用 ===")
+        """Callback after application finishes launching"""
+        print("=== applicationDidFinishLaunching_ called ===")
 
-        # 创建状态栏项
-        print("=== 创建状态栏项 ===")
+        # Create status bar item
+        print("=== Creating status bar item ===")
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(
             NSVariableStatusItemLength
         )
-        print(f"状态栏项: {self.statusItem}")
+        print(f"Status item: {self.statusItem}")
 
-        # 设置按钮属性
+        # Set button properties
         button = self.statusItem.button()
-        print(f"按钮: {button}")
+        print(f"Button: {button}")
         if button:
-            # 先设置一个文字标题作为后备
+            # Set text title as fallback
             button.setTitle_("AG")
 
-            # 加载图标
+            # Load icon
             try:
                 from AppKit import NSImage
                 import os
@@ -90,103 +106,103 @@ class AIGuardDelegate(NSObject):
                     os.path.dirname(__file__),
                     "assets/menubar_icon.png"
                 )
-                print(f"图标路径: {icon_path}")
-                print(f"图标文件存在: {os.path.exists(icon_path)}")
+                print(f"Icon path: {icon_path}")
+                print(f"Icon file exists: {os.path.exists(icon_path)}")
 
                 if os.path.exists(icon_path):
                     icon = NSImage.alloc().initWithContentsOfFile_(icon_path)
                     if icon:
-                        # 设置图标尺寸（菜单栏标准尺寸）
+                        # Set icon size (standard menubar size)
                         from Foundation import NSMakeSize
                         icon.setSize_(NSMakeSize(18, 18))
-                        # 设置为模板图标（自动适配亮暗模式）
+                        # Set as template icon (auto-adapt light/dark mode)
                         icon.setTemplate_(True)
                         button.setImage_(icon)
-                        # 清除文字，只显示图标
+                        # Clear text, show icon only
                         button.setTitle_("")
-                        print(f"✅ 图标已设置: {icon_path}, size: {icon.size()}, template: {icon.isTemplate()}")
+                        print(f"✅ Icon set: {icon_path}, size: {icon.size()}, template: {icon.isTemplate()}")
                     else:
-                        print("❌ 图标对象创建失败，保留文字 AG")
+                        print("❌ Icon object creation failed, keeping text AG")
                 else:
-                    print(f"❌ 图标文件不存在: {icon_path}，保留文字 AG")
+                    print(f"❌ Icon file not found: {icon_path}, keeping text AG")
             except Exception as e:
-                print(f"❌ 图标加载异常: {e}，保留文字 AG")
+                print(f"❌ Icon loading error: {e}, keeping text AG")
                 import traceback
                 traceback.print_exc()
 
             button.setEnabled_(True)
-            print("✅ 按钮已设置")
+            print("Button enabled")
 
-        # 确保状态栏项可见
+        # Ensure status item is visible
         self.statusItem.setVisible_(True)
         self.statusItem.setLength_(NSVariableStatusItemLength)
-        print(f"✅ 状态栏项可见性: {self.statusItem.isVisible()}")
-        print(f"✅ 状态栏项长度: {self.statusItem.length()}")
+        print(f"Status item visible: {self.statusItem.isVisible()}")
+        print(f"Status item length: {self.statusItem.length()}")
 
-        # 强制刷新状态栏
+        # Force refresh status bar
         button = self.statusItem.button()
         if button:
             button.setNeedsDisplay_(True)
-            print("✅ 强制刷新按钮显示")
+            print("Button display refreshed")
 
-        # 创建 Popover (使用原生 AppKit 控件)
-        print("=== 创建 Popover ===")
+        # Create Popover (using native AppKit controls)
+        print("=== Creating Popover ===")
         try:
             from aigard.popover import PopoverViewController
-            print("✅ PopoverViewController 导入成功")
+            print("PopoverViewController imported")
 
-            # 创建视图控制器
+            # Create view controller
             self.popover_controller = PopoverViewController.alloc().initWithThreadsManager_serverUrl_(
                 _main_mod.threads,
                 self.url
             )
-            print(f"✅ PopoverViewController 创建成功")
+            print(f"PopoverViewController created")
 
-            # 创建 Popover
+            # Create Popover
             from AppKit import NSPopover
             self.popover = NSPopover.alloc().init()
             self.popover.setContentViewController_(self.popover_controller)
             self.popover.setBehavior_(0)  # NSPopoverBehaviorApplicationDefined
             from Foundation import NSMakeSize
-            self.popover.setContentSize_(NSMakeSize(360, 550))  # 增加高度以容纳折线图
-            print(f"✅ Popover 创建成功")
+            self.popover.setContentSize_(NSMakeSize(360, 550))  # Increased height for charts
+            print(f"Popover created")
         except Exception as e:
-            print(f"❌ Popover 创建失败: {e}")
+            print(f"Failed to create Popover: {e}")
             import traceback
             traceback.print_exc()
 
-        # 创建原生窗口管理器（用于显示监控面板）
-        print("=== 创建 DashboardWindow ===")
+        # Create native window manager (for dashboard)
+        print("=== Creating DashboardWindow ===")
         try:
             from aigard.window_manager import DashboardWindow
             self.dashboard_window = DashboardWindow.get_instance(self.url)
-            print(f"✅ DashboardWindow 创建成功: {self.dashboard_window}")
+            print(f"DashboardWindow created: {self.dashboard_window}")
         except Exception as e:
-            print(f"❌ DashboardWindow 创建失败: {e}")
+            print(f"Failed to create DashboardWindow: {e}")
             import traceback
             traceback.print_exc()
 
-        # 绑定点击事件 - 左键显示 Popover
+        # Bind click event - left click shows Popover
         self.statusItem.button().setAction_("togglePopover:")
         self.statusItem.button().setTarget_(self)
 
-        # 创建菜单
+        # Create menu
         self.menu = NSMenu.alloc().init()
         self._build_menu()
 
-        # 启动后台服务
+        # Start background service
         self._start_server()
 
-        # 启动定时器（每 5 秒刷新状态）
+        # Start timer (refresh status every 5 seconds)
         self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             5.0, self, "refreshStatus:", None, True
         )
 
-        print("=== applicationDidFinishLaunching_ 完成 ===")
+        print("=== applicationDidFinishLaunching_ completed ===")
 
     def _build_menu(self):
-        """构建菜单"""
-        # 关于
+        """Build menu"""
+        # About
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "关于 AI Guard", "showAbout:", ""
         )
@@ -195,28 +211,28 @@ class AIGuardDelegate(NSObject):
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 监控面板
+        # Monitoring Panel
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "监控面板", "openPanel:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 使用统计
+        # Usage Statistics
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "使用统计", "openUsage:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # AI 工具导航
+        # AI Tools Navigation
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "AI 工具导航", "openTools:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 最佳实践
+        # Best Practices
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "最佳实践", "openPractices:", ""
         )
@@ -225,7 +241,7 @@ class AIGuardDelegate(NSObject):
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 状态行 (简化显示)
+        # Status line (simplified display)
         self.statusMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "CPU 0% · 内存 0% · Swap 0%", None, ""
         )
@@ -233,14 +249,14 @@ class AIGuardDelegate(NSObject):
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 一键终止
+        # One-Click Terminate
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "一键终止", "killSafe:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 自动终止
+        # Auto Terminate
         self.autoKillMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "自动终止: 关", "toggleAutoKill:", ""
         )
@@ -249,14 +265,14 @@ class AIGuardDelegate(NSObject):
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 检查更新
+        # Check for Updates
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "检查更新...", "checkUpdate:", ""
         )
         item.setTarget_(self)
         self.menu.addItem_(item)
 
-        # 偏好设置 (添加快捷键 ⌘,)
+        # Preferences (add shortcut ⌘,)
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "偏好设置...", "openConfig:", ","
         )
@@ -265,7 +281,7 @@ class AIGuardDelegate(NSObject):
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
-        # 退出 (添加快捷键 ⌘Q)
+        # Quit (add shortcut ⌘Q)
         item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "退出 AI Guard", "terminate:", "q"
         )
@@ -273,79 +289,79 @@ class AIGuardDelegate(NSObject):
         self.menu.addItem_(item)
 
     def _start_server(self):
-        """启动后台服务"""
+        """Start background service"""
         self.server_thread = threading.Thread(
             target=_main_mod.start_server, daemon=True
         )
         self.server_thread.start()
 
     def togglePopover_(self, sender):
-        """切换 Popover 显示/隐藏"""
-        print(f"=== togglePopover_ 被调用,sender: {sender} ===")
+        """Toggle Popover show/hide"""
+        print(f"=== togglePopover_ called, sender: {sender} ===")
         try:
             if self.popover.isShown():
-                print("关闭 Popover")
+                print("Close Popover")
                 self.popover.close()
             else:
-                print("显示 Popover")
+                print("Show Popover")
                 button = self.statusItem.button()
-                print(f"按钮: {button}, bounds: {button.bounds()}")
+                print(f"Button: {button}, bounds: {button.bounds()}")
                 self.popover.showRelativeToRect_ofView_preferredEdge_(
                     button.bounds(),
                     button,
                     3  # NSRectEdgeMinY - 从下方弹出
                 )
-                # 更新数据
+                # Update data
                 self.popover_controller.update_metrics()
                 self.popover_controller.update_usage()
                 self.popover_controller.update_autokill_button()
-                print("✅ Popover 显示完成")
+                print("✅ Popover displayed successfully")
         except Exception as e:
-            print(f"❌ togglePopover_ 失败: {e}")
+            print(f"❌ togglePopover_ failed: {e}")
             import traceback
             traceback.print_exc()
 
     def showMenu_(self, sender):
-        """显示菜单"""
+        """Show menu"""
         self.statusItem.popUpStatusItemMenu_(self.menu)
 
     def showAbout_(self, sender):
-        """显示关于对话框"""
+        """Show about dialog"""
         from AppKit import NSAlert, NSAlertStyleInformational
         alert = NSAlert.alloc().init()
-        alert.setMessageText_("关于 AI Guard")
+        alert.setMessageText_("About AI Guard")
         alert.setInformativeText_(
-            f"版本: {_main_mod.VERSION}\n\n"
-            "Mac AI 开发资源守护工具\n"
-            "监控 + 告警 + 安全干预 + 使用统计\n\n"
+            f"Version: {_main_mod.VERSION}\n\n"
+            "Mac AI Development Resource Guardian\n"
+            "Monitor + Alert + Safe Intervention + Usage Stats\n\n"
             "© 2026 AI Guard\n"
             "https://github.com/Xaiver03/ai-guard"
         )
         alert.setAlertStyle_(NSAlertStyleInformational)
-        alert.addButtonWithTitle_("确定")
+        alert.addButtonWithTitle_("OK")
         alert.runModal()
 
     def openPanel_(self, sender):
-        """打开监控面板（浏览器）"""
+        """Open monitoring panel (browser)"""
         webbrowser.open(self.url)
 
     def openUsage_(self, sender):
-        """打开使用统计（原生窗口）"""
+        """Open usage statistics (native window)"""
         self.dashboard_window.load_url(f"{self.url}/usage.html")
         self.dashboard_window.show()
 
     def openTools_(self, sender):
-        """打开 AI 工具导航（原生窗口）"""
+        """Open AI tools navigation (native window)"""
         self.dashboard_window.load_url(f"{self.url}/tools.html")
         self.dashboard_window.show()
 
     def openPractices_(self, sender):
-        """打开最佳实践（原生窗口）"""
+        """Open best practices (native window)"""
         self.dashboard_window.load_url(f"{self.url}/practices.html")
         self.dashboard_window.show()
 
     def killSafe_(self, sender):
-        """一键终止安全进程"""
+        """One-click terminate safe processes"""
         from aigard.core import kill_process
         threads = _main_mod.threads
         with threads.lock:
@@ -361,15 +377,16 @@ class AIGuardDelegate(NSObject):
                 killed += 1
 
     def toggleAutoKill_(self, sender):
-        """切换自动终止"""
+        """Toggle auto terminate"""
         threads = _main_mod.threads
         with threads.lock:
             threads.autokill_enabled = not threads.autokill_enabled
             state = threads.autokill_enabled
-        self.autoKillMenuItem.setTitle_(f"自动终止: {'开' if state else '关'}")
+        status_text = "on" if state else "off"
+        self.autoKillMenuItem.setTitle_(f"Auto Kill: {status_text}")
 
     def checkUpdate_(self, sender):
-        """检查更新"""
+        """Check for updates"""
         import requests
         try:
             resp = requests.get(f"{self.url}/api/update/check", timeout=10)
@@ -381,16 +398,16 @@ class AIGuardDelegate(NSObject):
             pass
 
     def openConfig_(self, sender):
-        """打开配置文件"""
+        """Open config file"""
         import subprocess
         config_path = Path(__file__).parent / "config.toml"
         subprocess.run(["open", "-t", str(config_path)], check=False)
 
     def refreshStatus_(self, timer):
-        """刷新状态"""
+        """Refresh status"""
         latest = _main_mod.history.latest
         if not latest:
-            # 不设置 title，保留图标
+            # Keep icon, don't set title
             return
 
         mem = latest.get("mem_percent", 0)
@@ -399,24 +416,24 @@ class AIGuardDelegate(NSObject):
         disk = latest.get("disk_percent", 0)
         level = latest.get("alert_level", "normal")
 
-        # 不修改菜单栏按钮的显示（保留图标）
-        # 只更新菜单项中的状态信息
+        # Don't modify menubar button display (keep icon)
+        # Only update status info in menu items
 
-        # 状态行 (简化显示)
+        # Status line (simplified display)
         self.statusMenuItem.setTitle_(
-            f"CPU {cpu:.0f}% · 内存 {mem:.0f}% · Swap {swap:.0f}%"
+            f"CPU {cpu:.0f}% · Mem {mem:.0f}% · Swap {swap:.0f}%"
         )
 
-        # 同步自动终止开关
+        # Sync auto-kill switch
         state = _main_mod.threads.autokill_enabled
-        self.autoKillMenuItem.setTitle_(f"自动终止: {'开' if state else '关'}")
+        self.autoKillMenuItem.setTitle_(f"Auto Kill: {'On' if state else 'Off'}")
 
 
 def main():
     from AppKit import NSApplicationActivationPolicyAccessory
     app = NSApplication.sharedApplication()
 
-    # 设置为 Accessory 模式（只显示菜单栏，不显示 Dock 图标）
+    # Set to Accessory mode (only show menu bar, no Dock icon)
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
 
     delegate = AIGuardDelegate.alloc().init()
