@@ -1,5 +1,5 @@
 """
-定价持久化仓库 - 管理用户自定义定价的数据库读写
+# [CN] 定价持久化仓库 - 管理用户自定义定价的数据库读写
 """
 import sqlite3
 import os
@@ -10,7 +10,7 @@ from .pricing import ModelPricing, normalize_model_name
 
 
 class PricingRepository:
-    """管理定价覆盖的 SQLite 持久化"""
+    # [CN] """管理定价覆盖的 SQLite 持久化"""
 
     def __init__(self, db_dir: Optional[str] = None):
         if db_dir is None:
@@ -20,7 +20,7 @@ class PricingRepository:
         self._init_table()
 
     def _init_table(self):
-        """初始化 pricing_overrides 表"""
+        # [CN] """初始化 pricing_overrides 表"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pricing_overrides (
@@ -35,7 +35,7 @@ class PricingRepository:
             conn.commit()
 
     def save_override(self, model: str, pricing: ModelPricing):
-        """保存单个模型的定价覆盖（upsert）"""
+        # [CN] """保存单个模型的定价覆盖（upsert）"""
         normalized = normalize_model_name(model)
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
@@ -54,7 +54,7 @@ class PricingRepository:
             conn.commit()
 
     def get_override(self, model: str) -> Optional[ModelPricing]:
-        """获取单个模型的定价覆盖，不存在返回 None"""
+        # [CN] """获取单个模型的定价覆盖，不存在返回 None"""
         normalized = normalize_model_name(model)
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
@@ -72,7 +72,7 @@ class PricingRepository:
             return None
 
     def get_all_overrides(self) -> Dict[str, ModelPricing]:
-        """获取所有定价覆盖"""
+        # [CN] """获取所有定价覆盖"""
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(
                 "SELECT model_name, input_price, output_price, "
@@ -89,7 +89,7 @@ class PricingRepository:
             }
 
     def delete_override(self, model: str) -> bool:
-        """删除单个模型的定价覆盖，返回是否删除成功"""
+        # [CN] """删除单个模型的定价覆盖，返回是否删除成功"""
         normalized = normalize_model_name(model)
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
@@ -100,13 +100,13 @@ class PricingRepository:
             return cursor.rowcount > 0
 
     def clear_all_overrides(self):
-        """清空所有定价覆盖"""
+        # [CN] """清空所有定价覆盖"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM pricing_overrides")
             conn.commit()
 
     def get_override_count(self) -> int:
-        """获取覆盖数量"""
+        # [CN] """获取覆盖数量"""
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT COUNT(*) FROM pricing_overrides"

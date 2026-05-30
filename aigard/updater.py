@@ -1,6 +1,6 @@
-"""aigard/updater.py - 自动更新检查模块
+"""aigard/updater.py - AutomaticUpdateCheckModule
 
-使用 GitHub Releases API 检查更新
+# [CN] 使用 GitHub Releases API 检查更新
 """
 import requests
 from packaging import version
@@ -8,13 +8,13 @@ from typing import Optional, Dict
 import sys
 from pathlib import Path
 
-# 从 setup.py 读取当前版本
+# [CN] 从 setup.py 读取当前版本
 def _get_current_version() -> str:
-    """从 setup.py 读取当前版本号"""
+    # [CN] """从 setup.py 读取当前版本号"""
     try:
         setup_path = Path(__file__).parent.parent / "setup.py"
         if not setup_path.exists():
-            # py2app 打包后，从 Resources 读取
+            # [CN] # py2app 打包后，从 Resources 读取
             exe = Path(sys.executable)
             if "Contents/MacOS" in str(exe):
                 resources = exe.parent.parent / "Resources"
@@ -27,11 +27,11 @@ def _get_current_version() -> str:
             if match:
                 return match.group(1)
     except Exception as e:
-        print(f"读取版本号失败: {e}")
+        # [CN] print(f"读取版本号失败: {e}")
 
-    return "1.0.0"  # 默认版本
+    return "1.0.0"  # DefaultVersion
 
-GITHUB_REPO = "Xaiver03/AI-Guard"  # 替换为实际的 GitHub 仓库
+# [CN] GITHUB_REPO = "Xaiver03/AI-Guard"  # 替换为实际的 GitHub 仓库
 CURRENT_VERSION = _get_current_version()
 
 class UpdateChecker:
@@ -39,7 +39,7 @@ class UpdateChecker:
         self.api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
     def check_update(self) -> Optional[Dict]:
-        """检查是否有新版本
+        # [CN] """检查是否有新版本
 
         Returns:
             Dict: {
@@ -58,10 +58,10 @@ class UpdateChecker:
             data = resp.json()
             latest = data['tag_name'].lstrip('v')
 
-            # 比较版本
+            # CompareVersion
             has_update = version.parse(latest) > version.parse(CURRENT_VERSION)
 
-            # 找到 .dmg 或 .zip 下载链接
+            # [CN] # 找到 .dmg 或 .zip 下载链接
             download_url = None
             for asset in data['assets']:
                 if asset['name'].endswith('.dmg'):
@@ -80,11 +80,11 @@ class UpdateChecker:
             }
 
         except Exception as e:
-            print(f"检查更新失败: {e}")
+            print(f"CheckUpdateFailure: {e}")
             return None
 
     def download_update(self, url: str, save_path: str, progress_callback=None):
-        """下载更新文件
+        """DownloadUpdateFile
 
         Args:
             url: 下载链接

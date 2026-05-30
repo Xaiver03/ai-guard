@@ -1,5 +1,5 @@
 """
-后台线程模块 - 监控、自动终止、黑名单拦截、定时终止
+# [CN] 后台线程模块 - 监控、自动终止、黑名单拦截、定时终止
 """
 
 import time
@@ -13,7 +13,7 @@ from aigard.core import (
 
 
 class BackgroundThreads:
-    """管理所有后台线程"""
+    # [CN] """管理所有后台线程"""
 
     def __init__(self, config: dict, history: MetricsHistory, alerter: Alerter, whitelist: WhitelistManager):
         self.config = config
@@ -21,12 +21,12 @@ class BackgroundThreads:
         self.alerter = alerter
         self.whitelist = whitelist
 
-        # 共享状态
+        # SharedState
         self.latest_processes = []
         self.auto_kill_log = []
         self.lock = threading.Lock()
 
-        # 运行时配置
+        # [CN] # 运行时配置
         self.autokill_enabled = config.get("auto_kill", {}).get("enabled", False)
         self.blocked_processes = set()
         self.scheduled_kill_enabled = False
@@ -34,19 +34,19 @@ class BackgroundThreads:
         self.settings = {}
         self.settings_lock = threading.Lock()
 
-        # JSONL 增量解析：记录每个文件的读取位置
+        # [CN] # JSONL 增量解析：记录每个文件的读取位置
         self._jsonl_offsets = {}  # {file_path: last_offset}
 
-        # 条件变量：用于事件驱动的线程唤醒
+        # [CN] # 条件变量：用于事件驱动的线程唤醒
         self._block_event = threading.Event()
         self._autokill_event = threading.Event()
 
-        # 线程对象
+        # [CN] # 线程对象
         self._threads = []
 
     def start_all(self):
-        """启动所有后台线程"""
-        # 应用评分配置到 advisor 模块
+        # [CN] """启动所有后台线程"""
+        # [CN] 应用评分配置到 advisor 模块
         self._apply_scoring_config()
 
         self._threads = [
@@ -60,7 +60,7 @@ class BackgroundThreads:
             t.start()
 
     def _apply_scoring_config(self):
-        """将配置应用到 advisor 模块"""
+        # [CN] """将配置应用到 advisor 模块"""
         import aigard.core.advisor as advisor_mod
 
         with self.settings_lock:
@@ -71,7 +71,7 @@ class BackgroundThreads:
                 advisor_mod.IDLE_MIN_MINUTES = scoring["idle_min_minutes"]
 
     def _monitor_loop(self):
-        """监控线程：采集指标和进程列表"""
+        # [CN] """监控线程：采集指标和进程列表"""
         from alert_history import record_alert
 
         while True:
@@ -95,12 +95,12 @@ class BackgroundThreads:
             time.sleep(interval)
 
     def _auto_kill_loop(self):
-        """自动终止线程：内存超阈值时终止 safe 进程"""
+        # [CN] """自动终止线程：内存超阈值时终止 safe 进程"""
         last_killed_time = 0.0
 
         while True:
             if not self.autokill_enabled:
-                # 禁用时休眠，等待被唤醒（toggle API 会 set 事件）
+                # [CN] # 禁用时休眠，等待被唤醒（toggle API 会 set 事件）
                 self._autokill_event.wait(timeout=60)
                 self._autokill_event.clear()
                 continue
@@ -128,7 +128,7 @@ class BackgroundThreads:
                 continue
 
             with self.lock:
-                # 过滤掉白名单中的进程
+                # [CN] # 过滤掉白名单中的进程
                 candidates = [
                     p for p in self.latest_processes
                     if p.get("risk") == "safe" and not self.whitelist.is_whitelisted(p)
@@ -151,7 +151,7 @@ class BackgroundThreads:
                         "pid": pid,
                         "name": proc.get("name", ""),
                         "mem_mb": proc.get("mem_mb", 0),
-                        "reason": f"自动终止：内存 {mem_pct:.0f}% / Swap {swap_pct:.0f}%",
+                        # [CN] "reason": f"自动终止：内存 {mem_pct:.0f}% / Swap {swap_pct:.0f}%",
                     }
                     with self.lock:
                         self.auto_kill_log.append(log_entry)
@@ -161,17 +161,17 @@ class BackgroundThreads:
 
             if killed_count:
                 last_killed_time = time.time()
-                print(f"[auto-kill] 自动终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
-                # 抑制 Swap 告警 3 分钟，给系统时间释放 Swap
+                # [CN] print(f"[auto-kill] 自动终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
+                # [CN] # 抑制 Swap 告警 3 分钟，给系统时间释放 Swap
                 self.alerter.suppress_swap_alert(180)
 
             time.sleep(15)
 
     def _block_loop(self):
-        """黑名单拦截线程：有黑名单时每5秒扫描，无黑名单时休眠等待"""
+        # [CN] """黑名单拦截线程：有黑名单时每5秒扫描，无黑名单时休眠等待"""
         while True:
             if not self.blocked_processes:
-                # 无黑名单时休眠，等待被唤醒（add_blocked_process 会 set 事件）
+                # [CN] 无黑名单时休眠，等待被唤醒（add_blocked_process 会 set 事件）
                 self._block_event.wait(timeout=60)
                 self._block_event.clear()
                 continue
@@ -186,12 +186,13 @@ class BackgroundThreads:
                     pid = proc["pid"]
                     result = kill_process(pid)
                     if result.success:
-                        print(f"[block] 拦截黑名单进程 {name} (PID {pid})")
+                        # [CN] print(f"[block] 拦截黑名单进程 {name} (PID {pid})")
+                        # TODO: Translate this log message
 
             time.sleep(5)
 
     def _scheduled_kill_loop(self):
-        """定时终止线程：按固定间隔终止 safe 进程"""
+        # [CN] """定时终止线程：按固定间隔终止 safe 进程"""
         while True:
             time.sleep(30)
             if not self.scheduled_kill_enabled:
@@ -204,7 +205,7 @@ class BackgroundThreads:
                 continue
 
             with self.lock:
-                # 过滤掉白名单中的进程
+                # [CN] # 过滤掉白名单中的进程
                 candidates = [
                     p for p in self.latest_processes
                     if p.get("risk") == "safe" and not self.whitelist.is_whitelisted(p)
@@ -224,7 +225,7 @@ class BackgroundThreads:
                         "pid": pid,
                         "name": proc.get("name", ""),
                         "mem_mb": proc.get("mem_mb", 0),
-                        "reason": f"定时终止（每 {self.scheduled_kill_interval} 分钟）",
+                        # [CN] "reason": f"定时终止（每 {self.scheduled_kill_interval} 分钟）",
                     }
                     with self.lock:
                         self.auto_kill_log.append(log_entry)
@@ -233,10 +234,10 @@ class BackgroundThreads:
                     time.sleep(0.5)
 
             if killed_count:
-                print(f"[scheduled-kill] 定时终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
+                # [CN] print(f"[scheduled-kill] 定时终止 {killed_count} 个进程，释放约 {freed_mb:.0f} MB")
 
     def _usage_refresh_loop(self):
-        """Usage 轮询线程：每 10 分钟增量更新当天的 Claude 使用数据
+        # [CN] """Usage 轮询线程：每 10 分钟增量更新当天的 Claude 使用数据
 
         内存策略：
         - 只扫描今天修改过的 JSONL 文件
@@ -252,9 +253,9 @@ class BackgroundThreads:
         )
         from aigard.core.usage.models import UsageEntry
 
-        REFRESH_INTERVAL = 600  # 10 分钟
+        # [CN] REFRESH_INTERVAL = 600  # 10 分钟
 
-        # 等待服务启动
+        # WaitingServiceLaunch
         time.sleep(10)
 
         while True:
@@ -262,13 +263,13 @@ class BackgroundThreads:
                 cache = UsageCache()
                 today_str = datetime.now().strftime('%Y-%m-%d')
 
-                # 首次：如果缓存完全为空，触发 API 端的全量加载
+                # [CN] # 首次：如果缓存完全为空，触发 API 端的全量加载
                 if not cache.has_data():
-                    print("[usage] 缓存为空，将在首次 API 请求时加载")
+                    # [CN] print("[usage] 缓存为空，将在首次 API 请求时加载")
                     time.sleep(REFRESH_INTERVAL)
                     continue
 
-                # 增量更新：只扫描今天修改过的 JSONL，且只读取新增内容
+                # [CN] # 增量更新：只扫描今天修改过的 JSONL，且只读取新增内容
                 claude_dir = Path.home() / ".claude" / "projects"
                 today_entries = []
 
@@ -281,7 +282,7 @@ class BackgroundThreads:
                         project_name = project_dir.name
 
                         for jsonl_file in project_dir.glob("*.jsonl"):
-                            # 只处理今天修改过的文件
+                            # [CN] # 只处理今天修改过的文件
                             try:
                                 if jsonl_file.stat().st_mtime < today_ts:
                                     continue
@@ -293,10 +294,10 @@ class BackgroundThreads:
 
                             try:
                                 with open(jsonl_file, 'r', encoding='utf-8') as f:
-                                    # 增量：跳到上次读取位置
-                                    file_size = f.seek(0, 2)  # 先跳到文件末尾获取大小
+                                    # [CN] # 增量：跳到上次读取位置
+                                    # [CN] file_size = f.seek(0, 2)  # 先跳到文件末尾获取大小
                                     if last_offset > file_size:
-                                        # 文件被截断/重写，重置 offset
+                                        # [CN] # 文件被截断/重写，重置 offset
                                         last_offset = 0
                                     f.seek(last_offset)
 
@@ -331,10 +332,10 @@ class BackgroundThreads:
                                         except (json.JSONDecodeError, ValueError, KeyError):
                                             continue
 
-                                    # 记录新的读取位置
+                                    # [CN] # 记录新的读取位置
                                     self._jsonl_offsets[file_key] = f.tell()
                             except Exception:
-                                # 文件被删除/截断，重置 offset
+                                # [CN] # 文件被删除/截断，重置 offset
                                 self._jsonl_offsets.pop(file_key, None)
                                 continue
 
@@ -353,10 +354,10 @@ class BackgroundThreads:
                     cache.save_hourly(hourly_data)
                     cache.set_last_update_time(datetime.now().isoformat())
 
-                    # 立即释放
+                    # [CN] # 立即释放
                     del today_entries, daily, hourly, daily_data, hourly_data
 
-                # 更新菜单栏今日统计
+                # [CN] # 更新菜单栏今日统计
                 today_summary = cache.get_summary(
                     start_date=today_str,
                     end_date=today_str
@@ -367,12 +368,12 @@ class BackgroundThreads:
                 gc.collect()
 
             except Exception as e:
-                print(f"[usage] 更新失败: {e}")
+                print(f"[usage] UpdateFailure: {e}")
 
             time.sleep(REFRESH_INTERVAL)
 
     def _summary_to_dict(self, summary, kind):
-        """将 DailySummary/HourlySummary 转为字典"""
+        # [CN] """将 DailySummary/HourlySummary 转为字典"""
         base = {
             'input_tokens': summary.input_tokens,
             'output_tokens': summary.output_tokens,
@@ -381,7 +382,7 @@ class BackgroundThreads:
             'total_tokens': summary.total_tokens,
             'total_cost': summary.total_cost,
             'models_used': summary.models_used,
-            'request_count': getattr(summary, 'request_count', 0),  # 使用数据模型的 request_count
+            'request_count': getattr(summary, 'request_count', 0),  # [CN] 使用数据模型的 request_count
         }
         if kind == 'daily':
             base['date'] = summary.date
@@ -403,6 +404,6 @@ class BackgroundThreads:
         return base
 
     def get_today_usage(self):
-        """获取今日使用统计（供菜单栏调用）"""
+        # [CN] """获取今日使用统计（供菜单栏调用）"""
         with self.lock:
             return getattr(self, '_today_usage', None)

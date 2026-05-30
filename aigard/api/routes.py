@@ -1,5 +1,5 @@
 """
-FastAPI 路由定义
+# [CN] FastAPI 路由定义
 """
 
 import asyncio
@@ -17,15 +17,15 @@ from pydantic import BaseModel
 from aigard.core import pause_process, resume_process, kill_process
 
 
-# ── 数据缓存和防抖 ────────────────────────────────────────────
+# [CN] ── 数据缓存和防抖 ────────────────────────────────────────────
 class DataCache:
-    """数据缓存，支持防抖（90秒 TTL 减少重复扫描）"""
+    # [CN] """数据缓存，支持防抖（90秒 TTL 减少重复扫描）"""
     def __init__(self, ttl: int = 90):
         self.ttl = ttl
         self._cache: Dict[str, tuple[float, Any]] = {}
 
     def get(self, key: str) -> Optional[Any]:
-        """获取缓存数据，过期返回 None"""
+        # [CN] """获取缓存数据，过期返回 None"""
         if key not in self._cache:
             return None
         timestamp, data = self._cache[key]
@@ -35,37 +35,37 @@ class DataCache:
         return data
 
     def set(self, key: str, data: Any):
-        """设置缓存数据"""
+        """SettingsCacheData"""
         self._cache[key] = (time.time(), data)
 
     def clear(self, key: str):
-        """清除指定缓存"""
+        # [CN] """清除指定缓存"""
         self._cache.pop(key, None)
 
 
-# 全局缓存实例（90秒 TTL）
+# [CN] 全局缓存实例（90秒 TTL）
 _data_cache = DataCache(ttl=90)
 
 
 def create_app(base_dir: Path, threads_manager) -> FastAPI:
-    """创建 FastAPI 应用实例"""
+    # [CN] """创建 FastAPI 应用实例"""
     app = FastAPI(title="AI Guard", version="1.0.0")
 
-    # 懒加载标记
+    # [CN] # 懒加载标记
     _routers_loaded = {"whitelist": False, "bookmarks": False, "usage": False}
     _routers_lock = threading.Lock()
 
-    # 注册白名单路由（轻量级，立即加载）
+    # [CN] # 注册白名单路由（轻量级，立即加载）
     from aigard.api.whitelist import router as whitelist_router
     app.include_router(whitelist_router)
     _routers_loaded["whitelist"] = True
 
-    # 懒加载中间件：按需加载重量级路由
+    # [CN] # 懒加载中间件：按需加载重量级路由
     @app.middleware("http")
     async def lazy_load_middleware(request, call_next):
         path = request.url.path
 
-        # 书签管理路由（重量级）
+        # [CN] # 书签管理路由（重量级）
         if not _routers_loaded["bookmarks"] and (
             path.startswith("/api/bookmarks") or path == "/bookmarks.html"
         ):
@@ -74,9 +74,9 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     from aigard.api.bookmarks import router as bookmarks_router
                     app.include_router(bookmarks_router)
                     _routers_loaded["bookmarks"] = True
-                    print("[lazy-load] 书签管理模块已加载")
+                    # [CN] print("[lazy-load] 书签管理模块已加载")
 
-        # Claude 使用统计路由（重量级）
+        # [CN] # Claude 使用统计路由（重量级）
         if not _routers_loaded["usage"] and (
             path.startswith("/api/usage") or path == "/usage.html"
         ):
@@ -85,22 +85,22 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     from aigard.api.usage import router as usage_router
                     app.include_router(usage_router)
                     _routers_loaded["usage"] = True
-                    print("[lazy-load] 使用统计模块已加载")
+                    # [CN] print("[lazy-load] 使用统计模块已加载")
 
         return await call_next(request)
 
-    # ── 首页 ──────────────────────────────────────────────────
+    # [CN] # ── 首页 ──────────────────────────────────────────────────
     @app.get("/", response_class=HTMLResponse)
     def index():
-        # 开发模式：base_dir 是项目根目录
-        # py2app 打包后：base_dir 是 Contents/Resources/
+        # [CN] # 开发模式：base_dir 是项目根目录
+        # [CN] # py2app 打包后：base_dir 是 Contents/Resources/
         dev_path = base_dir / "aigard" / "ui" / "index.html"
         pkg_path = base_dir / "ui" / "index.html"
         html_path = dev_path if dev_path.exists() else pkg_path
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── 书签管理页面 ──────────────────────────────────────────
+    # [CN] # ── 书签管理页面 ──────────────────────────────────────────
     @app.get("/bookmarks.html", response_class=HTMLResponse)
     def bookmarks_page():
         dev_path = base_dir / "aigard" / "ui" / "bookmarks.html"
@@ -109,7 +109,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── Claude 使用统计页面 ──────────────────────────────────
+    # [CN] # ── Claude 使用统计页面 ──────────────────────────────────
     @app.get("/usage.html", response_class=HTMLResponse)
     def usage_page():
         dev_path = base_dir / "aigard" / "ui" / "usage.html"
@@ -118,7 +118,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── Popover 页面 ──────────────────────────────────────────
+    # [CN] # ── Popover 页面 ──────────────────────────────────────────
     @app.get("/popover.html", response_class=HTMLResponse)
     def popover_page():
         dev_path = base_dir / "aigard" / "ui" / "popover.html"
@@ -127,7 +127,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── 工具导航页面 ──────────────────────────────────────────
+    # [CN] # ── 工具导航页面 ──────────────────────────────────────────
     @app.get("/tools.html", response_class=HTMLResponse)
     def tools_page():
         dev_path = base_dir / "aigard" / "ui" / "tools.html"
@@ -136,7 +136,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── 最佳实践页面 ──────────────────────────────────────────
+    # [CN] # ── 最佳实践页面 ──────────────────────────────────────────
     @app.get("/practices.html", response_class=HTMLResponse)
     def practices_page():
         dev_path = base_dir / "aigard" / "ui" / "practices.html"
@@ -161,20 +161,20 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         html = html_path.read_text(encoding="utf-8")
         return HTMLResponse(html)
 
-    # ── 工具导航 API ──────────────────────────────────────────
+    # [CN] # ── 工具导航 API ──────────────────────────────────────────
     @app.get("/api/tools")
     def get_tools():
-        """获取工具列表"""
+        # [CN] """获取工具列表"""
         import json
         import sys
         from pathlib import Path
 
-        # 开发模式：base_dir 是项目根目录
+        # [CN] 开发模式：base_dir 是项目根目录
         dev_path = base_dir / "aigard" / "data" / "tools.json"
-        # py2app 打包后：base_dir 是 Contents/Resources/
+        # [CN] py2app 打包后：base_dir 是 Contents/Resources/
         pkg_path = base_dir / "data" / "tools.json"
 
-        # 兜底：直接从当前文件位置查找
+        # [CN] 兜底：直接从当前文件位置查找
         fallback_path = Path(__file__).parent.parent / "data" / "tools.json"
 
         data_path = None
@@ -186,7 +186,8 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             data_path = fallback_path
 
         if data_path is None or not data_path.exists():
-            print(f"[tools] 未找到数据文件")
+            # [CN] print(f"[tools] 未找到数据文件")
+            # TODO: Translate this log message
             print(f"[tools] base_dir: {base_dir}")
             print(f"[tools] dev_path: {dev_path} (exists: {dev_path.exists()})")
             print(f"[tools] pkg_path: {pkg_path} (exists: {pkg_path.exists()})")
@@ -196,19 +197,19 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         with open(data_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
-    # ── 最佳实践 API ──────────────────────────────────────────
+    # [CN] ── 最佳实践 API ──────────────────────────────────────────
     @app.get("/api/practices")
     def get_practices():
-        """获取最佳实践列表"""
+        # [CN] """获取最佳实践列表"""
         import json
         from pathlib import Path
 
-        # 开发模式：base_dir 是项目根目录
+        # [CN] # 开发模式：base_dir 是项目根目录
         dev_path = base_dir / "aigard" / "data" / "practices.json"
-        # py2app 打包后：base_dir 是 Contents/Resources/
+        # [CN] # py2app 打包后：base_dir 是 Contents/Resources/
         pkg_path = base_dir / "data" / "practices.json"
 
-        # 兜底：直接从当前文件位置查找
+        # [CN] # 兜底：直接从当前文件位置查找
         fallback_path = Path(__file__).parent.parent / "data" / "practices.json"
 
         data_path = None
@@ -220,48 +221,48 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             data_path = fallback_path
 
         if data_path is None or not data_path.exists():
-            print(f"[practices] 未找到数据文件")
+            # [CN] print(f"[practices] 未找到数据文件")
             return {"categories": []}
 
         with open(data_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
-    # ── 指标和历史 ────────────────────────────────────────────
+    # [CN] # ── 指标和历史 ────────────────────────────────────────────
     @app.get("/api/metrics")
     def get_metrics():
-        """获取当前指标（无缓存，实时数据）"""
+        # [CN] """获取当前指标（无缓存，实时数据）"""
         return threads_manager.history.latest or {}
 
     @app.get("/api/history")
     def get_history():
-        """获取历史数据（无缓存，实时数据）"""
+        """GetHistoryData（NoneCache，Real-timeData）"""
         return threads_manager.history.get_all()
 
     @app.get("/api/processes")
     def get_processes():
-        """获取 AI 进程列表（60秒缓存）"""
-        # 尝试从缓存获取
+        # [CN] """获取 AI 进程列表（60秒缓存）"""
+        # [CN] 尝试从缓存获取
         cached = _data_cache.get("processes")
         if cached is not None:
             return cached
 
-        # 重新计算
+        # [CN] 重新计算
         with threads_manager.lock:
             processes = list(threads_manager.latest_processes)
 
-        # 为每个进程添加白名单标记
+        # [CN] 为每个进程添加白名单标记
         import main as _main_mod
         for proc in processes:
             proc["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc)
 
-        # 缓存结果
+        # CacheResult
         _data_cache.set("processes", processes)
         return processes
 
     @app.get("/api/processes/all")
     def get_all_processes():
-        """获取所有进程（类似活动监视器，60秒缓存）"""
-        # 尝试从缓存获取
+        # [CN] """获取所有进程（类似活动监视器，60秒缓存）"""
+        # [CN] # 尝试从缓存获取
         cached = _data_cache.get("all_processes")
         if cached is not None:
             return cached
@@ -282,17 +283,17 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 "status": proc.status,
                 "create_time": proc.create_time,
             }
-            # 评分和建议
+            # [CN] # 评分和建议
             advice = _advisor_mod.advise(proc_dict)
             proc_dict["risk"] = advice.risk
             proc_dict["risk_label"] = advice.label
             proc_dict["risk_reasons"] = advice.reasons
             proc_dict["suggested_action"] = advice.action
-            # 白名单标记
+            # [CN] # 白名单标记
             proc_dict["whitelisted"] = _main_mod.whitelist.is_whitelisted(proc_dict)
             result.append(proc_dict)
 
-        # 缓存结果
+        # CacheResult
         _data_cache.set("all_processes", result)
         return result
 
@@ -303,20 +304,20 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.get("/api/alerts/history")
     def get_alert_history():
-        """返回最近 20 条 warn/crit 告警历史"""
+        # [CN] """返回最近 20 条 warn/crit 告警历史"""
         from alert_history import get_recent_alerts
         return get_recent_alerts(20)
 
-    # ── 缓存管理 ──────────────────────────────────────────────
+    # [CN] ── 缓存管理 ──────────────────────────────────────────────
     @app.post("/api/cache/clear")
     def clear_cache():
-        """清除所有缓存，强制刷新数据"""
+        """ClearAllCache，MandatoryRefreshData"""
         _data_cache._cache.clear()
-        return {"status": "ok", "message": "缓存已清除"}
+        # [CN] return {"status": "ok", "message": "缓存已清除"}
 
     @app.get("/api/cache/stats")
     def get_cache_stats():
-        """获取缓存统计信息"""
+        """GetCacheStatisticsInfo"""
         stats = {}
         for key, (timestamp, _) in _data_cache._cache.items():
             age = time.time() - timestamp
@@ -326,24 +327,24 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             }
         return stats
 
-    # ── 自动更新 ──────────────────────────────────────────────
+    # ── AutomaticUpdate ──────────────────────────────────────────────
     @app.get("/api/update/check")
     def check_update():
-        """检查是否有新版本"""
+        # [CN] """检查是否有新版本"""
         from aigard.updater import UpdateChecker
         checker = UpdateChecker()
         result = checker.check_update()
         if result is None:
-            raise HTTPException(status_code=503, detail="无法连接到 GitHub")
+            # [CN] raise HTTPException(status_code=503, detail="无法连接到 GitHub")
         return result
 
     @app.get("/api/update/current-version")
     def get_current_version():
-        """获取当前版本号"""
+        # [CN] """获取当前版本号"""
         from aigard.updater import CURRENT_VERSION
         return {"version": CURRENT_VERSION}
 
-    # ── 自动终止控制 ──────────────────────────────────────────
+    # [CN] ── 自动终止控制 ──────────────────────────────────────────
     @app.get("/api/autokill/status")
     def get_autokill_status():
         with threads_manager.settings_lock:
@@ -358,18 +359,18 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/autokill/toggle")
     def toggle_autokill():
-        """运行时动态开启/关闭自动终止"""
+        # [CN] """运行时动态开启/关闭自动终止"""
         with threads_manager.lock:
             threads_manager.autokill_enabled = not threads_manager.autokill_enabled
             state = threads_manager.autokill_enabled
-        # 启用时唤醒自动终止线程
+        # [CN] # 启用时唤醒自动终止线程
         if state:
             threads_manager._autokill_event.set()
-        label = "开启" if state else "关闭"
-        print(f"[auto-kill] 自动终止已{label}")
+        # [CN] label = "开启" if state else "关闭"
+        # [CN] print(f"[auto-kill] 自动终止已{label}")
         return {"enabled": state}
 
-    # ── 设置管理 ──────────────────────────────────────────────
+    # [CN] # ── 设置管理 ──────────────────────────────────────────────
     @app.get("/api/settings")
     def get_settings():
         with threads_manager.settings_lock:
@@ -383,7 +384,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/settings")
     def save_settings(payload: SettingsPatch):
-        """保存并立即应用所有可配置项"""
+        # [CN] """保存并立即应用所有可配置项"""
         import aigard.core.advisor as _advisor_mod
         import tomli_w
 
@@ -393,7 +394,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 if patch:
                     threads_manager.settings[group].update(patch)
 
-            # 立即应用 alerter 告警阈值
+            # [CN] 立即应用 alerter 告警阈值
             a = threads_manager.settings["alert"]
             threads_manager.alerter.mem_warn = a.get("mem_warn", threads_manager.alerter.mem_warn)
             threads_manager.alerter.mem_crit = a.get("mem_crit", threads_manager.alerter.mem_crit)
@@ -403,12 +404,12 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             threads_manager.alerter.disk_free_crit_gb = a.get("disk_free_crit_gb", threads_manager.alerter.disk_free_crit_gb)
             threads_manager.alerter.cooldown_sec = a.get("cooldown_sec", threads_manager.alerter.cooldown_sec)
 
-            # 立即应用 advisor 评分参数
+            # [CN] 立即应用 advisor 评分参数
             sc = threads_manager.settings["scoring"]
             _advisor_mod.CPU_CAUTION_PCT = sc.get("cpu_caution_pct", _advisor_mod.CPU_CAUTION_PCT)
             _advisor_mod.IDLE_MIN_HOURS = sc.get("idle_min_hours", _advisor_mod.IDLE_MIN_HOURS)
 
-            # 写回 config.toml
+            # [CN] 写回 config.toml
             merged = dict(threads_manager.config)
             merged["alert"] = dict(threads_manager.settings["alert"])
             merged["auto_kill"] = dict(threads_manager.settings["auto_kill"])
@@ -417,11 +418,11 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 "interval_sec": threads_manager.settings["monitor"]["interval_sec"]
             }
 
-        # 开发模式 vs py2app 打包后的路径
-        # py2app 打包后 base_dir 指向 Resources/，config.toml 也在 Resources/
+        # [CN] 开发模式 vs py2app 打包后的路径
+        # [CN] py2app 打包后 base_dir 指向 Resources/，config.toml 也在 Resources/
         dev_path = base_dir / "config.toml"
         pkg_path = base_dir.parent / "config.toml"
-        # 如果 base_dir 是 zip 内路径（py2app 将代码打包进 zip），需要找到 Resources/
+        # [CN] 如果 base_dir 是 zip 内路径（py2app 将代码打包进 zip），需要找到 Resources/
         if not dev_path.exists() and not pkg_path.exists():
             import sys
             exe = Path(sys.executable)
@@ -441,10 +442,10 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
         return {"ok": True}
 
-    # ── SSE 实时流 ────────────────────────────────────────────
+    # [CN] ── SSE 实时流 ────────────────────────────────────────────
     @app.get("/api/stream")
     async def stream():
-        """SSE 实时推流（变化检测 + 3秒间隔）"""
+        # [CN] """SSE 实时推流（变化检测 + 3秒间隔）"""
         async def event_generator():
             _last_payload = None
             while True:
@@ -454,7 +455,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     log = list(threads_manager.auto_kill_log[-5:])
                     blocked = sorted(list(threads_manager.blocked_processes))
 
-                # 变化检测：只在数据实际变化时序列化和推送
+                # [CN] # 变化检测：只在数据实际变化时序列化和推送
                 snapshot_key = (
                     latest.get("ts") if latest else None,
                     latest.get("cpu_percent") if latest else None,
@@ -479,7 +480,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                     event_generator._last_hash = current_hash
                     yield f"data: {payload}\n\n"
                 else:
-                    # 心跳保持连接
+                    # [CN] # 心跳保持连接
                     yield f": heartbeat\n\n"
 
                 await asyncio.sleep(15)
@@ -494,13 +495,13 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             },
         )
 
-    # ── 批量操作 ──────────────────────────────────────────────
+    # [CN] # ── 批量操作 ──────────────────────────────────────────────
     class BatchRequest(BaseModel):
         pids: List[int]
 
     @app.post("/api/processes/batch/kill")
     def batch_kill(req: BatchRequest):
-        """批量终止指定 PID 列表"""
+        # [CN] """批量终止指定 PID 列表"""
         results = []
         total_freed = 0.0
         for pid in req.pids:
@@ -512,7 +513,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/processes/batch/pause")
     def batch_pause(req: BatchRequest):
-        """批量暂停指定 PID 列表"""
+        # [CN] """批量暂停指定 PID 列表"""
         results = []
         for pid in req.pids:
             r = pause_process(pid)
@@ -521,12 +522,12 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/processes/batch/kill-safe")
     def batch_kill_safe():
-        """一键终止所有评分为 safe 的进程（排除当前进程）"""
+        # [CN] """一键终止所有评分为 safe 的进程（排除当前进程）"""
         import os
         current_pid = os.getpid()
 
         with threads_manager.lock:
-            # 排除当前进程
+            # [CN] 排除当前进程
             safe_procs = [
                 p for p in threads_manager.latest_processes
                 if p.get("risk") == "safe" and p["pid"] != current_pid
@@ -547,12 +548,12 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
                 total_freed += r.mem_freed_mb
         return {
             "killed": len([r for r in results if r["success"]]),
-            "killed_count": len([r for r in results if r["success"]]),  # 兼容前端
+            "killed_count": len([r for r in results if r["success"]]),  # [CN] 兼容前端
             "total_freed_mb": round(total_freed, 1),
             "results": results,
         }
 
-    # ── 单进程操作 ────────────────────────────────────────────
+    # [CN] ── 单进程操作 ────────────────────────────────────────────
     @app.post("/api/processes/{pid}/pause")
     def api_pause(pid: int):
         result = pause_process(pid)
@@ -574,22 +575,22 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             raise HTTPException(status_code=400, detail=result.message)
         return {"message": result.message, "mem_freed_mb": result.mem_freed_mb}
 
-    # ── 黑名单管理 ────────────────────────────────────────────
+    # [CN] ── 黑名单管理 ────────────────────────────────────────────
     @app.post("/api/processes/block")
     def block_process(req: dict):
-        """将进程名加入启动拦截黑名单"""
+        # [CN] """将进程名加入启动拦截黑名单"""
         name = req.get("name", "").strip().lower()
         if not name:
-            raise HTTPException(status_code=400, detail="进程名不能为空")
+            # [CN] raise HTTPException(status_code=400, detail="进程名不能为空")
         with threads_manager.lock:
             threads_manager.blocked_processes.add(name)
-        # 唤醒黑名单线程
+        # [CN] # 唤醒黑名单线程
         threads_manager._block_event.set()
-        return {"message": f"已将 {name} 加入黑名单", "blocked": list(threads_manager.blocked_processes)}
+        # [CN] return {"message": f"已将 {name} 加入黑名单", "blocked": list(threads_manager.blocked_processes)}
 
     @app.post("/api/processes/unblock")
     def unblock_process(req: dict):
-        """将进程名移出黑名单"""
+        # [CN] """将进程名移出黑名单"""
         name = req.get("name", "").strip().lower()
         with threads_manager.lock:
             threads_manager.blocked_processes.discard(name)
@@ -597,21 +598,21 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.get("/api/processes/blocked")
     def get_blocked():
-        """获取当前黑名单列表"""
+        # [CN] """获取当前黑名单列表"""
         with threads_manager.lock:
             return {"blocked": sorted(list(threads_manager.blocked_processes))}
 
     @app.post("/api/processes/blocked/clear")
     def clear_blocked():
-        """清空黑名单"""
+        # [CN] """清空黑名单"""
         with threads_manager.lock:
             threads_manager.blocked_processes.clear()
         return {"message": "已清空黑名单", "blocked": []}
 
-    # ── 定时终止配置 ──────────────────────────────────────────
+    # ── TimerTerminateConfiguration ──────────────────────────────────────────
     @app.get("/api/scheduled-kill/status")
     def get_scheduled_kill_status():
-        """获取定时终止配置"""
+        """GetTimerTerminateConfiguration"""
         return {
             "enabled": threads_manager.scheduled_kill_enabled,
             "interval_minutes": threads_manager.scheduled_kill_interval,
@@ -619,7 +620,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/scheduled-kill/config")
     def set_scheduled_kill_config(req: dict):
-        """更新定时终止配置"""
+        """UpdateTimerTerminateConfiguration"""
         if "enabled" in req:
             threads_manager.scheduled_kill_enabled = bool(req["enabled"])
         if "interval_minutes" in req:
@@ -633,10 +634,10 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             "interval_minutes": threads_manager.scheduled_kill_interval,
         }
 
-    # ── 系统操作 ──────────────────────────────────────────────
+    # [CN] ── 系统操作 ──────────────────────────────────────────────
     @app.post("/api/system/open-privacy-settings")
     def open_privacy_settings():
-        """打开 macOS 系统设置 → 隐私与安全性 → 完全磁盘访问权限"""
+        # [CN] """打开 macOS 系统设置 → 隐私与安全性 → 完全磁盘访问权限"""
         import subprocess
         try:
             subprocess.run(
@@ -645,9 +646,9 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             )
             return {"success": True}
         except Exception as e:
-            return {"success": False, "error": "无法打开系统设置"}
+            # [CN] return {"success": False, "error": "无法打开系统设置"}
 
-    # ── 静态文件（CSS / JS）────────────────────────────────────
+    # ── StaticFile（CSS / JS）────────────────────────────────────
     ui_dev = base_dir / "aigard" / "ui"
     ui_pkg = base_dir / "ui"
     ui_dir = ui_dev if ui_dev.exists() else ui_pkg
@@ -659,16 +660,16 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
     if js_dir.exists():
         app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
 
-    # ── 启动 Dashboard 应用 ──────────────────────────────────
+    # ── Launch Dashboard Apply ──────────────────────────────────
     @app.post("/api/launch/dashboard")
     def launch_dashboard():
-        """显示监控面板窗口"""
+        # [CN] """显示监控面板窗口"""
         try:
-            # 通过主应用显示窗口
+            # [CN] 通过主应用显示窗口
             import objc
             from AppKit import NSApp
 
-            # 获取主应用的 delegate
+            # [CN] 获取主应用的 delegate
             delegate = NSApp.delegate()
             if delegate and hasattr(delegate, 'dashboard_window'):
                 delegate.dashboard_window.show()

@@ -1,6 +1,6 @@
 """
-书签管理器核心类
-支持多浏览器书签的读取、分析和管理
+# [CN] 书签管理器核心类
+# [CN] 支持多浏览器书签的读取、分析和管理
 """
 
 import json
@@ -10,9 +10,9 @@ from datetime import datetime
 
 
 class BookmarkManager:
-    """浏览器书签管理器"""
+    # [CN] """浏览器书签管理器"""
 
-    # 支持的浏览器及其书签文件路径
+    # [CN] # 支持的浏览器及其书签文件路径
     BROWSER_PATHS = {
         "chrome": "~/Library/Application Support/Google/Chrome/Default/Bookmarks",
         "edge": "~/Library/Application Support/Microsoft Edge/Default/Bookmarks",
@@ -27,14 +27,14 @@ class BookmarkManager:
         self._detect_browsers()
 
     def _detect_browsers(self):
-        """检测系统中已安装的浏览器"""
+        # [CN] """检测系统中已安装的浏览器"""
         for browser, path_str in self.BROWSER_PATHS.items():
             path = Path(path_str).expanduser()
             if path.exists():
                 self.detected_browsers.append(browser)
 
     def get_detected_browsers(self) -> List[Dict[str, Any]]:
-        """获取检测到的浏览器列表"""
+        # [CN] """获取检测到的浏览器列表"""
         result = []
         for browser in self.detected_browsers:
             path = Path(self.BROWSER_PATHS[browser]).expanduser()
@@ -47,7 +47,7 @@ class BookmarkManager:
         return result
 
     def _get_browser_display_name(self, browser: str) -> str:
-        """获取浏览器显示名称"""
+        # [CN] """获取浏览器显示名称"""
         names = {
             "chrome": "Google Chrome",
             "edge": "Microsoft Edge",
@@ -59,19 +59,19 @@ class BookmarkManager:
 
     def read_bookmarks(self, browser: str, force_reload: bool = False) -> Optional[Dict[str, Any]]:
         """
-        读取指定浏览器的书签
+        # [CN] 读取指定浏览器的书签
 
         Args:
-            browser: 浏览器名称 (chrome, edge, dia, quark, safari)
-            force_reload: 是否强制重新加载
+            # [CN] browser: 浏览器名称 (chrome, edge, dia, quark, safari)
+            # [CN] force_reload: 是否强制重新加载
 
         Returns:
-            书签数据字典，如果失败返回 None
+            # [CN] 书签数据字典，如果失败返回 None
         """
         if browser not in self.detected_browsers:
             return None
 
-        # 使用缓存
+        # [CN] 使用缓存
         if not force_reload and browser in self.bookmarks_cache:
             return self.bookmarks_cache[browser]
 
@@ -79,12 +79,12 @@ class BookmarkManager:
 
         try:
             if browser == "safari":
-                # Safari 使用 plist 格式
+                # [CN] Safari 使用 plist 格式
                 from .safari import SafariBookmarkReader
                 reader = SafariBookmarkReader()
                 data = reader.read(path)
             else:
-                # Chromium 内核浏览器使用 JSON 格式
+                # [CN] Chromium 内核浏览器使用 JSON 格式
                 with open(path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
 
@@ -92,18 +92,19 @@ class BookmarkManager:
             return data
 
         except Exception as e:
-            print(f"读取 {browser} 书签失败: {e}")
+            # [CN] print(f"读取 {browser} 书签失败: {e}")
+            # TODO: Translate this log message
             return None
 
     def extract_all_bookmarks(self, browser: str) -> List[Dict[str, Any]]:
         """
-        提取所有书签为扁平列表
+        # [CN] 提取所有书签为扁平列表
 
         Args:
-            browser: 浏览器名称
+            # [CN] browser: 浏览器名称
 
         Returns:
-            书签列表，每个书签包含 name, url, folder, date_added 等字段
+            # [CN] 书签列表，每个书签包含 name, url, folder, date_added 等字段
         """
         data = self.read_bookmarks(browser)
         if not data:
@@ -115,7 +116,7 @@ class BookmarkManager:
             return self._extract_chromium_bookmarks(data)
 
     def _extract_chromium_bookmarks(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """提取 Chromium 内核浏览器的书签"""
+        # [CN] """提取 Chromium 内核浏览器的书签"""
         bookmarks = []
 
         def traverse(node, folder_path=""):
@@ -134,7 +135,7 @@ class BookmarkManager:
                 for child in node.get("children", []):
                     traverse(child, new_path)
 
-        # 遍历所有根节点
+        # [CN] # 遍历所有根节点
         roots = data.get("roots", {})
         for root_name, root_node in roots.items():
             if isinstance(root_node, dict) and "children" in root_node:
@@ -145,18 +146,18 @@ class BookmarkManager:
         return bookmarks
 
     def _extract_safari_bookmarks(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """提取 Safari 书签"""
-        # Safari 书签提取逻辑由 SafariBookmarkReader 处理
+        # [CN] """提取 Safari 书签"""
+        # [CN] Safari 书签提取逻辑由 SafariBookmarkReader 处理
         from .safari import SafariBookmarkReader
         reader = SafariBookmarkReader()
         return reader.extract_bookmarks(data)
 
     def _get_root_display_name(self, root_name: str) -> str:
-        """获取根节点的显示名称"""
+        # [CN] """获取根节点的显示名称"""
         names = {
-            "bookmark_bar": "书签栏",
-            "other": "其他书签",
-            "synced": "移动设备书签"
+            # [CN] "bookmark_bar": "书签栏",
+            # [CN] "other": "其他书签",
+            # [CN] "synced": "移动设备书签"
         }
         return names.get(root_name, root_name)
 
@@ -179,16 +180,16 @@ class BookmarkManager:
                 "domains": {}
             }
 
-        # 统计文件夹
+        # [CN] # 统计文件夹
         folders = {}
         domains = {}
 
         for bm in bookmarks:
-            # 统计文件夹
-            folder = bm.get("folder", "未分类")
+            # [CN] # 统计文件夹
+            # [CN] folder = bm.get("folder", "未分类")
             folders[folder] = folders.get(folder, 0) + 1
 
-            # 统计域名
+            # [CN] # 统计域名
             url = bm.get("url", "")
             if url:
                 try:
@@ -254,14 +255,14 @@ class BookmarkManager:
             self._export_csv(bookmarks, output_path)
 
     def _export_html(self, bookmarks: List[Dict[str, Any]], output_path: str):
-        """导出为 HTML 格式"""
+        # [CN] """导出为 HTML 格式"""
         html = ['<!DOCTYPE NETSCAPE-Bookmark-file-1>']
         html.append('<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">')
         html.append('<TITLE>Bookmarks</TITLE>')
         html.append('<H1>Bookmarks</H1>')
         html.append('<DL><p>')
 
-        # 按文件夹分组
+        # [CN] 按文件夹分组
         folders = {}
         for bm in bookmarks:
             folder = bm.get("folder", "未分类")
@@ -284,7 +285,7 @@ class BookmarkManager:
             f.write('\n'.join(html))
 
     def _export_csv(self, bookmarks: List[Dict[str, Any]], output_path: str):
-        """导出为 CSV 格式"""
+        # [CN] """导出为 CSV 格式"""
         import csv
 
         with open(output_path, 'w', encoding='utf-8', newline='') as f:

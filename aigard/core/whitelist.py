@@ -1,10 +1,10 @@
 """
-白名单管理模块
+# [CN] 白名单管理模块
 
-管理永不终止的进程白名单，支持：
-- 进程名白名单（精确匹配）
-- 命令行关键字白名单（包含匹配）
-- PID 白名单（临时，运行时动态添加）
+# [CN] 管理永不终止的进程白名单，支持：
+# [CN] - 进程名白名单（精确匹配）
+# [CN] - 命令行关键字白名单（包含匹配）
+# [CN] - PID 白名单（临时，运行时动态添加）
 """
 
 import threading
@@ -12,7 +12,7 @@ from typing import Dict, List, Set
 
 
 class WhitelistManager:
-    """白名单管理器"""
+    # [CN] """白名单管理器"""
 
     def __init__(self, config: dict):
         """
@@ -23,7 +23,7 @@ class WhitelistManager:
         """
         self.lock = threading.Lock()
 
-        # 从配置加载白名单
+        # [CN] # 从配置加载白名单
         self._process_names: Set[str] = set(
             name.lower() for name in config.get("process_names", [])
         )
@@ -47,15 +47,15 @@ class WhitelistManager:
             name = process.get("name", "").lower()
             cmdline = process.get("cmdline", "").lower()
 
-            # 检查 PID 白名单
+            # [CN] # 检查 PID 白名单
             if pid in self._pids:
                 return True
 
-            # 检查进程名白名单（精确匹配）
+            # [CN] # 检查进程名白名单（精确匹配）
             if name in self._process_names:
                 return True
 
-            # 检查命令行关键字白名单（包含匹配）
+            # [CN] # 检查命令行关键字白名单（包含匹配）
             for keyword in self._command_keywords:
                 if keyword in cmdline:
                     return True
@@ -177,6 +177,6 @@ class WhitelistManager:
             }
 
     def clear_pids(self):
-        """清空所有 PID 白名单（用于重启时清理）"""
+        # [CN] """清空所有 PID 白名单（用于重启时清理）"""
         with self.lock:
             self._pids.clear()

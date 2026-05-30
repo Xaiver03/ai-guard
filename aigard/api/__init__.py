@@ -1,5 +1,5 @@
 """
-API 路由模块
+# [CN] API 路由模块
 """
 
 from .routes import create_app

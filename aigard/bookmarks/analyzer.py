@@ -1,6 +1,6 @@
 """
-AI 驱动的书签分析器
-使用 Claude API 分析书签并提供整理建议
+# [CN] AI 驱动的书签分析器
+# [CN] 使用 Claude API 分析书签并提供整理建议
 """
 
 import json
@@ -13,7 +13,7 @@ from .ai_config import get_ai_config
 
 
 class BookmarkAnalyzer:
-    """AI 驱动的书签分析器"""
+    # [CN] """AI 驱动的书签分析器"""
 
     def __init__(self):
         self.ai_config = get_ai_config()
@@ -43,7 +43,7 @@ class BookmarkAnalyzer:
         }
 
     def _find_duplicates(self, bookmarks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """查找重复的书签"""
+        # [CN] """查找重复的书签"""
         url_map = {}
         duplicates = []
 
@@ -52,7 +52,7 @@ class BookmarkAnalyzer:
             if not url:
                 continue
 
-            # 标准化 URL（移除尾部斜杠、查询参数等）
+            # [CN] 标准化 URL（移除尾部斜杠、查询参数等）
             normalized_url = self._normalize_url(url)
 
             if normalized_url in url_map:
@@ -71,12 +71,12 @@ class BookmarkAnalyzer:
         return duplicates
 
     def _normalize_url(self, url: str) -> str:
-        """标准化 URL 用于比较"""
+        # [CN] """标准化 URL 用于比较"""
         try:
             parsed = urlparse(url)
-            # 移除尾部斜杠
+            # [CN] # 移除尾部斜杠
             path = parsed.path.rstrip('/')
-            # 移除常见的追踪参数
+            # [CN] # 移除常见的追踪参数
             query_params = parse_qs(parsed.query)
             tracking_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ref', 'source']
             for param in tracking_params:
@@ -88,7 +88,7 @@ class BookmarkAnalyzer:
             return url
 
     def _find_url_issues(self, bookmarks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """查找 URL 问题（追踪参数、过长等）"""
+        # [CN] """查找 URL 问题（追踪参数、过长等）"""
         issues = []
 
         for bm in bookmarks:
@@ -98,15 +98,15 @@ class BookmarkAnalyzer:
 
             problems = []
 
-            # 检查追踪参数
+            # [CN] 检查追踪参数
             if any(param in url for param in ['utm_', 'ref=', 'source=']):
                 problems.append("包含追踪参数")
 
-            # 检查 URL 长度
+            # Check URL Length
             if len(url) > 200:
                 problems.append(f"URL 过长 ({len(url)} 字符)")
 
-            # 检查是否是重定向链接
+            # [CN] 检查是否是重定向链接
             if 'redirect' in url.lower() or 'link.zhihu.com' in url or 'link.juejin.cn' in url:
                 problems.append("可能是重定向链接")
 
@@ -121,7 +121,7 @@ class BookmarkAnalyzer:
         return issues
 
     def _find_naming_issues(self, bookmarks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """查找命名问题"""
+        # [CN] """查找命名问题"""
         issues = []
 
         for bm in bookmarks:
@@ -130,21 +130,21 @@ class BookmarkAnalyzer:
 
             problems = []
 
-            # 名称过长
+            # [CN] # 名称过长
             if len(name) > 50:
-                problems.append(f"名称过长 ({len(name)} 字符)")
+                # [CN] problems.append(f"名称过长 ({len(name)} 字符)")
 
-            # 使用 URL 作为名称
+            # [CN] # 使用 URL 作为名称
             if name == url or name.startswith('http'):
-                problems.append("使用 URL 作为名称")
+                # [CN] problems.append("使用 URL 作为名称")
 
-            # 包含特殊字符
+            # [CN] # 包含特殊字符
             if re.search(r'[<>:"/\\|?*]', name):
-                problems.append("包含特殊字符")
+                # [CN] problems.append("包含特殊字符")
 
-            # 名称为空
+            # [CN] # 名称为空
             if not name or name.strip() == "":
-                problems.append("名称为空")
+                # [CN] problems.append("名称为空")
 
             if problems:
                 issues.append({
@@ -157,14 +157,14 @@ class BookmarkAnalyzer:
         return issues
 
     def _find_large_folders(self, bookmarks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """查找过大的文件夹"""
+        # [CN] """查找过大的文件夹"""
         folder_counts = {}
 
         for bm in bookmarks:
             folder = bm.get("folder", "未分类")
             folder_counts[folder] = folder_counts.get(folder, 0) + 1
 
-        # 超过 20 个书签的文件夹
+        # [CN] 超过 20 个书签的文件夹
         large_folders = [
             {"folder": folder, "count": count}
             for folder, count in folder_counts.items()
@@ -174,12 +174,12 @@ class BookmarkAnalyzer:
         return sorted(large_folders, key=lambda x: x["count"], reverse=True)
 
     def _find_uncategorized(self, bookmarks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """查找未分类的书签"""
+        # [CN] """查找未分类的书签"""
         uncategorized = []
 
         for bm in bookmarks:
             folder = bm.get("folder", "")
-            if not folder or folder in ["未分类", "其他书签", "Other Bookmarks"]:
+            # [CN] if not folder or folder in ["未分类", "其他书签", "Other Bookmarks"]:
                 uncategorized.append({
                     "name": bm.get("name", ""),
                     "url": bm.get("url", ""),
@@ -201,65 +201,65 @@ class BookmarkAnalyzer:
         """
         if not self.ai_config.is_configured():
             return {
-                "error": "AI 未配置",
-                "message": "请确保 Claude Code 的 settings.json 中配置了 ANTHROPIC_AUTH_TOKEN"
+                # [CN] "error": "AI 未配置",
+                # [CN] "message": "请确保 Claude Code 的 settings.json 中配置了 ANTHROPIC_AUTH_TOKEN"
             }
 
-        # 限制书签数量
+        # [CN] # 限制书签数量
         sample_bookmarks = bookmarks[:max_bookmarks]
 
-        # 构建提示词
+        # [CN] # 构建提示词
         prompt = self._build_categorization_prompt(sample_bookmarks)
 
         try:
-            # 调用 Claude API
+            # Invoke Claude API
             response = await self._call_claude_api(prompt)
             return self._parse_categorization_response(response)
 
         except Exception as e:
             return {
-                "error": "AI 调用失败",
+                "error": "AI InvokeFailure",
                 "message": str(e)
             }
 
     def _build_categorization_prompt(self, bookmarks: List[Dict[str, Any]]) -> str:
-        """构建分类提示词"""
+        # [CN] """构建分类提示词"""
         bookmark_list = []
         for i, bm in enumerate(bookmarks, 1):
             bookmark_list.append(f"{i}. {bm.get('name', '')} - {bm.get('url', '')}")
 
         bookmarks_text = "\n".join(bookmark_list)
 
-        return f"""请分析以下书签，并提供分类建议。
+        # [CN] return f"""请分析以下书签，并提供分类建议。
 
-书签列表：
+# [CN] 书签列表：
 {bookmarks_text}
 
-请按照以下格式返回 JSON：
+# [CN] 请按照以下格式返回 JSON：
 {{
   "categories": [
     {{
-      "name": "分类名称",
-      "description": "分类描述",
-      "bookmarks": [1, 3, 5]  // 书签编号列表
+      # [CN] "name": "分类名称",
+      # [CN] "description": "分类描述",
+      # [CN] "bookmarks": [1, 3, 5]  // 书签编号列表
     }}
   ],
   "suggestions": [
-    "建议1",
-    "建议2"
+    # [CN] "建议1",
+    # [CN] "建议2"
   ]
 }}
 
-分类原则：
-1. 按照主题和用途分类（如：开发工具、学习资源、新闻媒体等）
-2. 每个分类不超过 20 个书签
-3. 分类名称简洁明了
-4. 提供具体的整理建议
+# [CN] 分类原则：
+# [CN] 1. 按照主题和用途分类（如：开发工具、学习资源、新闻媒体等）
+# [CN] 2. 每个分类不超过 20 个书签
+# [CN] 3. 分类名称简洁明了
+# [CN] 4. 提供具体的整理建议
 
-只返回 JSON，不要其他内容。"""
+# [CN] 只返回 JSON，不要其他内容。"""
 
     async def _call_claude_api(self, prompt: str) -> str:
-        """调用 Claude API"""
+        """Invoke Claude API"""
         endpoint = self.ai_config.get_api_endpoint()
         headers = self.ai_config.get_headers()
 
@@ -281,9 +281,9 @@ class BookmarkAnalyzer:
             return data["content"][0]["text"]
 
     def _parse_categorization_response(self, response: str) -> Dict[str, Any]:
-        """解析 AI 返回的分类建议"""
+        # [CN] """解析 AI 返回的分类建议"""
         try:
-            # 提取 JSON（可能包含在 markdown 代码块中）
+            # [CN] 提取 JSON（可能包含在 markdown 代码块中）
             json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
             if json_match:
                 json_str = json_match.group(1)
@@ -301,24 +301,24 @@ class BookmarkAnalyzer:
 
     async def ai_suggest_bookmark_name(self, url: str, current_name: str = "") -> str:
         """
-        使用 AI 建议更好的书签名称
+        # [CN] 使用 AI 建议更好的书签名称
 
         Args:
-            url: 书签 URL
-            current_name: 当前名称
+            # [CN] url: 书签 URL
+            # [CN] current_name: 当前名称
 
         Returns:
-            建议的名称
+            # [CN] 建议的名称
         """
         if not self.ai_config.is_configured():
             return current_name
 
-        prompt = f"""请为以下网址建议一个简洁、描述性的书签名称（不超过 30 个字符）：
+        # [CN] prompt = f"""请为以下网址建议一个简洁、描述性的书签名称（不超过 30 个字符）：
 
 URL: {url}
-当前名称: {current_name}
+# [CN] 当前名称: {current_name}
 
-只返回建议的名称，不要其他内容。"""
+# [CN] 只返回建议的名称，不要其他内容。"""
 
         try:
             response = await self._call_claude_api(prompt)
@@ -327,5 +327,5 @@ URL: {url}
             return current_name
 
     def clean_url(self, url: str) -> str:
-        """清理 URL（移除追踪参数）"""
+        # [CN] """清理 URL（移除追踪参数）"""
         return self._normalize_url(url)

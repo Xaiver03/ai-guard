@@ -1,6 +1,7 @@
 """
 书签管理模块
 支持 Chrome, Edge, DIA, Quark, Safari 等浏览器的书签管理
+新增：OneNav 风格的书签数据库管理
 """
 
 from .manager import BookmarkManager
@@ -10,6 +11,9 @@ from .ai_config import AIConfig, get_ai_config, reload_ai_config
 from .modifier import BookmarkModifier, BackupManager, OperationLog
 from .state_detector import BrowserStateDetector
 from .fixer import BookmarkFixer
+from .models import BookmarkDatabase, Bookmark, Folder, Tag
+from .store import BookmarkStore
+from .link_checker import LinkChecker
 
 __all__ = [
     "BookmarkManager",
@@ -22,5 +26,11 @@ __all__ = [
     "BackupManager",
     "OperationLog",
     "BrowserStateDetector",
-    "BookmarkFixer"
+    "BookmarkFixer",
+    "BookmarkDatabase",
+    "Bookmark",
+    "Folder",
+    "Tag",
+    "BookmarkStore",
+    "LinkChecker",
 ]

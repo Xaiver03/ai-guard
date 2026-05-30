@@ -1,6 +1,6 @@
 """
-Safari 书签读取器
-处理 Safari 的 plist 格式书签
+# [CN] Safari 书签读取器
+# [CN] 处理 Safari 的 plist 格式书签
 """
 
 import plistlib
@@ -9,7 +9,7 @@ from typing import Dict, List, Any, Optional
 
 
 class SafariBookmarkReader:
-    """Safari 书签读取器"""
+    # [CN] """Safari 书签读取器"""
 
     def read(self, path: Path) -> Optional[Dict[str, Any]]:
         """
@@ -25,11 +25,11 @@ class SafariBookmarkReader:
             with open(path, 'rb') as f:
                 return plistlib.load(f)
         except PermissionError:
-            print(f"权限不足，无法读取 Safari 书签: {path}")
-            print("提示：需要在「系统设置 > 隐私与安全性 > 完全磁盘访问权限」中授权")
+            # [CN] print(f"权限不足，无法读取 Safari 书签: {path}")
+            # [CN] print("提示：需要在「系统设置 > 隐私与安全性 > 完全磁盘访问权限」中授权")
             return None
         except Exception as e:
-            print(f"读取 Safari 书签失败: {e}")
+            # [CN] print(f"读取 Safari 书签失败: {e}")
             return None
 
     def extract_bookmarks(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -45,15 +45,15 @@ class SafariBookmarkReader:
         bookmarks = []
 
         def traverse(node, folder_path=""):
-            """递归遍历书签树"""
+            # [CN] """递归遍历书签树"""
             if not isinstance(node, dict):
                 return
 
-            # 检查节点类型
+            # [CN] 检查节点类型
             node_type = node.get("WebBookmarkType", "")
 
             if node_type == "WebBookmarkTypeLeaf":
-                # 这是一个书签
+                # [CN] 这是一个书签
                 url_string = node.get("URLString", "")
                 if url_string:
                     bookmarks.append({
@@ -66,16 +66,16 @@ class SafariBookmarkReader:
                     })
 
             elif node_type == "WebBookmarkTypeList":
-                # 这是一个文件夹
+                # [CN] 这是一个文件夹
                 folder_name = node.get("Title", "")
                 new_path = f"{folder_path}/{folder_name}" if folder_path else folder_name
 
-                # 遍历子节点
+                # [CN] 遍历子节点
                 children = node.get("Children", [])
                 for child in children:
                     traverse(child, new_path)
 
-        # 从根节点开始遍历
+        # [CN] 从根节点开始遍历
         if "Children" in data:
             for child in data["Children"]:
                 traverse(child, "")
@@ -84,13 +84,13 @@ class SafariBookmarkReader:
 
     def get_bookmark_count(self, data: Dict[str, Any]) -> int:
         """
-        获取书签总数
+        # [CN] 获取书签总数
 
         Args:
-            data: plist 数据字典
+            data: plist DataDictionary
 
         Returns:
-            书签数量
+            # [CN] 书签数量
         """
         count = 0
 

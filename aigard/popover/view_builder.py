@@ -1,13 +1,13 @@
 """
-原生 NSView 布局构建器 - 遵循 AI Guard 设计系统
+# [CN] 原生 NSView 布局构建器 - 遵循 AI Guard 设计系统
 
-设计规范:
-- 简洁黑白配色 + 语义色(仅用于警告)
-- 间距: 4px 基准 (space-2=8px, space-3=12px, space-4=16px)
-- 圆角: radius-xl=12px (卡片), radius-md=8px (按钮)
-- 字体: text-xs=11px, text-sm=13px, text-2xl=24px
-- 磨砂玻璃背景
-- 禁止 Emoji,使用纯文本
+# [CN] 设计规范:
+# [CN] - 简洁黑白配色 + 语义色(仅用于警告)
+# [CN] - 间距: 4px 基准 (space-2=8px, space-3=12px, space-4=16px)
+# [CN] - 圆角: radius-xl=12px (卡片), radius-md=8px (按钮)
+# [CN] - 字体: text-xs=11px, text-sm=13px, text-2xl=24px
+# [CN] - 磨砂玻璃背景
+# [CN] - 禁止 Emoji,使用纯文本
 """
 from AppKit import (
     NSTextField, NSButton, NSBox, NSView,
@@ -21,59 +21,59 @@ from Foundation import NSRect, NSPoint, NSDictionary
 
 
 # ============================================================
-# 设计令牌 (Design Tokens)
+# [CN] 设计令牌 (Design Tokens)
 # ============================================================
 
 class DesignTokens:
-    """设计系统令牌 - 简洁黑白配色"""
+    # [CN] """设计系统令牌 - 简洁黑白配色"""
 
-    # 间距 (4px 基准)
-    SPACE_2 = 8.0   # 小间距
-    SPACE_3 = 12.0  # 中间距
-    SPACE_4 = 16.0  # 标准间距
+    # [CN] # 间距 (4px 基准)
+    # [CN] SPACE_2 = 8.0   # 小间距
+    # [CN] SPACE_3 = 12.0  # 中间距
+    # [CN] SPACE_4 = 16.0  # 标准间距
 
-    # 圆角
-    RADIUS_MD = 8.0   # 按钮
-    RADIUS_XL = 12.0  # 卡片
+    # [CN] # 圆角
+    # [CN] RADIUS_MD = 8.0   # 按钮
+    # [CN] RADIUS_XL = 12.0  # 卡片
 
-    # 字体大小
-    TEXT_XS = 11.0   # 辅助信息
-    TEXT_SM = 13.0   # 正文
-    TEXT_2XL = 28.0  # 数值 (加大)
+    # [CN] # 字体大小
+    # [CN] TEXT_XS = 11.0   # 辅助信息
+    TEXT_SM = 13.0   # Body
+    # [CN] TEXT_2XL = 28.0  # 数值 (加大)
 
-    # 字重
+    # [CN] # 字重
     WEIGHT_NORMAL = 0.0    # 400
     WEIGHT_MEDIUM = 0.23   # 500
     WEIGHT_SEMIBOLD = 0.3  # 600
 
-    # 颜色 - 简洁黑白配色 + 语义色
-    TEXT_PRIMARY = NSColor.labelColor()           # 系统主文本色 (自动适配亮暗)
-    TEXT_SECONDARY = NSColor.secondaryLabelColor()  # 系统次要文本色
-    TEXT_TERTIARY = NSColor.tertiaryLabelColor()    # 系统三级文本色
+    # [CN] # 颜色 - 简洁黑白配色 + 语义色
+    # [CN] TEXT_PRIMARY = NSColor.labelColor()           # 系统主文本色 (自动适配亮暗)
+    # [CN] TEXT_SECONDARY = NSColor.secondaryLabelColor()  # 系统次要文本色
+    # [CN] TEXT_TERTIARY = NSColor.tertiaryLabelColor()    # 系统三级文本色
 
-    # 语义色 (用于数值和警告)
-    ACCENT_BLUE = NSColor.systemBlueColor()      # 正常状态
-    ACCENT_GREEN = NSColor.systemGreenColor()    # 良好状态
-    ACCENT_YELLOW = NSColor.systemYellowColor()  # 警告
-    ACCENT_RED = NSColor.systemRedColor()        # 危险
+    # [CN] # 语义色 (用于数值和警告)
+    ACCENT_BLUE = NSColor.systemBlueColor()      # NormalState
+    # [CN] ACCENT_GREEN = NSColor.systemGreenColor()    # 良好状态
+    ACCENT_YELLOW = NSColor.systemYellowColor()  # Warning
+    # [CN] ACCENT_RED = NSColor.systemRedColor()        # 危险
 
 
 def _create_card(frame, corner_radius=None):
-    """创建圆角卡片"""
+    # [CN] """创建圆角卡片"""
     if corner_radius is None:
         corner_radius = DesignTokens.RADIUS_XL
 
     card = NSBox.alloc().initWithFrame_(frame)
     card.setBoxType_(4)  # NSBoxCustom
     card.setCornerRadius_(corner_radius)
-    card.setFillColor_(NSColor.controlBackgroundColor())  # 系统卡片背景色
+    card.setFillColor_(NSColor.controlBackgroundColor())  # [CN] 系统卡片背景色
     card.setBorderWidth_(0)
     card.setTitlePosition_(0)
     return card
 
 
 def _label(frame, text, font, color, alignment=NSLeftTextAlignment):
-    """创建文本标签"""
+    # [CN] """创建文本标签"""
     label = NSTextField.alloc().initWithFrame_(frame)
     label.setStringValue_(text)
     label.setFont_(font)
@@ -87,7 +87,7 @@ def _label(frame, text, font, color, alignment=NSLeftTextAlignment):
 
 
 def _progress_bar(frame):
-    """创建进度条"""
+    # [CN] """创建进度条"""
     bar = NSProgressIndicator.alloc().initWithFrame_(frame)
     bar.setStyle_(NSProgressIndicatorStyleBar)
     bar.setIndeterminate_(False)
@@ -98,7 +98,7 @@ def _progress_bar(frame):
 
 
 def _semantic_color(percent):
-    """根据百分比返回语义颜色"""
+    # [CN] """根据百分比返回语义颜色"""
     if percent >= 85:
         return DesignTokens.ACCENT_RED
     elif percent >= 70:
@@ -110,7 +110,7 @@ def _semantic_color(percent):
 
 
 def _format_gb(used, total):
-    """格式化 GB 显示"""
+    # [CN] """格式化 GB 显示"""
     if total >= 100:
         return f"{used:.0f}/{total:.0f}GB"
     else:
@@ -118,18 +118,18 @@ def _format_gb(used, total):
 
 
 def build_popover_ui(container, controller):
-    """构建 Popover 原生 UI - 仿 iStat Menus 风格
+    # [CN] """构建 Popover 原生 UI - 仿 iStat Menus 风格
 
-    尺寸: 360×550px (增加高度以容纳折线图)
+    # [CN] 尺寸: 360×550px (增加高度以容纳折线图)
     """
     from AppKit import NSVisualEffectView, NSVisualEffectMaterialPopover, NSVisualEffectBlendingModeBehindWindow
 
     W = 360.0
-    H = 550.0  # 增加高度
+    H = 550.0  # [CN] 增加高度
     PAD = DesignTokens.SPACE_4  # 16px
     GAP = DesignTokens.SPACE_3  # 12px
 
-    # 渐变磨砂玻璃背景
+    # [CN] 渐变磨砂玻璃背景
     blur_view = NSVisualEffectView.alloc().initWithFrame_(((0, 0), (W, H)))
     blur_view.setMaterial_(NSVisualEffectMaterialPopover)
     blur_view.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
@@ -139,14 +139,14 @@ def build_popover_ui(container, controller):
     metrics_labels = {}
     progress_bars = {}
 
-    # 卡片尺寸 - 合理的高度
+    # [CN] 卡片尺寸 - 合理的高度
     card_w = (W - 2 * PAD - GAP) / 2.0  # 156px
-    card_h = 110.0  # 固定高度
-    claude_card_h = 160.0  # Claude 卡片更高,容纳折线图
+    card_h = 110.0  # [CN] 固定高度
+    claude_card_h = 160.0  # [CN] Claude 卡片更高,容纳折线图
 
-    y = H - PAD  # 从顶部开始
+    y = H - PAD  # [CN] 从顶部开始
 
-    # ── 1. CPU 卡片 ──
+    # [CN] ── 1. CPU 卡片 ──
     cpu_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
     blur_view.addSubview_(cpu_card)
 
@@ -175,7 +175,7 @@ def build_popover_ui(container, controller):
     )
     cpu_card.addSubview_(cpu_detail)
 
-    # ── 2. 磁盘卡片 ──
+    # [CN] ── 2. 磁盘卡片 ──
     disk_card = _create_card(((PAD + card_w + GAP, y - card_h), (card_w, card_h)))
     blur_view.addSubview_(disk_card)
 
@@ -205,7 +205,7 @@ def build_popover_ui(container, controller):
     metrics_labels['disk_detail'] = disk_detail
     disk_card.addSubview_(disk_detail)
 
-    # 磁盘 I/O 速度
+    # [CN] 磁盘 I/O 速度
     disk_io = _label(
         ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "R: 0 KB/s  W: 0 KB/s",
@@ -215,10 +215,10 @@ def build_popover_ui(container, controller):
     metrics_labels['disk_io'] = disk_io
     disk_card.addSubview_(disk_io)
 
-    # ── 3. 内存卡片 ──
-    # 注意:内存卡片在左侧,使用 card_h
-    # Claude 卡片在右侧,使用 claude_card_h (更高)
-    # 所以这里 y 要减去较大的高度,确保下一行对齐
+    # [CN] ── 3. 内存卡片 ──
+    # [CN] 注意:内存卡片在左侧,使用 card_h
+    # [CN] Claude 卡片在右侧,使用 claude_card_h (更高)
+    # [CN] 所以这里 y 要减去较大的高度,确保下一行对齐
     y -= max(card_h, claude_card_h) + GAP
 
     ram_card = _create_card(((PAD, y - card_h), (card_w, card_h)))
@@ -265,7 +265,7 @@ def build_popover_ui(container, controller):
     metrics_labels['swap'] = swap_value
     ram_card.addSubview_(swap_value)
 
-    # ── 4. Claude 卡片 (显示更多信息 + 折线图) ──
+    # [CN] ── 4. Claude 卡片 (显示更多信息 + 折线图) ──
     claude_card = _create_card(((PAD + card_w + GAP, y - claude_card_h), (card_w, claude_card_h)))
     blur_view.addSubview_(claude_card)
 
@@ -277,7 +277,7 @@ def build_popover_ui(container, controller):
     )
     claude_card.addSubview_(claude_title)
 
-    # Token 数量
+    # Token Count
     usage_token = _label(
         ((DesignTokens.SPACE_3, claude_card_h - DesignTokens.SPACE_3 - 36), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "Token: 26.3M",
@@ -287,7 +287,7 @@ def build_popover_ui(container, controller):
     metrics_labels['usage_token'] = usage_token
     claude_card.addSubview_(usage_token)
 
-    # 费用
+    # [CN] 费用
     usage_cost = _label(
         ((DesignTokens.SPACE_3, claude_card_h - DesignTokens.SPACE_3 - 52), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "费用: $41.93",
@@ -297,7 +297,7 @@ def build_popover_ui(container, controller):
     metrics_labels['usage_cost'] = usage_cost
     claude_card.addSubview_(usage_cost)
 
-    # Token 历史折线图
+    # [CN] Token 历史折线图
     try:
         from aigard.popover.chart_view import LineChartView
         from Foundation import NSMakeRect
@@ -307,18 +307,22 @@ def build_popover_ui(container, controller):
             card_w - DesignTokens.SPACE_3 * 2,
             50
         )
-        print(f"创建折线图: frame={chart_frame}")
+        # [CN] print(f"创建折线图: frame={chart_frame}")
+        # TODO: Translate this log message
         chart_view = LineChartView.alloc().initWithFrame_(chart_frame)
-        print(f"折线图创建成功: {chart_view}")
+        # [CN] print(f"折线图创建成功: {chart_view}")
+        # TODO: Translate this log message
         metrics_labels['token_chart'] = chart_view
         claude_card.addSubview_(chart_view)
-        print(f"折线图已添加到卡片")
+        # [CN] print(f"折线图已添加到卡片")
+        # TODO: Translate this log message
     except Exception as e:
-        print(f"❌ 折线图创建失败: {e}")
+        # [CN] print(f"❌ 折线图创建失败: {e}")
+        # TODO: Translate this log message
         import traceback
         traceback.print_exc()
 
-    # 请求次数
+    # [CN] 请求次数
     usage_requests = _label(
         ((DesignTokens.SPACE_3, DesignTokens.SPACE_2), (card_w - DesignTokens.SPACE_3 * 2, 14)),
         "请求: 0 次",
@@ -330,7 +334,7 @@ def build_popover_ui(container, controller):
 
     y -= claude_card_h + GAP
 
-    # ── 5. 按钮 ──
+    # [CN] ── 5. 按钮 ──
     btn_w = (W - 2 * PAD - 2 * GAP) / 3.0
     btn_h = 36.0
 

@@ -1,6 +1,6 @@
 """
-浏览器状态检测器
-检测浏览器是否正在运行，提供修改建议
+# [CN] 浏览器状态检测器
+# [CN] 检测浏览器是否正在运行，提供修改建议
 """
 
 import psutil
@@ -8,9 +8,9 @@ from typing import Dict, List, Optional
 
 
 class BrowserStateDetector:
-    """浏览器状态检测器"""
+    # [CN] """浏览器状态检测器"""
 
-    # 浏览器进程名称映射
+    # [CN] # 浏览器进程名称映射
     PROCESS_NAMES = {
         'chrome': ['Google Chrome', 'chrome', 'Google Chrome Helper'],
         'edge': ['Microsoft Edge', 'msedge', 'Microsoft Edge Helper'],
@@ -92,18 +92,18 @@ class BrowserStateDetector:
             return {
                 'safe': False,
                 'action': 'warn_user',
-                'message': f'检测到 {display_name} 正在运行（{len(processes)} 个进程）',
-                'recommendation': f'建议关闭 {display_name} 后再修改书签',
+                # [CN] 'message': f'检测到 {display_name} 正在运行（{len(processes)} 个进程）',
+                # [CN] 'recommendation': f'建议关闭 {display_name} 后再修改书签',
                 'processes': processes,
                 'can_force': True,
-                'force_warning': '强制修改可能导致：\n1. 修改被浏览器覆盖\n2. 需要重启浏览器才能生效\n3. 可能出现数据不一致'
+                # [CN] 'force_warning': '强制修改可能导致：\n1. 修改被浏览器覆盖\n2. 需要重启浏览器才能生效\n3. 可能出现数据不一致'
             }
         else:
             return {
                 'safe': True,
                 'action': 'proceed',
-                'message': '浏览器已关闭，可以安全修改',
-                'recommendation': '修改完成后重新打开浏览器即可生效',
+                # [CN] 'message': '浏览器已关闭，可以安全修改',
+                # [CN] 'recommendation': '修改完成后重新打开浏览器即可生效',
                 'processes': [],
                 'can_force': False,
                 'force_warning': ''

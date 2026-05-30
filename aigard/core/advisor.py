@@ -1,4 +1,4 @@
-"""advisor.py — 进程安全终止评估"""
+# [CN] """advisor.py — 进程安全终止评估"""
 
 import time
 from dataclasses import dataclass
@@ -6,14 +6,14 @@ from typing import List
 
 import psutil
 
-# ── 评分规则可配置参数（可由 main.py 运行时动态修改）──────────
-CPU_CAUTION_PCT = 20      # CPU > 此值 → caution
-IDLE_MIN_MINUTES = 10     # 运行 > 此值（分钟）且 CPU<1% → safe
+# [CN] # ── 评分规则可配置参数（可由 main.py 运行时动态修改）──────────
+# [CN] CPU_CAUTION_PCT = 20      # CPU > 此值 → caution
+# [CN] IDLE_MIN_MINUTES = 10     # 运行 > 此值（分钟）且 CPU<1% → safe
 
 
 @dataclass(slots=True)
 class ProcessAdvice:
-    """对单个进程的评估结果"""
+    # [CN] """对单个进程的评估结果"""
     pid: int
     risk: str
     label: str
@@ -21,16 +21,16 @@ class ProcessAdvice:
     action: str
 
 
-# ── 已知进程规则（详细说明见 SCORING.md）─────────────────────
+# [CN] ── 已知进程规则（详细说明见 SCORING.md）─────────────────────
 
-# 高危：终止会直接丢失工作或损坏数据
-# 注意：这里必须包含终端窗口本身，因为 claude/codex 运行在终端里，
-# 一旦终端被关，整个 AI 会话和工作目录上下文全部丢失。
+# [CN] 高危：终止会直接丢失工作或损坏数据
+# [CN] 注意：这里必须包含终端窗口本身，因为 claude/codex 运行在终端里，
+# [CN] 一旦终端被关，整个 AI 会话和工作目录上下文全部丢失。
 _DANGER_PATTERNS = [
-    # AI Agent 本体（会话窗口主进程）
+    # [CN] AI Agent 本体（会话窗口主进程）
     ("claude",              "Claude Code 会话窗口，终止会中断 AI 任务并丢失工作上下文"),
     ("codex",               "Codex Agent 进程，终止会中断任务"),
-    # 终端宿主（AI Agent 运行在其中）
+    # [CN] 终端宿主（AI Agent 运行在其中）
     ("terminal",            "系统终端窗口，关闭会终止其中所有正在运行的 AI/命令"),
     ("iterm",               "iTerm2 终端窗口，关闭会终止其中所有进程"),
     ("ghostty",             "Ghostty 终端，关闭会终止其中所有进程"),
@@ -38,23 +38,23 @@ _DANGER_PATTERNS = [
     ("hyper",               "Hyper 终端，关闭会终止其中所有进程"),
     ("tmux",                "tmux 会话管理器，终止会关闭所有托管的终端会话"),
     ("screen",              "screen 会话，终止会丢失会话内容"),
-    # 编辑器主进程
+    # [CN] 编辑器主进程
     ("cursor",              "Cursor 编辑器主进程，终止会关闭编辑器"),
     ("code helper",         "VS Code 核心辅助进程，终止会影响编辑器"),
-    # 数据库（终止可能损坏数据）
+    # [CN] 数据库（终止可能损坏数据）
     ("mysql",               "数据库进程，强制终止可能损坏数据"),
     ("postgres",            "数据库进程，强制终止可能损坏数据"),
     ("mongod",              "数据库进程，强制终止可能损坏数据"),
     ("redis-server",        "Redis 服务，终止会丢失未持久化数据"),
-    # 容器
+    # [CN] 容器
     ("docker",              "Docker 守护进程，终止会停止所有容器"),
     ("containerd",          "容器运行时，终止会影响所有容器"),
 ]
 
-# MCP 进程特征（Claude Code 的子进程，可以按正常规则评分）
-# 注意：必须在 DANGER 检查之前判断，避免误杀会话窗口
+# [CN] MCP 进程特征（Claude Code 的子进程，可以按正常规则评分）
+# [CN] 注意：必须在 DANGER 检查之前判断，避免误杀会话窗口
 _MCP_PATTERNS = [
-    # 通用 MCP 模式
+    # [CN] 通用 MCP 模式
     "mcp-server",
     "mcp_server",
     "/mcp/",
@@ -63,7 +63,7 @@ _MCP_PATTERNS = [
     "@modelcontextprotocol/server",  # npm exec @modelcontextprotocol/server-*
     "modelcontextprotocol",
 
-    # 官方 MCP 服务器
+    # [CN] 官方 MCP 服务器
     "server-filesystem",
     "server-github",
     "server-memory",
@@ -71,7 +71,7 @@ _MCP_PATTERNS = [
     "server-fetch",
     "server-time",
 
-    # 搜索引擎 MCP
+    # [CN] 搜索引擎 MCP
     "open-websearch",
     "brave-search-mcp-server",
     "@brave/brave-search",
@@ -83,11 +83,11 @@ _MCP_PATTERNS = [
     "search-startpage",
     "search-bilibili",
 
-    # Pencil 设计工具 MCP
+    # [CN] Pencil 设计工具 MCP
     "pencil.app/contents/resources",
     "mcp-server-darwin-arm64",
 
-    # 其他常见 MCP 服务器
+    # [CN] 其他常见 MCP 服务器
     "server-postgres",
     "server-sqlite",
     "server-puppeteer",
@@ -96,14 +96,14 @@ _MCP_PATTERNS = [
     "server-notion",
 ]
 
-# 构建/编译/测试工具：可安全终止，重新运行即可
+# [CN] 构建/编译/测试工具：可安全终止，重新运行即可
 _SAFE_BUILD_PATTERNS = [
     "webpack",
     "vite",
     "rollup",
     "esbuild",
-    "tsc",           # TypeScript 编译
-    "uni ",          # uni-app 构建
+    "tsc",           # TypeScript Compilation
+    "uni ",          # uni-app Building
     "next build",
     "nuxt build",
     "parcel",
@@ -112,7 +112,7 @@ _SAFE_BUILD_PATTERNS = [
     "vitest",
     "mocha",
     "pytest",
-    "cargo",         # Rust 构建
+    "cargo",         # Rust Building
     "gradle",
     "mvn",           # Maven
     "bazel",
@@ -120,7 +120,7 @@ _SAFE_BUILD_PATTERNS = [
     "cmake",
 ]
 
-# 语言服务器：内存大但 IDE 会自动重启
+# [CN] 语言服务器：内存大但 IDE 会自动重启
 _LANG_SERVER_PATTERNS = [
     "pylance",
     "pyright",
@@ -134,7 +134,7 @@ _LANG_SERVER_PATTERNS = [
 
 
 def _match_any(haystack: str, patterns) -> str:
-    """返回第一个匹配的理由，没有则返回空字符串"""
+    # [CN] """返回第一个匹配的理由，没有则返回空字符串"""
     for item in patterns:
         if isinstance(item, tuple):
             kw, reason = item
@@ -147,7 +147,7 @@ def _match_any(haystack: str, patterns) -> str:
 
 
 def _count_same_name(name: str) -> int:
-    """统计同名进程数量"""
+    # [CN] """统计同名进程数量"""
     count = 0
     for p in psutil.process_iter(["name"]):
         try:
@@ -164,10 +164,10 @@ def _uptime_hours(create_time: float) -> float:
 
 def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     """
-    对一个进程给出评估结论。
-    评分规则详见 SCORING.md。
-    proc_info 是 monitor.collect_ai_processes 返回的 dict。
-    name_counts: 可选的进程名计数字典（避免重复扫描）
+    # [CN] 对一个进程给出评估结论。
+    # [CN] 评分规则详见 SCORING.md。
+    # [CN] proc_info 是 monitor.collect_ai_processes 返回的 dict。
+    # [CN] name_counts: 可选的进程名计数字典（避免重复扫描）
     """
     pid = proc_info["pid"]
     name = proc_info["name"].lower()
@@ -178,16 +178,16 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     haystack = f"{name} {cmdline}"
 
     reasons = []
-    risk = "caution"  # 默认谨慎，需要满足条件才能变为 safe
+    risk = "caution"  # [CN] 默认谨慎，需要满足条件才能变为 safe
     action = "pause"
 
-    # ── 规则 MCP：MCP 子进程优先按正常规则评分（不受 danger 保护）──
+    # [CN] ── 规则 MCP：MCP 子进程优先按正常规则评分（不受 danger 保护）──
     is_mcp = _match_any(haystack, _MCP_PATTERNS)
     if is_mcp:
         reasons.append("Claude Code MCP 子进程")
-        # 跳过 danger 检查，继续后续规则
+        # [CN] 跳过 danger 检查，继续后续规则
     else:
-        # ── 规则 D：高危进程（立即返回，不被后续规则覆盖）──────────
+        # [CN] ── 规则 D：高危进程（立即返回，不被后续规则覆盖）──────────
         danger_reason = _match_any(haystack, _DANGER_PATTERNS)
         if danger_reason:
             reasons.append(danger_reason)
@@ -198,13 +198,13 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
                 reasons.append("CPU 当前较低，可暂停后观察，但仍需谨慎")
                 return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
 
-    # ── 规则 C1：CPU 正在忙 ───────────────────────────────────
+    # [CN] ── 规则 C1：CPU 正在忙 ───────────────────────────────────
     if cpu > CPU_CAUTION_PCT:
         reasons.append(f"CPU {cpu:.1f}%，进程正在活跃工作")
         risk = "caution"
         action = "pause"
 
-    # ── 规则 S1：语言服务器（内存大但可重启）────────────────────
+    # [CN] ── 规则 S1：语言服务器（内存大但可重启）────────────────────
     lang_match = _match_any(haystack, _LANG_SERVER_PATTERNS)
     if lang_match:
         reasons.append(f"语言服务器（{lang_match}），IDE 重启后自动恢复")
@@ -213,16 +213,16 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
         risk = "safe"
         action = "kill"
 
-    # ── 规则 S2：构建/测试工具 ───────────────────────────────
+    # [CN] ── 规则 S2：构建/测试工具 ───────────────────────────────
     build_match = _match_any(haystack, _SAFE_BUILD_PATTERNS)
     if build_match:
         reasons.append(f"构建/测试工具（{build_match}），终止后可重新运行")
         risk = "safe"
         action = "kill"
 
-    # ── 规则 S3：多个同名进程（冗余实例）────────────────────────
-    # 注意：MCP 进程不适用此规则，因为多个 node 进程可能都在工作
-    # 使用预计算的 name_counts，避免每个进程都扫描一次
+    # [CN] ── 规则 S3：多个同名进程（冗余实例）────────────────────────
+    # [CN] 注意：MCP 进程不适用此规则，因为多个 node 进程可能都在工作
+    # [CN] 使用预计算的 name_counts，避免每个进程都扫描一次
     if not is_mcp:
         if name_counts is not None:
             same_count = name_counts.get(proc_info["name"].lower(), 1)
@@ -235,7 +235,7 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
                 risk = "safe"
                 action = "kill"
 
-    # ── 规则 S4：长时间空转 ──────────────────────────────────
+    # [CN] ── 规则 S4：长时间空转 ──────────────────────────────────
     uptime_minutes = (time.time() - create_time) / 60
     if uptime_minutes > IDLE_MIN_MINUTES and cpu < 1:
         reasons.append(
@@ -245,17 +245,17 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
             risk = "safe"
             action = "kill"
 
-    # ── 参考信息：内存占用 ───────────────────────────────────
+    # [CN] ── 参考信息：内存占用 ───────────────────────────────────
     if mem_mb > 1000:
         reasons.append(f"⚠ 内存 {mem_mb:.0f} MB，属于高内存进程")
     elif mem_mb > 500:
         reasons.append(f"内存 {mem_mb:.0f} MB，中等内存占用")
 
-    # ── 兜底 ────────────────────────────────────────────────
+    # [CN] ── 兜底 ────────────────────────────────────────────────
     if not reasons:
         reasons.append("普通进程，终止后可重新启动")
 
-    # ── 生成标签 ─────────────────────────────────────────────
+    # ── GenerationTag ─────────────────────────────────────────────
     if risk == "safe":
         label = "✅ 可安全终止"
     elif risk == "caution":
@@ -269,7 +269,7 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
 
 
 def _build_name_counts() -> dict:
-    """一次性构建系统进程名计数字典"""
+    # [CN] """一次性构建系统进程名计数字典"""
     counts = {}
     for p in psutil.process_iter(["name"]):
         try:
@@ -281,11 +281,11 @@ def _build_name_counts() -> dict:
 
 
 def advise_list(proc_list: list) -> list:
-    """批量评估，返回附带 advice 字段的进程列表
+    # [CN] """批量评估，返回附带 advice 字段的进程列表
 
     一次性构建进程名计数字典，避免每个进程都做一次全量扫描。
     """
-    # 一次扫描，所有进程共享
+    # [CN] # 一次扫描，所有进程共享
     name_counts = _build_name_counts()
 
     result = []
