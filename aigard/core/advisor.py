@@ -162,7 +162,7 @@ def _uptime_hours(create_time: float) -> float:
     return (time.time() - create_time) / 3600
 
 
-def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
+def advise(proc_info: dict, name_counts: dict | None = None) -> ProcessAdvice:
     """
     # 对一个进程给出评估结论.
     # 评分规则详见 SCORING.md.
@@ -266,9 +266,9 @@ def advise(proc_info: dict, name_counts: dict = None) -> ProcessAdvice:
     return ProcessAdvice(pid, risk, label, reasons, action)
 
 
-def _build_name_counts() -> dict:
+def _build_name_counts() -> dict[str, int]:
     """一次性构建系统进程名计数字典"""
-    counts = {}
+    counts: dict[str, int] = {}
     for p in psutil.process_iter(["name"]):
         try:
             name = (p.info["name"] or "").lower()

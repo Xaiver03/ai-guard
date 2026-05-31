@@ -413,7 +413,7 @@ class BookmarkModifier:
         parent_id = operation.get('parent_id', 'bookmark_bar')
 
         import time
-        new_folder = {
+        new_folder: Dict[str, Any] = {
             'type': 'folder',
             'name': folder_name,
             'children': [],

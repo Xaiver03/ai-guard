@@ -11,7 +11,7 @@ import httpx
 from pathlib import Path
 
 from .ai_config import get_ai_config
-from .models import Bookmark, Category
+from .models import BookmarkData, Category
 
 
 class BookmarkAnalyzer:
@@ -21,7 +21,7 @@ class BookmarkAnalyzer:
         self.ai_config = get_ai_config()
         self.db_path = db_path or Path.home() / ".aigard" / "bookmarks.db"
 
-    def analyze_bookmarks(self, bookmarks: List[Bookmark]) -> Dict[str, Any]:
+    def analyze_bookmarks(self, bookmarks: List[BookmarkData]) -> Dict[str, Any]:
         """
         分析书签列表,识别问题
 
@@ -45,7 +45,7 @@ class BookmarkAnalyzer:
             "issue_count": sum(len(v) for v in issues.values() if isinstance(v, list))
         }
 
-    def _find_duplicates(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_duplicates(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         # [CN] """查找重复的书签"""
         url_map = {}
         duplicates = []
@@ -61,15 +61,15 @@ class BookmarkAnalyzer:
                 duplicates.append({
                     "id": bm.id,
                     "url": bm.url,
-                    "title": bm.title,
-                    "category_id": bm.category_id,
+                    "title": bm.name,
+                    "folder_id": bm.folder_id,
                     "duplicate_of": url_map[normalized_url]
                 })
             else:
                 url_map[normalized_url] = {
                     "id": bm.id,
-                    "title": bm.title,
-                    "category_id": bm.category_id
+                    "title": bm.name,
+                    "folder_id": bm.folder_id
                 }
 
         return duplicates
@@ -91,7 +91,7 @@ class BookmarkAnalyzer:
         except:
             return url
 
-    def _find_url_issues(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_url_issues(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         # [CN] """查找 URL 问题(追踪参数、过长等)"""
         issues = []
 
@@ -124,7 +124,7 @@ class BookmarkAnalyzer:
 
         return issues
 
-    def _find_naming_issues(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_naming_issues(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         # [CN] """查找命名问题"""
         issues = []
 
@@ -158,7 +158,7 @@ class BookmarkAnalyzer:
 
         return issues
 
-    def _find_broken_links(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_broken_links(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         # [CN] """查找可能失效的链接"""
         broken = []
 
@@ -175,7 +175,7 @@ class BookmarkAnalyzer:
 
         return broken
 
-    def _find_large_folders(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_large_folders(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         # [CN] """查找过大的分类"""
         category_counts = {}
 
@@ -192,22 +192,21 @@ class BookmarkAnalyzer:
 
         return sorted(large_categories, key=lambda x: x["count"], reverse=True)
 
-    def _find_uncategorized(self, bookmarks: List[Bookmark]) -> List[Dict[str, Any]]:
+    def _find_uncategorized(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
         """查找未分类的书签"""
         uncategorized = []
 
         for bm in bookmarks:
-            folder = bm.get("folder", "")
-            if not folder or folder in ["未分类", "其他书签", "Other Bookmarks"]:
+            if not bm.category_id:
                 uncategorized.append({
-                    "name": bm.get("name", ""),
-                    "url": bm.get("url", ""),
-                    "folder": folder
+                    "id": bm.id,
+                    "title": bm.title,
+                    "url": bm.url
                 })
 
         return uncategorized
 
-    async def ai_categorize_bookmarks(self, bookmarks: List[Dict[str, Any]], max_bookmarks: int = 50) -> Dict[str, Any]:
+    async def ai_categorize_bookmarks(self, bookmarks: List[BookmarkData], max_bookmarks: int = 50) -> Dict[str, Any]:
         """
         使用 AI 对书签进行分类建议
 
@@ -241,11 +240,11 @@ class BookmarkAnalyzer:
                 "message": str(e)
             }
 
-    def _build_categorization_prompt(self, bookmarks: List[Dict[str, Any]]) -> str:
+    def _build_categorization_prompt(self, bookmarks: List[Bookmark]) -> str:
         """构建分类提示词"""
         bookmark_list = []
         for i, bm in enumerate(bookmarks, 1):
-            bookmark_list.append(f"{i}. {bm.get('name', '')} - {bm.get('url', '')}")
+            bookmark_list.append(f"{i}. {bm.title} - {bm.url}")
 
         bookmarks_text = "\n".join(bookmark_list)
 

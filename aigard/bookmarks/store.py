@@ -20,7 +20,8 @@ class BookmarkStore:
 
     def create_folder(self, name: str, parent_id: Optional[int] = None) -> dict:
         folder_id = self.folder.create(name, parent_id)
-        return self.folder.get(folder_id)
+        result = self.folder.get(folder_id)
+        return result if result is not None else {}
 
     def get_folder_tree(self) -> List[dict]:
         """获取文件夹树形结构"""
@@ -62,7 +63,8 @@ class BookmarkStore:
 
     def create_tag(self, name: str, color: str = "#58a6ff") -> dict:
         tag_id = self.tag.create(name, color)
-        return self.tag.get(tag_id)
+        result = self.tag.get(tag_id)
+        return result if result is not None else {}
 
     def list_tags(self) -> List[dict]:
         tags = self.tag.list_all()
@@ -99,7 +101,8 @@ class BookmarkStore:
                 tag_id = self.tag.create(tag_name)
                 self.bookmark.add_tag(bookmark_id, tag_id)
 
-        return self.bookmark.get(bookmark_id)
+        result = self.bookmark.get(bookmark_id)
+        return result if result is not None else {}
 
     def get_bookmark(self, bookmark_id: int) -> Optional[dict]:
         return self.bookmark.get(bookmark_id)

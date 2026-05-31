@@ -180,8 +180,8 @@ class BookmarkManager:
             }
 
         # 统计文件夹
-        folders = {}
-        domains = {}
+        folders: Dict[str, int] = {}
+        domains: Dict[str, int] = {}
 
         for bm in bookmarks:
             # 统计文件夹
@@ -262,7 +262,7 @@ class BookmarkManager:
         html.append('<DL><p>')
 
         # 按文件夹分组
-        folders = {}
+        folders: Dict[str, List[Dict[str, Any]]] = {}
         for bm in bookmarks:
             folder = bm.get("folder", "未分类")
             if folder not in folders:

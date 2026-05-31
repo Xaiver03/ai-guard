@@ -11,7 +11,7 @@ from .ai_config import AIConfig, get_ai_config, reload_ai_config
 from .modifier import BookmarkModifier, BackupManager, OperationLog
 from .state_detector import BrowserStateDetector
 from .fixer import BookmarkFixer
-from .models import BookmarkDatabase, Bookmark, Folder, Tag
+from .models import BookmarkDatabase, Bookmark, Folder, Tag, BookmarkData, Category
 from .store import BookmarkStore
 from .link_checker import LinkChecker
 

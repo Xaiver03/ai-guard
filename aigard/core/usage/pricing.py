@@ -578,14 +578,14 @@ class PricingManager:
         """删除模型定价覆盖(恢复默认),返回是否删除成功"""
         normalized = normalize_model_name(model)
 
-        只能删除非默认定价
+        # 只能删除非默认定价
         if normalized in self.DEFAULT_PRICING:
             return False
 
         if normalized in self.pricing:
             del self.pricing[normalized]
 
-        从数据库删除
+        # 从数据库删除
         if persist and self.repository is not None:
             return self.repository.delete_override(model)
 

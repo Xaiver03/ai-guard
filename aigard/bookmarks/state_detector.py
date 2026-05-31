@@ -4,7 +4,7 @@
 """
 
 import psutil
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 
 class BrowserStateDetector:
@@ -41,7 +41,7 @@ class BrowserStateDetector:
 
         return False
 
-    def get_browser_processes(self, browser: str) -> List[Dict[str, any]]:
+    def get_browser_processes(self, browser: str) -> List[Dict[str, Any]]:
         """
         获取浏览器相关的所有进程
 
@@ -65,7 +65,7 @@ class BrowserStateDetector:
 
         return processes
 
-    def get_modification_strategy(self, browser: str) -> Dict[str, any]:
+    def get_modification_strategy(self, browser: str) -> Dict[str, Any]:
         """
         获取修改策略
 
@@ -130,7 +130,7 @@ class BrowserStateDetector:
 
         return False
 
-    def get_all_browsers_status(self) -> Dict[str, Dict[str, any]]:
+    def get_all_browsers_status(self) -> Dict[str, Dict[str, Any]]:
         """
         获取所有浏览器的状态
 

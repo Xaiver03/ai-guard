@@ -6,8 +6,35 @@
 from datetime import datetime
 from typing import Optional, List
 from pathlib import Path
+from dataclasses import dataclass, field
 import sqlite3
 import json
+
+
+@dataclass
+class BookmarkData:
+    """书签数据类（用于 AI 分析）"""
+    id: int
+    name: str
+    url: str
+    folder_id: Optional[int] = None
+    description: str = ""
+    icon: str = ""
+    order_index: int = 0
+    tags: List[dict] = field(default_factory=list)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    last_checked: Optional[str] = None
+    status: str = "active"
+
+
+@dataclass
+class Category:
+    """书签分类（文件夹）"""
+    id: int
+    name: str
+    parent_id: Optional[int] = None
+    order_index: int = 0
 
 
 class BookmarkDatabase:
@@ -139,14 +166,14 @@ class Folder:
 
         return [dict(row) for row in rows]
 
-    def update(self, folder_id: int, name: Optional[str] = None,
-               parent_id: Optional[int] = None, order_index: Optional[int] = None):
+    def update(self, folder_id: int, name: str | None = None,
+               parent_id: int | None = None, order_index: int | None = None):
         """更新文件夹"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
-        updates = []
-        params = []
+        updates: list[str] = []
+        params: list[str | int] = []
 
         if name is not None:
             updates.append("name = ?")
@@ -201,12 +228,12 @@ class Tag:
             cursor.execute("INSERT INTO tags (name, color) VALUES (?, ?)", (name, color))
             tag_id = cursor.lastrowid
             conn.commit()
-            return tag_id
+            return tag_id if tag_id else 0
         except sqlite3.IntegrityError:
             # 标签已存在,返回现有 ID
             cursor.execute("SELECT id FROM tags WHERE name = ?", (name,))
             row = cursor.fetchone()
-            return row[0] if row else None
+            return row[0] if row else 0
         finally:
             conn.close()
 
@@ -237,8 +264,8 @@ class Tag:
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
-        updates = []
-        params = []
+        updates: list[str] = []
+        params: list[str | int] = []
 
         if name is not None:
             updates.append("name = ?")

@@ -6,7 +6,7 @@
 import asyncio
 import aiohttp
 import ssl
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 from .store import BookmarkStore
 
@@ -19,7 +19,7 @@ class LinkChecker:
         self.timeout = timeout
         self.max_concurrent = max_concurrent
 
-    async def check_url(self, url: str, session: aiohttp.ClientSession) -> Dict[str, any]:
+    async def check_url(self, url: str, session: aiohttp.ClientSession) -> Dict[str, Any]:
         """检测单个 URL"""
         try:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
@@ -46,14 +46,14 @@ class LinkChecker:
                 "checked_at": datetime.now().isoformat(),
             }
 
-    async def check_bookmarks(self, bookmark_ids: Optional[List[int]] = None) -> Dict[str, any]:
+    async def check_bookmarks(self, bookmark_ids: Optional[List[int]] = None) -> Dict[str, Any]:
         """
         批量检测书签
         bookmark_ids: 指定书签 ID 列表,None 表示检测所有
         """
         if bookmark_ids:
-            bookmarks = [self.store.get_bookmark(bid) for bid in bookmark_ids]
-            bookmarks = [b for b in bookmarks if b]
+            bookmarks_raw = [self.store.get_bookmark(bid) for bid in bookmark_ids]
+            bookmarks = [b for b in bookmarks_raw if b]
         else:
             bookmarks = self.store.list_bookmarks()
 

@@ -153,12 +153,12 @@ def _calculate_disk_io_speed() -> tuple:
         return (0.0, 0.0)
 
 
-def _get_memory_from_vm_stat() -> tuple:
+def _get_memory_from_vm_stat() -> tuple[float, float, float, float] | None:
     """
     从 vm_stat 获取内存数据,使用合理的内存压力算法
 
     Returns:
-        (used_gb, percent, available_gb, total_gb)
+        (used_gb, percent, available_gb, total_gb) 或 None(失败时)
     """
     try:
         result = subprocess.run(['vm_stat'], capture_output=True, text=True, timeout=2)
