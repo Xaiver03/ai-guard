@@ -3,7 +3,7 @@
 整合新的数据库存储和旧的浏览器导入功能
 """
 
-from typing import List, Optional
+from typing import cast, List, Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
@@ -317,7 +317,7 @@ async def ai_categorize(max_bookmarks: int = 50):
         for bm in bookmarks
     ]
 
-    result = await analyzer.ai_categorize_bookmarks(legacy_bookmarks, max_bookmarks)
+    result = await analyzer.ai_categorize_bookmarks(legacy_bookmarks, max_bookmarks)  # type: ignore[arg-type]
     return {"result": result}
 
 

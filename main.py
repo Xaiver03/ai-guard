@@ -122,7 +122,7 @@ def on_startup():
 
 
 # ── Startup Function ──────────────────────────────────────────
-def start_server(host: str = None, port: int = None):
+def start_server(host: str | None = None, port: int | None = None):
     """Startup function for external calls"""
     _host = host or SERVER_CFG.get("host", "127.0.0.1")
     _port = port or SERVER_CFG.get("port", 8765)
@@ -141,11 +141,11 @@ def start_server(host: str = None, port: int = None):
         asyncio.set_event_loop(loop)
         try:
             shutdown_event = asyncio.Event()
-            loop.run_until_complete(serve(app, config, shutdown_trigger=shutdown_event.wait))
+            loop.run_until_complete(serve(app, config, shutdown_trigger=shutdown_event.wait))  # type: ignore[arg-type]
         finally:
             loop.close()
     else:
-        asyncio.run(serve(app, config))
+        asyncio.run(serve(app, config))  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

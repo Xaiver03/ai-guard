@@ -423,7 +423,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             # [CN] 立即应用 advisor 评分参数
             sc = threads_manager.settings["scoring"]
             _advisor_mod.CPU_CAUTION_PCT = sc.get("cpu_caution_pct", _advisor_mod.CPU_CAUTION_PCT)
-            _advisor_mod.IDLE_MIN_HOURS = sc.get("idle_min_hours", _advisor_mod.IDLE_MIN_HOURS)
+            _advisor_mod.IDLE_MIN_MINUTES = sc.get("idle_min_minutes", _advisor_mod.IDLE_MIN_MINUTES)
 
             # [CN] 写回 config.toml
             merged = dict(threads_manager.config)

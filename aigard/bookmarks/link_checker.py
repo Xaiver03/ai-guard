@@ -60,7 +60,7 @@ class LinkChecker:
         if not bookmarks:
             return {"total": 0, "alive": 0, "dead": 0, "timeout": 0, "error": 0}
 
-        results = {
+        results: Dict[str, Any] = {
             "total": len(bookmarks),
             "alive": 0,
             "dead": 0,

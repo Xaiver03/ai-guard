@@ -5,6 +5,7 @@
 import time
 import threading
 from dataclasses import asdict
+from typing import Any
 
 from aigard.core import (
     collect_metrics, collect_ai_processes, advise_list,
@@ -22,27 +23,27 @@ class BackgroundThreads:
         self.whitelist = whitelist
 
         # SharedState
-        self.latest_processes = []
-        self.auto_kill_log = []
+        self.latest_processes: list[dict[str, Any]] = []
+        self.auto_kill_log: list[dict[str, Any]] = []
         self.lock = threading.Lock()
 
         # 运行时配置
         self.autokill_enabled = config.get("auto_kill", {}).get("enabled", False)
-        self.blocked_processes = set()
+        self.blocked_processes: set[int] = set()
         self.scheduled_kill_enabled = False
         self.scheduled_kill_interval = 10
-        self.settings = {}
+        self.settings: dict[str, Any] = {}
         self.settings_lock = threading.Lock()
 
         # JSONL 增量解析:记录每个文件的读取位置
-        self._jsonl_offsets = {}  # {file_path: last_offset}
+        self._jsonl_offsets: dict[str, int] = {}  # {file_path: last_offset}
 
         # 条件变量:用于事件驱动的线程唤醒
         self._block_event = threading.Event()
         self._autokill_event = threading.Event()
 
         # 线程对象
-        self._threads = []
+        self._threads: list[threading.Thread] = []
 
     def start_all(self):
         """启动所有后台线程"""

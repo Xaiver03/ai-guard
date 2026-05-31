@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 from .models import UsageEntry, SessionSummary
 
 
@@ -27,7 +27,7 @@ class MultiToolDataLoader:
         Returns:
             # 使用记录列表
         """
-        all_entries = []
+        all_entries: List[UsageEntry] = []
 
         if source is None or source == 'claude-code':
             all_entries.extend(self.claude_loader.load_all_usage())
@@ -79,7 +79,7 @@ class MultiToolDataLoader:
             return []
 
         # 按 (project, session_id) 分组
-        sessions_dict = {}
+        sessions_dict: Dict[Tuple[str, str], List[UsageEntry]] = {}
         for entry in entries:
             key = (entry.project, entry.session_id)
             if key not in sessions_dict:
@@ -172,14 +172,14 @@ class ClaudeDataLoader:
         self.claude_dir = Path(claude_dir)
         self.projects_dir = self.claude_dir / "projects"
 
-    def load_all_usage(self) -> List[UsageEntry]:
+    def load_all_usage(self, source: Optional[str] = None) -> List[UsageEntry]:
         """
         # 加载所有项目的使用数据
 
         Returns:
             # 所有使用记录的列表
         """
-        all_entries = []
+        all_entries: List[UsageEntry] = []
 
         if not self.projects_dir.exists():
             return all_entries
@@ -202,7 +202,7 @@ class ClaudeDataLoader:
 
         return all_entries
 
-    def load_project_usage(self, project_name: str) -> List[UsageEntry]:
+    def load_project_usage(self, project_name: str, source: Optional[str] = None) -> List[UsageEntry]:
         """
         # 加载指定项目的使用数据
 
@@ -216,7 +216,7 @@ class ClaudeDataLoader:
         if not project_dir.exists():
             return []
 
-        all_entries = []
+        all_entries: List[UsageEntry] = []
         for jsonl_file in project_dir.glob("*.jsonl"):
             session_id = jsonl_file.stem
             entries = self._load_session_file(jsonl_file, project_name, session_id)
@@ -383,7 +383,7 @@ class ClaudeDataLoader:
             return []
 
         # 按 (project, session_id) 分组
-        sessions_dict = {}
+        sessions_dict: Dict[Tuple[str, str], List[UsageEntry]] = {}
         for entry in entries:
             key = (entry.project, entry.session_id)
             if key not in sessions_dict:
@@ -452,14 +452,14 @@ class CodexDataLoader:
         self.codex_dir = Path(codex_dir)
         self.sessions_dir = self.codex_dir / "sessions"
 
-    def load_all_usage(self) -> List[UsageEntry]:
+    def load_all_usage(self, source: Optional[str] = None) -> List[UsageEntry]:
         """
         # 加载所有 Codex 会话的使用数据
 
         Returns:
             # 所有使用记录的列表
         """
-        all_entries = []
+        all_entries: List[UsageEntry] = []
 
         if not self.sessions_dir.exists():
             return all_entries
@@ -547,7 +547,7 @@ class CodexDataLoader:
         """
         try:
             timestamp_str = data.get('timestamp')
-            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            timestamp = datetime.fromisoformat((timestamp_str or '').replace('Z', '+00:00'))
             # 转换为 naive datetime(与 Claude Code 保持一致)
             timestamp = timestamp.replace(tzinfo=None)
 
@@ -568,9 +568,9 @@ class CodexDataLoader:
                 model=model or 'unknown',
                 input_tokens=input_tokens,
                 output_tokens=total_output,
-                # cache_creation_tokens=0,  # [CN] Codex 不区分 cache_creation
+                cache_creation_tokens=0,
                 cache_read_tokens=cached_input_tokens,
-                # cost=0.0,  # [CN] 由 calculator 计算
+                cost=0.0,
                 project=project,
                 session_id=session_id or 'unknown',
                 source='codex'

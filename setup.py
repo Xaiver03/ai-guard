@@ -46,7 +46,7 @@ OPTIONS = {
         "CFBundleIdentifier":         "com.xaiver.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
-        # "LSUIElement":                True,  # 禁用：与 rumps 框架冲突导致菜单栏图标不显示
+        # "LSUIElement":                True,  # 暂时禁用：启用后菜单栏图标不显示（原因待查）
         "NSHighResolutionCapable":    True,
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":

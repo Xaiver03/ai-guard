@@ -106,16 +106,16 @@ def _rebuild_cache(project: Optional[str] = None, source: Optional[str] = None):
         # [CN] # 按小时聚合并保存
         hourly_summaries = aggregator.aggregate_by_hour(entries)
         hourly_data = []
-        for s in hourly_summaries:
+        for hs in hourly_summaries:
             hourly_data.append({
-                'hour': s.hour,
-                'input_tokens': s.input_tokens,
-                'output_tokens': s.output_tokens,
-                'cache_creation_tokens': s.cache_creation_tokens,
-                'cache_read_tokens': s.cache_read_tokens,
-                'total_tokens': s.total_tokens,
-                'total_cost': s.total_cost,
-                'models_used': s.models_used,
+                'hour': hs.hour,
+                'input_tokens': hs.input_tokens,
+                'output_tokens': hs.output_tokens,
+                'cache_creation_tokens': hs.cache_creation_tokens,
+                'cache_read_tokens': hs.cache_read_tokens,
+                'total_tokens': hs.total_tokens,
+                'total_cost': hs.total_cost,
+                'models_used': hs.models_used,
                 'model_breakdowns': [
                     {
                         'model_name': mb.model_name,
@@ -127,7 +127,7 @@ def _rebuild_cache(project: Optional[str] = None, source: Optional[str] = None):
                         'cost': mb.cost,
                         'request_count': mb.request_count,
                     }
-                    for mb in s.model_breakdowns
+                    for mb in hs.model_breakdowns
                 ]
             })
         cache.save_hourly(hourly_data)
@@ -347,9 +347,9 @@ async def get_hourly_usage(
 
         start, end = _resolve_date_range(start_date, end_date, preset)
         # [CN] 小时格式: YYYY-MM-DDTHH
-        start_hour = f"{start}T00" if start else None
-        end_hour = f"{end}T23" if end else None
-        return cache.get_hourly(start_hour, end_hour)
+        start_hour_range: str | None = f"{start}T00" if start else None
+        end_hour_range: str | None = f"{end}T23" if end else None
+        return cache.get_hourly(start_hour_range, end_hour_range)
     except Exception as e:
         # [CN] logger.error(f"获取每小时统计失败: {e}")
         # TODO: Translate this log message
@@ -471,7 +471,7 @@ async def get_sessions(
 
         # [CN] 分页
         total = len(summaries)
-        paginated = summaries[offset:offset + limit]
+        paginated = summaries[(offset or 0):(offset or 0) + (limit or 50)]
 
         return {
             "total": total,

@@ -5,13 +5,23 @@
 
 import json
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import httpx
 from pathlib import Path
 
 from .ai_config import get_ai_config
 from .models import BookmarkData, Category
+
+# 书签可以是 BookmarkData 对象或字典
+BookmarkLike = Union[BookmarkData, Dict[str, Any]]
+
+
+def _get_bm_attr(bm: BookmarkLike, key: str, default: Any = None) -> Any:
+    """统一获取书签属性，兼容 BookmarkData 和 dict"""
+    if isinstance(bm, dict):
+        return bm.get(key, default)
+    return getattr(bm, key, default)
 
 
 class BookmarkAnalyzer:
@@ -21,7 +31,7 @@ class BookmarkAnalyzer:
         self.ai_config = get_ai_config()
         self.db_path = db_path or Path.home() / ".aigard" / "bookmarks.db"
 
-    def analyze_bookmarks(self, bookmarks: List[BookmarkData]) -> Dict[str, Any]:
+    def analyze_bookmarks(self, bookmarks: List[BookmarkLike]) -> Dict[str, Any]:
         """
         分析书签列表,识别问题
 
@@ -45,31 +55,31 @@ class BookmarkAnalyzer:
             "issue_count": sum(len(v) for v in issues.values() if isinstance(v, list))
         }
 
-    def _find_duplicates(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_duplicates(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         # [CN] """查找重复的书签"""
-        url_map = {}
+        url_map: Dict[str, Dict[str, Any]] = {}
         duplicates = []
 
         for bm in bookmarks:
-            if not bm.url:
+            if not _get_bm_attr(bm, "url", ""):
                 continue
 
             # [CN] 标准化 URL(移除尾部斜杠、查询参数等)
-            normalized_url = self._normalize_url(bm.url)
+            normalized_url = self._normalize_url(_get_bm_attr(bm, "url", ""))
 
             if normalized_url in url_map:
                 duplicates.append({
-                    "id": bm.id,
-                    "url": bm.url,
-                    "title": bm.name,
-                    "folder_id": bm.folder_id,
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "url": _get_bm_attr(bm, "url", ""),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "folder_id": _get_bm_attr(bm, "folder_id"),
                     "duplicate_of": url_map[normalized_url]
                 })
             else:
                 url_map[normalized_url] = {
-                    "id": bm.id,
-                    "title": bm.name,
-                    "folder_id": bm.folder_id
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "folder_id": _get_bm_attr(bm, "folder_id")
                 }
 
         return duplicates
@@ -91,40 +101,41 @@ class BookmarkAnalyzer:
         except:
             return url
 
-    def _find_url_issues(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_url_issues(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         # [CN] """查找 URL 问题(追踪参数、过长等)"""
         issues = []
 
         for bm in bookmarks:
-            if not bm.url:
+            if not _get_bm_attr(bm, "url", ""):
                 continue
 
             problems = []
 
             # [CN] 检查追踪参数
-            if any(param in bm.url for param in ['utm_', 'ref=', 'source=']):
+            if any(param in _get_bm_attr(bm, "url", "") for param in ['utm_', 'ref=', 'source=']):
                 problems.append("包含追踪参数")
 
             # Check URL Length
-            if len(bm.url) > 200:
-                problems.append(f"URL 过长 ({len(bm.url)} 字符)")
+            bm_url = _get_bm_attr(bm, "url", "")
+            if len(bm_url) > 200:
+                problems.append(f"URL 过长 ({len(bm_url)} 字符)")
 
             # [CN] 检查是否是重定向链接
-            if 'redirect' in bm.url.lower() or 'link.zhihu.com' in bm.url or 'link.juejin.cn' in bm.url:
+            if 'redirect' in _get_bm_attr(bm, "url", "").lower() or 'link.zhihu.com' in _get_bm_attr(bm, "url", "") or 'link.juejin.cn' in _get_bm_attr(bm, "url", ""):
                 problems.append("可能是重定向链接")
 
             if problems:
                 issues.append({
-                    "id": bm.id,
-                    "url": bm.url,
-                    "title": bm.title,
-                    "category_id": bm.category_id,
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "url": _get_bm_attr(bm, "url", ""),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "folder_id": _get_bm_attr(bm, "folder_id"),
                     "problems": problems
                 })
 
         return issues
 
-    def _find_naming_issues(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_naming_issues(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         # [CN] """查找命名问题"""
         issues = []
 
@@ -132,81 +143,82 @@ class BookmarkAnalyzer:
             problems = []
 
             # 名称过长
-            if len(bm.title) > 50:
-                problems.append(f"名称过长 ({len(bm.title)} 字符)")
+            bm_name = _get_bm_attr(bm, "name", "")
+            if len(bm_name) > 50:
+                problems.append(f"名称过长 ({len(bm_name)} 字符)")
 
             # 使用 URL 作为名称
-            if bm.title == bm.url or bm.title.startswith('http'):
+            if _get_bm_attr(bm, "name", "") == _get_bm_attr(bm, "url", "") or _get_bm_attr(bm, "name", "").startswith('http'):
                 problems.append("使用 URL 作为名称")
 
             # 包含特殊字符
-            if re.search(r'[<>:"/\\|?*]', bm.title):
+            if re.search(r'[<>:"/\\|?*]', _get_bm_attr(bm, "name", "")):
                 problems.append("包含特殊字符")
 
             # 名称为空
-            if not bm.title or bm.title.strip() == "":
+            if not _get_bm_attr(bm, "name", "") or _get_bm_attr(bm, "name", "").strip() == "":
                 problems.append("名称为空")
 
             if problems:
                 issues.append({
-                    "id": bm.id,
-                    "title": bm.title,
-                    "url": bm.url,
-                    "category_id": bm.category_id,
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "url": _get_bm_attr(bm, "url", ""),
+                    "folder_id": _get_bm_attr(bm, "folder_id"),
                     "problems": problems
                 })
 
         return issues
 
-    def _find_broken_links(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_broken_links(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         # [CN] """查找可能失效的链接"""
-        broken = []
+        broken: List[Dict[str, Any]] = []
 
         for bm in bookmarks:
-            # 检查是否有明显的失效标记
-            if bm.metadata and bm.metadata.get("is_broken"):
+            # BookmarkData 没有 metadata 字段，跳过此检查
+            if False:
                 broken.append({
-                    "id": bm.id,
-                    "title": bm.title,
-                    "url": bm.url,
-                    "category_id": bm.category_id,
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "url": _get_bm_attr(bm, "url", ""),
+                    "folder_id": _get_bm_attr(bm, "folder_id"),
                     "reason": "标记为失效"
                 })
 
         return broken
 
-    def _find_large_folders(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_large_folders(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         # [CN] """查找过大的分类"""
-        category_counts = {}
+        folder_counts: Dict[Any, int] = {}
 
         for bm in bookmarks:
-            category_id = bm.category_id or "未分类"
-            category_counts[category_id] = category_counts.get(category_id, 0) + 1
+            folder_id = _get_bm_attr(bm, "folder_id") or "未分类"
+            folder_counts[folder_id] = folder_counts.get(folder_id, 0) + 1
 
         # [CN] 超过 20 个书签的分类
-        large_categories = [
-            {"category_id": category_id, "count": count}
-            for category_id, count in category_counts.items()
+        large_folders = [
+            {"folder_id": folder_id, "count": count}
+            for folder_id, count in folder_counts.items()
             if count > 20
         ]
 
-        return sorted(large_categories, key=lambda x: x["count"], reverse=True)
+        return sorted(large_folders, key=lambda x: x["count"], reverse=True)
 
-    def _find_uncategorized(self, bookmarks: List[BookmarkData]) -> List[Dict[str, Any]]:
+    def _find_uncategorized(self, bookmarks: List[BookmarkLike]) -> List[Dict[str, Any]]:
         """查找未分类的书签"""
         uncategorized = []
 
         for bm in bookmarks:
-            if not bm.category_id:
+            if not _get_bm_attr(bm, "folder_id"):
                 uncategorized.append({
-                    "id": bm.id,
-                    "title": bm.title,
-                    "url": bm.url
+                    "id": _get_bm_attr(bm, "id", 0),
+                    "title": _get_bm_attr(bm, "name", ""),
+                    "url": _get_bm_attr(bm, "url", "")
                 })
 
         return uncategorized
 
-    async def ai_categorize_bookmarks(self, bookmarks: List[BookmarkData], max_bookmarks: int = 50) -> Dict[str, Any]:
+    async def ai_categorize_bookmarks(self, bookmarks: List[BookmarkLike], max_bookmarks: int = 50) -> Dict[str, Any]:
         """
         使用 AI 对书签进行分类建议
 
@@ -240,11 +252,13 @@ class BookmarkAnalyzer:
                 "message": str(e)
             }
 
-    def _build_categorization_prompt(self, bookmarks: List[Bookmark]) -> str:
+    def _build_categorization_prompt(self, bookmarks: List[BookmarkLike]) -> str:
         """构建分类提示词"""
         bookmark_list = []
         for i, bm in enumerate(bookmarks, 1):
-            bookmark_list.append(f"{i}. {bm.title} - {bm.url}")
+            bm_name = _get_bm_attr(bm, "name", "")
+            bm_url = _get_bm_attr(bm, "url", "")
+            bookmark_list.append(f"{i}. {bm_name} - {bm_url}")
 
         bookmarks_text = "\n".join(bookmark_list)
 

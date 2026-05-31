@@ -2,7 +2,7 @@
 # [CN] 书签管理 API 路由
 """
 
-from typing import List, Optional
+from typing import cast, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -115,7 +115,7 @@ def analyze_bookmarks(req: AnalyzeRequest):
     if not bookmarks:
         raise HTTPException(status_code=500, detail=f"读取 {req.browser} 书签失败")
 
-    analysis = bookmark_analyzer.analyze_bookmarks(bookmarks)
+    analysis = bookmark_analyzer.analyze_bookmarks(bookmarks)  # type: ignore[arg-type]
     return {
         "browser": req.browser,
         "analysis": analysis
@@ -133,7 +133,7 @@ async def categorize_bookmarks(req: CategorizeRequest):
     if not bookmarks:
         raise HTTPException(status_code=500, detail=f"读取 {req.browser} 书签失败")
 
-    result = await bookmark_analyzer.ai_categorize_bookmarks(bookmarks, req.max_bookmarks)
+    result = await bookmark_analyzer.ai_categorize_bookmarks(bookmarks, req.max_bookmarks)  # type: ignore[arg-type]
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result.get("message", "AI 分类失败"))

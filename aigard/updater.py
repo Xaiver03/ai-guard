@@ -21,7 +21,7 @@ def _get_current_version() -> str:
                 setup_path = resources / "setup.py"
 
         if setup_path.exists():
-            content = setup_path.read_text()
+            content = setup_path.read_text(encoding="utf-8")
             import re
             match = re.search(r'"CFBundleVersion":\s*"([0-9.]+)"', content)
             if match:
