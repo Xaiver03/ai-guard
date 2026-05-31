@@ -46,8 +46,8 @@ OPTIONS = {
         "CFBundleIdentifier":         "com.xaiver.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
-        # "LSUIElement":                True,  # 暂时禁用：启用后菜单栏图标不显示（原因待查）
         "NSHighResolutionCapable":    True,
+        "NSMainNibFile":               "",
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":
             "AI Guard 在内存/Swap/磁盘超过告警阈值时发送通知提醒。",

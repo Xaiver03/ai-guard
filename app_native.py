@@ -228,6 +228,8 @@ class AIGuardDelegate(NSObject):
 
 def main():
     app = NSApplication.sharedApplication()
+    # NSApplicationActivationPolicyAccessory = 2 (menu bar only, no dock icon)
+    app.setActivationPolicy_(2)
     delegate = AIGuardDelegate.alloc().init()
     if delegate is None:
         return
