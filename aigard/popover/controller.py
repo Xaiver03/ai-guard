@@ -1,5 +1,5 @@
 """
-# [CN] PopoverViewController - Popover 内容视图控制器（原生 AppKit 控件）
+# [CN] PopoverViewController - Popover 内容视图控制器(原生 AppKit 控件)
 """
 import objc
 import webbrowser
@@ -9,10 +9,10 @@ from Foundation import NSRect, NSSize
 
 
 class PopoverViewController(NSViewController):
-    # [CN] """Popover 内容视图控制器（原生 AppKit 控件）"""
+    # [CN] """Popover 内容视图控制器(原生 AppKit 控件)"""
 
     def init(self):
-        # [CN] """初始化方法（ObjC 风格）"""
+        # [CN] """初始化方法(ObjC 风格)"""
         self = objc.super(PopoverViewController, self).init()
         if self is None:
             return None
@@ -37,7 +37,7 @@ class PopoverViewController(NSViewController):
         # [CN] """构建原生 NSView 布局"""
         # [CN] print("=== PopoverViewController.loadView() 被调用 ===")
         # TODO: Translate this log message
-        # [CN] 创建主容器（尺寸：360×500）
+        # [CN] 创建主容器(尺寸:360×500)
         container = NSView.alloc().initWithFrame_(
             ((0, 0), (360, 500))
         )
@@ -56,7 +56,7 @@ class PopoverViewController(NSViewController):
         print(f"✅ setView Finish, view: {self.view()}")
 
     def update_metrics(self):
-        # [CN] """更新指标数据（从 threads.history.latest 读取）"""
+        # [CN] """更新指标数据(从 threads.history.latest 读取)"""
         from .view_builder import _semantic_color, _format_gb
 
         latest = self.threads.history.latest
@@ -74,7 +74,7 @@ class PopoverViewController(NSViewController):
         for key, (pct_key, used_key, total_key) in metric_details.items():
             value = latest.get(pct_key, 0)
 
-            # [CN] # 更新主要数值（大号百分比）
+            # [CN] # 更新主要数值(大号百分比)
             if key in self.metrics_labels:
                 lbl = self.metrics_labels[key]
                 lbl.setStringValue_(f"{value:.0f}%")
@@ -85,7 +85,7 @@ class PopoverViewController(NSViewController):
                 bar = self.progress_bars[key]
                 bar.setDoubleValue_(value)
 
-            # UpdateVerboseInfo（used / total GB）
+            # UpdateVerboseInfo(used / total GB)
             detail_key = f'{key}_detail'
             if detail_key in self.metrics_labels and used_key and total_key:
                 used = latest.get(used_key, 0)
@@ -212,7 +212,7 @@ class PopoverViewController(NSViewController):
                 else:
                     print(f"  ❌ TerminateFailure")
 
-            # [CN] msg = f"已终止 {killed} 个进程，释放 {total_freed:.0f} MB"
+            # [CN] msg = f"已终止 {killed} 个进程,释放 {total_freed:.0f} MB"
             print(f"✅ {msg}")
             self._send_notification("AI Guard", msg)
         except Exception as e:
@@ -267,7 +267,7 @@ class PopoverViewController(NSViewController):
                 self.update_usage()
                 self._show_status("使用统计已刷新")
             else:
-                self._show_status("刷新失败，请稍后重试", is_error=True)
+                self._show_status("刷新失败,请稍后重试", is_error=True)
         except Exception as e:
             self._show_status(f"刷新失败: {str(e)}", is_error=True)
 
@@ -278,7 +278,7 @@ class PopoverViewController(NSViewController):
         rumps.quit_application()
 
     def _show_status(self, message, is_error=False):
-        # [CN] """在 Popover 底部状态栏显示反馈消息（3 秒后自动消失）"""
+        # [CN] """在 Popover 底部状态栏显示反馈消息(3 秒后自动消失)"""
         from AppKit import NSColor, NSFont
         import threading
 
@@ -291,7 +291,7 @@ class PopoverViewController(NSViewController):
         label.setFont_(NSFont.systemFontOfSize_weight_(11, 0.5))
         label.setStringValue_(message)
 
-        # [CN] 3 秒后清空（在主线程执行）
+        # [CN] 3 秒后清空(在主线程执行)
         def _clear():
             from AppKit import NSColor
             if label.stringValue() == message:  # [CN] 防止清掉更新的消息

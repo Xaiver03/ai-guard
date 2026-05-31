@@ -9,7 +9,7 @@ import re
 
 
 class BookmarkFixer:
-    # [CN] """书签修复器"""
+    """书签修复器"""
 
     def __init__(self):
         self.tracking_params = [
@@ -25,7 +25,7 @@ class BookmarkFixer:
         查找重复书签
 
         Returns:
-            重复书签组列表，每组包含多个重复项
+            重复书签组列表,每组包含多个重复项
         """
         url_map = defaultdict(list)
 
@@ -53,7 +53,7 @@ class BookmarkFixer:
             if root_name in roots:
                 traverse(roots[root_name], root_name)
 
-        # [CN] # 只返回有重复的
+        # 只返回有重复的
         duplicates = []
         for url, items in url_map.items():
             if len(items) > 1:
@@ -79,36 +79,36 @@ class BookmarkFixer:
             score = 0
             path = item['path'].lower()
 
-            # [CN] # 在有意义文件夹中的加分
-            # [CN] if '未分类' not in path and 'other' not in path:
+            # 在有意义文件夹中的加分
+            if '未分类' not in path and 'other' not in path:
                 score += 10
 
-            # [CN] # 在顶层文件夹的加分
+            # 在顶层文件夹的加分
             if path.count('>') <= 2:
                 score += 5
 
-            # [CN] # 名称不是URL的加分
+            # 名称不是URL的加分
             if not item['name'].startswith('http'):
                 score += 5
 
-            # [CN] # 名称不是 "Untitled" 的加分
+            # 名称不是 "Untitled" 的加分
             if item['name'].lower() != 'untitled':
                 score += 3
 
             return score
 
-        # [CN] # 计算每个书签的分数
+        # 计算每个书签的分数
         scored_items = [(item, score_bookmark(item)) for item in items]
         scored_items.sort(key=lambda x: x[1], reverse=True)
 
-        # [CN] # 保留分数最高的
+        # 保留分数最高的
         keep_item = scored_items[0][0]
         delete_items = [item[0] for item in scored_items[1:]]
 
         return {
             'keep': keep_item,
             'delete': delete_items,
-            # [CN] 'reason': f"保留在 '{keep_item['path']}' 中的书签（评分最高）"
+            'reason': f"保留在 '{keep_item['path']}' 中的书签(评分最高)"
         }
 
     def generate_dedup_operations(self, duplicates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -127,7 +127,7 @@ class BookmarkFixer:
                 operations.append({
                     'type': 'delete',
                     'bookmark_id': item['id'],
-                    # [CN] 'reason': f"删除重复书签: {item['name']}",
+                    'reason': f"删除重复书签: {item['name']}",
                     'details': {
                         'url': item['url'],
                         'path': item['path'],
@@ -139,7 +139,7 @@ class BookmarkFixer:
 
     def find_url_issues(self, bookmarks: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        查找 URL 问题（追踪参数、过长URL等）
+        查找 URL 问题(追踪参数、过长URL等)
 
         Returns:
             问题列表
@@ -152,7 +152,7 @@ class BookmarkFixer:
                 name = node.get('name', '')
                 bookmark_id = node.get('id', '')
 
-                # [CN] # 检查追踪参数
+                # 检查追踪参数
                 if '?' in url:
                     params = url.split('?', 1)[1]
                     has_tracking = any(
@@ -170,7 +170,7 @@ class BookmarkFixer:
                             'severity': 'warning'
                         })
 
-                # [CN] # 检查过长URL
+                # 检查过长URL
                 if len(url) > 200:
                     issues.append({
                         'type': 'long_url',
@@ -209,7 +209,7 @@ class BookmarkFixer:
                 operations.append({
                     'type': 'clean_url',
                     'bookmark_id': issue['id'],
-                    # [CN] 'reason': f"清理追踪参数: {issue['name']}",
+                    'reason': f"清理追踪参数: {issue['name']}",
                     'details': {
                         'original_url': issue['url'],
                         'path': issue['path']
@@ -257,7 +257,7 @@ class BookmarkFixer:
                         'suggested_name': self._extract_meaningful_name(url)
                     })
 
-                # [CN] # 名称过长
+                # 名称过长
                 elif len(name) > 100:
                     issues.append({
                         'type': 'long_name',
@@ -284,30 +284,30 @@ class BookmarkFixer:
         return issues
 
     def _extract_meaningful_name(self, url: str) -> str:
-        # [CN] """从 URL 提取有意义的名称"""
+        """从 URL 提取有意义的名称"""
         try:
-            # [CN] 移除协议
+            # 移除协议
             url = re.sub(r'^https?://', '', url)
 
             # Remove www.
             url = re.sub(r'^www\.', '', url)
 
-            # [CN] 提取域名
+            # 提取域名
             domain = url.split('/')[0]
 
-            # [CN] 提取路径
+            # 提取路径
             path_parts = url.split('/')[1:] if '/' in url else []
 
             if path_parts:
-                # [CN] 使用最后一个有意义的路径部分
+                # 使用最后一个有意义的路径部分
                 meaningful_part = [p for p in path_parts if p and p not in ['index.html', 'index.php']]
                 if meaningful_part:
                     name = meaningful_part[-1]
-                    # [CN] 移除文件扩展名
+                    # 移除文件扩展名
                     name = re.sub(r'\.(html|php|aspx)$', '', name)
-                    # [CN] 替换连字符和下划线为空格
+                    # 替换连字符和下划线为空格
                     name = name.replace('-', ' ').replace('_', ' ')
-                    # [CN] 首字母大写
+                    # 首字母大写
                     name = name.title()
                     return f"{name} - {domain}"
 
@@ -318,10 +318,10 @@ class BookmarkFixer:
 
     def generate_rename_operations(self, naming_issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        # [CN] 生成重命名操作
+        生成重命名操作
 
         Returns:
-            # [CN] 操作列表
+            操作列表
         """
         operations = []
 
@@ -343,17 +343,17 @@ class BookmarkFixer:
 
     def generate_smart_fix_plan(self, bookmarks: Dict[str, Any]) -> Dict[str, Any]:
         """
-        # [CN] 生成智能修复计划
+        生成智能修复计划
 
         Returns:
-            # [CN] 修复计划，包含所有操作和统计信息
+            修复计划,包含所有操作和统计信息
         """
-        # [CN] 查找所有问题
+        # 查找所有问题
         duplicates = self.find_duplicates(bookmarks)
         url_issues = self.find_url_issues(bookmarks)
         naming_issues = self.find_naming_issues(bookmarks)
 
-        # [CN] 生成操作
+        # 生成操作
         dedup_ops = self.generate_dedup_operations(duplicates)
         url_clean_ops = self.generate_url_clean_operations(url_issues)
         rename_ops = self.generate_rename_operations(naming_issues)

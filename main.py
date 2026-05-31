@@ -9,7 +9,7 @@ import threading
 import webbrowser
 from pathlib import Path
 
-import tomli
+import tomllib
 import asyncio
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
@@ -17,6 +17,10 @@ from hypercorn.asyncio import serve
 from aigard.core import MetricsHistory, Alerter, WhitelistManager
 from aigard.core.threads import BackgroundThreads
 from aigard.api import create_app
+from aigard.updater import CURRENT_VERSION
+
+# Export VERSION for app_native.py
+VERSION = CURRENT_VERSION
 
 
 # ── Configuration Loading ──────────────────────────────────────
@@ -49,7 +53,7 @@ def _find_config() -> Path:
 BASE_DIR = Path(__file__).parent
 config_path = _find_config()
 with open(config_path, "rb") as f:
-    CFG = tomli.load(f)
+    CFG = tomllib.load(f)
 
 SERVER_CFG = CFG.get("server", {})
 MONITOR_CFG = CFG.get("monitor", {})

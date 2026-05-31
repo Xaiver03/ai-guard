@@ -35,6 +35,10 @@ DATA_FILES = [
 OPTIONS = {
     "argv_emulation": False,   # 原生 App 不需要 argv emulation
     "iconfile":       "assets/icon.icns",
+    "optimize":       0,       # 禁用字节码优化，避免 mypyc 依赖问题
+    "semi_standalone": False,  # 完全独立模式
+    "site_packages":   False,  # 不包含整个 site-packages
+    "compressed":      False,  # 不压缩，便于调试
     "plist": {
         # App 身份
         "CFBundleName":               "AI Guard",

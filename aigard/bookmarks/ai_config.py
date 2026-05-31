@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 
 
 class AIConfig:
-    # [CN] """AI 配置管理器，读取 Claude Code 的配置"""
+    # [CN] """AI 配置管理器,读取 Claude Code 的配置"""
 
     CLAUDE_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 
@@ -58,9 +58,9 @@ class AIConfig:
         return self.api_key is not None
 
     def get_headers(self) -> Dict[str, str]:
-        # [CN] """获取 API 请求头"""
+        """获取 API 请求头"""
         if not self.api_key:
-            # [CN] raise ValueError("API key 未配置")
+            raise ValueError("API key 未配置")
 
         return {
             "x-api-key": self.api_key,
@@ -74,7 +74,7 @@ class AIConfig:
         return f"{base}/v1/messages"
 
     def to_dict(self) -> Dict[str, Any]:
-        # [CN] """转换为字典（用于 API 响应）"""
+        # [CN] """转换为字典(用于 API 响应)"""
         return {
             "configured": self.is_configured(),
             "base_url": self.base_url,

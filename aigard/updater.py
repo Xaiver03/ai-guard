@@ -10,11 +10,11 @@ from pathlib import Path
 
 # [CN] 从 setup.py 读取当前版本
 def _get_current_version() -> str:
-    # [CN] """从 setup.py 读取当前版本号"""
+    """从 setup.py 读取当前版本号"""
     try:
         setup_path = Path(__file__).parent.parent / "setup.py"
         if not setup_path.exists():
-            # [CN] # py2app 打包后，从 Resources 读取
+            # [CN] # py2app 打包后,从 Resources 读取
             exe = Path(sys.executable)
             if "Contents/MacOS" in str(exe):
                 resources = exe.parent.parent / "Resources"
@@ -27,11 +27,11 @@ def _get_current_version() -> str:
             if match:
                 return match.group(1)
     except Exception as e:
-        # [CN] print(f"读取版本号失败: {e}")
+        print(f"Failed to read version: {e}")
 
     return "1.0.0"  # DefaultVersion
 
-# [CN] GITHUB_REPO = "Xaiver03/AI-Guard"  # 替换为实际的 GitHub 仓库
+GITHUB_REPO = "Xaiver03/AI-Guard"
 CURRENT_VERSION = _get_current_version()
 
 class UpdateChecker:
@@ -39,7 +39,7 @@ class UpdateChecker:
         self.api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
     def check_update(self) -> Optional[Dict]:
-        # [CN] """检查是否有新版本
+        """Check for new version
 
         Returns:
             Dict: {

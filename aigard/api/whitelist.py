@@ -43,8 +43,8 @@ async def remove_process_name(name: str):
     import main as _main_mod
     success = _main_mod.whitelist.remove_process_name(name)
     if not success:
-        # [CN] raise HTTPException(status_code=404, detail="进程名不在白名单中")
-    # [CN] return {"success": True, "message": f"已将 {name} 从白名单移除"}
+        raise HTTPException(status_code=404, detail="Process name not in whitelist")
+    return {"success": True, "message": f"Removed {name} from whitelist"}
 
 
 @router.post("/command_keyword")
@@ -59,22 +59,22 @@ async def add_command_keyword(req: AddCommandKeywordRequest):
 
 @router.delete("/command_keyword/{keyword}")
 async def remove_command_keyword(keyword: str):
-    # [CN] """从白名单移除命令行关键字"""
+    """从白名单移除命令行关键字"""
     import main as _main_mod
     success = _main_mod.whitelist.remove_command_keyword(keyword)
     if not success:
-        # [CN] raise HTTPException(status_code=404, detail="关键字不在白名单中")
-    # [CN] return {"success": True, "message": f"已将关键字 {keyword} 从白名单移除"}
+        raise HTTPException(status_code=404, detail="Keyword not in whitelist")
+    return {"success": True, "message": f"Removed keyword {keyword} from whitelist"}
 
 
 @router.post("/pid")
 async def add_pid(req: AddPidRequest):
-    # [CN] """添加 PID 到白名单（临时，重启后失效）"""
+    # [CN] """添加 PID 到白名单(临时,重启后失效)"""
     import main as _main_mod
     success = _main_mod.whitelist.add_pid(req.pid)
     if not success:
         raise HTTPException(status_code=400, detail="PID 已存在于白名单中")
-    return {"success": True, "message": f"已将 PID {req.pid} 添加到白名单（临时）"}
+    return {"success": True, "message": f"已将 PID {req.pid} 添加到白名单(临时)"}
 
 
 @router.delete("/pid/{pid}")
@@ -83,5 +83,5 @@ async def remove_pid(pid: int):
     import main as _main_mod
     success = _main_mod.whitelist.remove_pid(pid)
     if not success:
-        # [CN] raise HTTPException(status_code=404, detail="PID 不在白名单中")
-    # [CN] return {"success": True, "message": f"已将 PID {pid} 从白名单移除"}
+        raise HTTPException(status_code=404, detail="PID 不在白名单中")
+    return {"success": True, "message": f"已将 PID {pid} 从白名单移除"}

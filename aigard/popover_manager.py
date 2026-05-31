@@ -71,7 +71,7 @@ class PopoverViewController(NSViewController):
 
 
 class PopoverManager:
-    # [CN] """Popover 管理器（单例）"""
+    # [CN] """Popover 管理器(单例)"""
 
     _instance = None
 
@@ -109,7 +109,7 @@ class PopoverManager:
                 of_view,
                 preferred_edge
             )
-            # [CN] # 启动定时刷新（每2秒）
+            # [CN] # 启动定时刷新(每2秒)
             self._start_update_timer()
 
     def hide(self):

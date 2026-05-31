@@ -1,5 +1,5 @@
 """
-# [CN] 数据模型定义
+数据模型定义
 """
 from dataclasses import dataclass
 from typing import List, Optional
@@ -8,7 +8,7 @@ from datetime import datetime
 
 @dataclass(slots=True)
 class UsageEntry:
-    # [CN] """单条使用记录"""
+    """单条使用记录"""
     timestamp: datetime
     model: str
     input_tokens: int
@@ -18,12 +18,12 @@ class UsageEntry:
     cost: float
     project: str
     session_id: str
-    source: str = "claude-code"  # DataSource：claude-code, codex, cursor
+    source: str = "claude-code"  # DataSource:claude-code, codex, cursor
 
 
 @dataclass(slots=True)
 class ModelBreakdown:
-    # [CN] """模型使用明细"""
+    """模型使用明细"""
     model_name: str
     input_tokens: int
     output_tokens: int
@@ -36,7 +36,7 @@ class ModelBreakdown:
 
 @dataclass(slots=True)
 class HourlySummary:
-    # [CN] """小时汇总"""
+    """小时汇总"""
     hour: str  # Format: "2026-05-24T14"
     input_tokens: int
     output_tokens: int
@@ -46,12 +46,12 @@ class HourlySummary:
     total_cost: float
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
-    # [CN] request_count: int = 0  # 总请求次数
+    request_count: int = 0  # 总请求次数
 
 
 @dataclass(slots=True)
 class DailySummary:
-    # [CN] """日汇总"""
+    """日汇总"""
     date: str  # Format: "2026-05-24"
     input_tokens: int
     output_tokens: int
@@ -66,7 +66,7 @@ class DailySummary:
 
 @dataclass(slots=True)
 class MonthlySummary:
-    # [CN] """月汇总"""
+    """月汇总"""
     month: str  # Format: "2026-05"
     input_tokens: int
     output_tokens: int
@@ -77,12 +77,12 @@ class MonthlySummary:
     models_used: List[str]
     model_breakdowns: List[ModelBreakdown]
     daily_data: List[DailySummary]
-    # [CN] request_count: int = 0  # 总请求次数
+    request_count: int = 0  # 总请求次数
 
 
 @dataclass(slots=True)
 class SessionSummary:
-    # [CN] """会话汇总"""
+    """会话汇总"""
     session_id: str
     project: str
     start_time: datetime

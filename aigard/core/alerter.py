@@ -1,4 +1,4 @@
-# [CN] """alerter.py — 分级告警（macOS 原生通知）"""
+"""alerter.py — 分级告警(macOS 原生通知)"""
 
 import subprocess
 import time
@@ -13,16 +13,16 @@ class Alerter:
         self.disk_free_warn_gb = cfg.get("disk_free_warn_gb", 20)
         self.disk_free_crit_gb = cfg.get("disk_free_crit_gb", 10)
         self.cooldown_sec = cfg.get("cooldown_sec", 60)
-        # [CN] # Swap 告警使用更长的冷却时间（默认 5 分钟），因为 Swap 释放较慢
+        # Swap 告警使用更长的冷却时间(默认 5 分钟),因为 Swap 释放较慢
         self.swap_cooldown_sec = cfg.get("swap_cooldown_sec", 300)
         self._last_notify: dict[str, float] = {}
-        # [CN] # 自动清理后的 Swap 告警抑制时间戳
+        # 自动清理后的 Swap 告警抑制时间戳
         self._swap_suppress_until = 0.0
 
     def _can_notify(self, key: str) -> bool:
         now = time.time()
         last = self._last_notify.get(key, 0)
-        # [CN] # Swap 相关告警使用更长的冷却时间
+        # Swap 相关告警使用更长的冷却时间
         cooldown = self.swap_cooldown_sec if 'swap' in key.lower() else self.cooldown_sec
         if now - last >= cooldown:
             self._last_notify[key] = now
@@ -30,13 +30,13 @@ class Alerter:
         return False
 
     def suppress_swap_alert(self, duration_sec: int = 180):
-        # [CN] """抑制 Swap 告警一段时间（默认 3 分钟）
-        用于自动清理后，给系统时间释放 Swap
+        """抑制 Swap 告警一段时间(默认 3 分钟)
+        用于自动清理后, 给系统时间释放 Swap
         """
         self._swap_suppress_until = time.time() + duration_sec
 
     def _notify(self, title: str, body: str):
-        # [CN] """发送 macOS 通知，优先使用 rumps（权限更干净），fallback osascript"""
+        """发送 macOS 通知,优先使用 rumps(权限更干净),fallback osascript"""
         try:
             import rumps
             rumps.notification(title=title, subtitle="", message=body)
@@ -53,7 +53,7 @@ class Alerter:
             pass
 
     def check(self, metrics: dict) -> str:
-        # [CN] """检查指标，返回告警等级: normal / warn / crit"""
+        """检查指标,返回告警等级: normal / warn / crit"""
         level = "normal"
         reasons = []
 
@@ -61,41 +61,41 @@ class Alerter:
         swap_pct = metrics.get("swap_percent", 0)
         disk_free = metrics.get("disk_free_gb", 999)
 
-        # [CN] # 检查 Swap 是否在抑制期内
+        # 检查 Swap 是否在抑制期内
         swap_suppressed = time.time() < self._swap_suppress_until
 
-        # [CN] # 判断 crit
+        # 判断 crit
         if mem_pct >= self.mem_crit:
             level = "crit"
-            # [CN] reasons.append(f"内存 {mem_pct:.0f}%")
+            reasons.append(f"内存 {mem_pct:.0f}%")
         if not swap_suppressed and swap_pct >= self.swap_crit:
             level = "crit"
             reasons.append(f"Swap {swap_pct:.0f}%")
         if disk_free <= self.disk_free_crit_gb:
             level = "crit"
-            # [CN] reasons.append(f"磁盘仅剩 {disk_free:.1f}GB")
+            reasons.append(f"磁盘仅剩 {disk_free:.1f}GB")
 
-        # [CN] # 判断 warn（未达 crit）
+        # 判断 warn(未达 crit)
         if level == "normal":
             if mem_pct >= self.mem_warn:
                 level = "warn"
-                # [CN] reasons.append(f"内存 {mem_pct:.0f}%")
+                reasons.append(f"内存 {mem_pct:.0f}%")
             if not swap_suppressed and swap_pct >= self.swap_warn:
                 level = "warn"
                 reasons.append(f"Swap {swap_pct:.0f}%")
             if disk_free <= self.disk_free_warn_gb:
                 level = "warn"
-                # [CN] reasons.append(f"磁盘仅剩 {disk_free:.1f}GB")
+                reasons.append(f"磁盘仅剩 {disk_free:.1f}GB")
 
         if level == "crit" and self._can_notify("crit"):
             self._notify(
-                # [CN] "AI Guard — 危险",
-                # [CN] "，".join(reasons) + "，建议立即暂停 AI Agent"
+                "AI Guard — Critical",
+                ", ".join(reasons) + " - Recommend stopping AI Agent immediately"
             )
         elif level == "warn" and self._can_notify("warn"):
             self._notify(
                 "AI Guard — Warning",
-                # [CN] "，".join(reasons) + "，请注意资源压力"
+                ", ".join(reasons) + " - Please monitor resource pressure"
             )
 
         return level

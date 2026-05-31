@@ -1,6 +1,6 @@
 """
 书签存储层
-封装 CRUD 操作，提供高层接口
+封装 CRUD 操作,提供高层接口
 """
 
 from typing import Optional, List, Dict, Any
@@ -180,7 +180,7 @@ class BookmarkStore:
     def import_bookmarks(self, bookmarks: List[Dict[str, Any]],
                          source_browser: str = "") -> Dict[str, int]:
         """
-        批量导入书签（从浏览器导入）
+        批量导入书签(从浏览器导入)
         bookmarks: [{"name": ..., "url": ..., "folder": "path/to/folder"}]
         返回: {"imported": N, "skipped": N, "folders_created": N}
         """
@@ -191,7 +191,7 @@ class BookmarkStore:
         # 缓存文件夹路径 → ID 的映射
         folder_cache: Dict[str, int] = {}
 
-        # 获取已有 URL 集合（去重）
+        # 获取已有 URL 集合(去重)
         conn = self.db.get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT url FROM bookmarks")
@@ -234,7 +234,7 @@ class BookmarkStore:
 
     def _ensure_folder_path(self, path: str) -> tuple:
         """
-        确保文件夹路径存在，不存在则创建
+        确保文件夹路径存在,不存在则创建
         path: "父文件夹/子文件夹"
         返回: (folder_id, created_count)
         """

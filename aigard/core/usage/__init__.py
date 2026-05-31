@@ -1,5 +1,5 @@
 """
-# [CN] Claude 使用统计核心模块
+Claude 使用统计核心模块
 """
 
 from .loader import ClaudeDataLoader, CodexDataLoader, MultiToolDataLoader

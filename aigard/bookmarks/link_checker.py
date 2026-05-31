@@ -5,6 +5,7 @@
 
 import asyncio
 import aiohttp
+import ssl
 from typing import List, Dict, Optional
 from datetime import datetime
 from .store import BookmarkStore
@@ -21,7 +22,8 @@ class LinkChecker:
     async def check_url(self, url: str, session: aiohttp.ClientSession) -> Dict[str, any]:
         """检测单个 URL"""
         try:
-            async with session.head(url, timeout=self.timeout, allow_redirects=True) as response:
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            async with session.head(url, timeout=timeout, allow_redirects=True) as response:
                 return {
                     "url": url,
                     "status": "alive" if response.status < 400 else "dead",
@@ -47,7 +49,7 @@ class LinkChecker:
     async def check_bookmarks(self, bookmark_ids: Optional[List[int]] = None) -> Dict[str, any]:
         """
         批量检测书签
-        bookmark_ids: 指定书签 ID 列表，None 表示检测所有
+        bookmark_ids: 指定书签 ID 列表,None 表示检测所有
         """
         if bookmark_ids:
             bookmarks = [self.store.get_bookmark(bid) for bid in bookmark_ids]
@@ -67,8 +69,13 @@ class LinkChecker:
             "details": []
         }
 
+        # 创建不验证 SSL 的 context
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
         # 创建 aiohttp session
-        connector = aiohttp.TCPConnector(limit=self.max_concurrent)
+        connector = aiohttp.TCPConnector(limit=self.max_concurrent, ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
             tasks = []
             for bm in bookmarks:

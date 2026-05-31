@@ -1,5 +1,5 @@
 """
-# [CN] Claude 数据加载器 - 从 JSONL 文件加载使用数据
+Claude 数据加载器 - 从 JSONL 文件加载使用数据
 """
 import json
 import os
@@ -10,22 +10,22 @@ from .models import UsageEntry, SessionSummary
 
 
 class MultiToolDataLoader:
-    # [CN] """统一的多工具数据加载器"""
+    """统一的多工具数据加载器"""
 
     def __init__(self):
-        # [CN] """初始化多工具加载器"""
+        """初始化多工具加载器"""
         self.claude_loader = ClaudeDataLoader()
         self.codex_loader = CodexDataLoader()
 
     def load_all_usage(self, source: Optional[str] = None) -> List[UsageEntry]:
         """
-        # [CN] 加载所有工具的使用数据
+        # 加载所有工具的使用数据
 
         Args:
-            # [CN] source: 指定数据源，可选值：'claude-code', 'codex', None（全部）
+            # source: 指定数据源,可选值:'claude-code', 'codex', None(全部)
 
         Returns:
-            # [CN] 使用记录列表
+            # 使用记录列表
         """
         all_entries = []
 
@@ -35,7 +35,7 @@ class MultiToolDataLoader:
         if source is None or source == 'codex':
             all_entries.extend(self.codex_loader.load_all_usage())
 
-        # [CN] 按时间排序
+        # 按时间排序
         all_entries.sort(key=lambda x: x.timestamp)
 
         return all_entries
@@ -46,30 +46,30 @@ class MultiToolDataLoader:
         source: Optional[str] = None
     ) -> List[UsageEntry]:
         """
-        # [CN] 加载指定项目的使用数据
+        # 加载指定项目的使用数据
 
         Args:
-            # [CN] project_name: 项目名称
-            # [CN] source: 指定数据源
+            # project_name: 项目名称
+            # source: 指定数据源
 
         Returns:
-            # [CN] 使用记录列表
+            # 使用记录列表
         """
         all_entries = self.load_all_usage(source)
         return [e for e in all_entries if e.project == project_name]
 
     def load_session_summaries(self, project: Optional[str] = None, source: Optional[str] = None) -> List[SessionSummary]:
         """
-        # [CN] 加载会话汇总数据
+        # 加载会话汇总数据
 
         Args:
-            # [CN] project: 可选的项目名称，如果指定则只加载该项目的会话
-            # [CN] source: 可选的数据源，如果指定则只加载该数据源的会话
+            # project: 可选的项目名称,如果指定则只加载该项目的会话
+            # source: 可选的数据源,如果指定则只加载该数据源的会话
 
         Returns:
-            # [CN] 会话汇总列表
+            # 会话汇总列表
         """
-        # [CN] 加载所有使用记录
+        # 加载所有使用记录
         if project:
             entries = self.load_project_usage(project, source=source)
         else:
@@ -78,7 +78,7 @@ class MultiToolDataLoader:
         if not entries:
             return []
 
-        # [CN] 按 (project, session_id) 分组
+        # 按 (project, session_id) 分组
         sessions_dict = {}
         for entry in entries:
             key = (entry.project, entry.session_id)
@@ -86,13 +86,13 @@ class MultiToolDataLoader:
                 sessions_dict[key] = []
             sessions_dict[key].append(entry)
 
-        # [CN] 计算每个会话的汇总
+        # 计算每个会话的汇总
         summaries = []
         for (proj, sess_id), sess_entries in sessions_dict.items():
             if not sess_entries:
                 continue
 
-            # [CN] 按时间排序
+            # 按时间排序
             sess_entries.sort(key=lambda x: x.timestamp)
 
             start_time = sess_entries[0].timestamp
@@ -109,7 +109,7 @@ class MultiToolDataLoader:
             cache_creation_tokens = sum(e.cache_creation_tokens for e in sess_entries)
             cache_read_tokens = sum(e.cache_read_tokens for e in sess_entries)
 
-            # [CN] 费用需要通过 calculator 计算
+            # 费用需要通过 calculator 计算
             from .calculator import UsageCalculator
             from .pricing import PricingManager
             from .pricing_repository import PricingRepository
@@ -137,35 +137,35 @@ class MultiToolDataLoader:
                 models_used=models_used,
             ))
 
-        # [CN] 按开始时间倒序排列（最新的在前）
+        # 按开始时间倒序排列(最新的在前)
         summaries.sort(key=lambda x: x.start_time, reverse=True)
 
         return summaries
 
     def get_projects(self) -> List[str]:
         """
-        # [CN] 获取所有项目列表（合并 Claude Code 和 Codex）
+        # 获取所有项目列表(合并 Claude Code 和 Codex)
 
         Returns:
-            # [CN] 项目名称列表
+            # 项目名称列表
         """
         projects = set()
         projects.update(self.claude_loader.get_projects())
-        # [CN] Codex 项目从实际数据中提取
+        # Codex 项目从实际数据中提取
         codex_entries = self.codex_loader.load_all_usage()
         projects.update(e.project for e in codex_entries)
         return sorted(projects)
 
 
 class ClaudeDataLoader:
-    # [CN] """加载 Claude Code 的使用数据"""
+    """加载 Claude Code 的使用数据"""
 
     def __init__(self, claude_dir: Optional[str] = None):
         """
-        初始化数据加载器
+        # 初始化数据加载器
 
         Args:
-            claude_dir: Claude 数据目录，默认为 ~/.claude
+            # claude_dir: Claude 数据目录,默认为 ~/.claude
         """
         if claude_dir is None:
             claude_dir = os.path.expanduser("~/.claude")
@@ -174,43 +174,43 @@ class ClaudeDataLoader:
 
     def load_all_usage(self) -> List[UsageEntry]:
         """
-        加载所有项目的使用数据
+        # 加载所有项目的使用数据
 
         Returns:
-            所有使用记录的列表
+            # 所有使用记录的列表
         """
         all_entries = []
 
         if not self.projects_dir.exists():
             return all_entries
 
-        # [CN] # 遍历所有项目目录
+        # 遍历所有项目目录
         for project_dir in self.projects_dir.iterdir():
             if not project_dir.is_dir():
                 continue
 
             project_name = project_dir.name
 
-            # [CN] # 遍历项目中的所有 JSONL 文件
+            # 遍历项目中的所有 JSONL 文件
             for jsonl_file in project_dir.glob("*.jsonl"):
                 session_id = jsonl_file.stem
                 entries = self._load_session_file(jsonl_file, project_name, session_id)
                 all_entries.extend(entries)
 
-        # [CN] # 按时间排序
+        # 按时间排序
         all_entries.sort(key=lambda x: x.timestamp)
 
         return all_entries
 
     def load_project_usage(self, project_name: str) -> List[UsageEntry]:
         """
-        加载指定项目的使用数据
+        # 加载指定项目的使用数据
 
         Args:
-            project_name: 项目名称
+            # project_name: 项目名称
 
         Returns:
-            该项目的所有使用记录
+            # 该项目的所有使用记录
         """
         project_dir = self.projects_dir / project_name
         if not project_dir.exists():
@@ -227,15 +227,15 @@ class ClaudeDataLoader:
 
     def _load_session_file(self, file_path: Path, project_name: str, session_id: str) -> List[UsageEntry]:
         """
-        加载单个会话文件
+        # 加载单个会话文件
 
         Args:
-            file_path: JSONL 文件路径
-            project_name: 项目名称
-            session_id: 会话 ID
+            # file_path: JSONL 文件路径
+            # project_name: 项目名称
+            # session_id: 会话 ID
 
         Returns:
-            该会话的所有使用记录
+            # 该会话的所有使用记录
         """
         entries = []
 
@@ -252,34 +252,34 @@ class ClaudeDataLoader:
                         if entry:
                             entries.append(entry)
                     except json.JSONDecodeError as e:
-                        # [CN] # 跳过无效的 JSON 行
+                        # 跳过无效的 JSON 行
                         continue
                     except Exception as e:
-                        # [CN] # 跳过解析失败的行
+                        # 跳过解析失败的行
                         continue
         except Exception as e:
-            # [CN] # 跳过无法读取的文件
+            # 跳过无法读取的文件
             pass
 
         return entries
 
     def _parse_usage_entry(self, data: dict, project_name: str, session_id: str) -> Optional[UsageEntry]:
         """
-        解析单条使用记录
+        # 解析单条使用记录
 
-        Claude Code 的 JSONL 格式：
+        # Claude Code 的 JSONL 格式:
         - type: "assistant" 的记录包含 message.usage 和 message.model
-        - usage 字段包含 input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens
+        # - usage 字段包含 input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens
 
         Args:
-            data: JSON 数据
-            project_name: 项目名称
-            session_id: 会话 ID
+            # data: JSON 数据
+            # project_name: 项目名称
+            # session_id: 会话 ID
 
         Returns:
-            UsageEntry 对象，如果不包含 usage 数据则返回 None
+            # UsageEntry 对象,如果不包含 usage 数据则返回 None
         """
-        # [CN] # 只处理 assistant 类型（包含 usage 数据）
+        # 只处理 assistant 类型(包含 usage 数据)
         if data.get('type') != 'assistant':
             return None
 
@@ -298,7 +298,7 @@ class ClaudeDataLoader:
             cache_creation_tokens = usage.get('cache_creation_input_tokens', 0)
             cache_read_tokens = usage.get('cache_read_input_tokens', 0)
 
-            # [CN] # 费用（JSONL 中通常没有预计算的费用）
+            # 费用(JSONL 中通常没有预计算的费用)
             cost = data.get('costUSD', 0.0)
 
             return UsageEntry(
@@ -317,18 +317,18 @@ class ClaudeDataLoader:
 
     def _parse_timestamp(self, timestamp_str: Optional[str]) -> datetime:
         """
-        解析时间戳
+        # 解析时间戳
 
         Args:
-            timestamp_str: 时间戳字符串
+            # timestamp_str: 时间戳字符串
 
         Returns:
-            datetime 对象
+            # datetime 对象
         """
         if not timestamp_str:
             return datetime.now()
 
-        # [CN] # 尝试多种时间格式
+        # 尝试多种时间格式
         formats = [
             '%Y-%m-%dT%H:%M:%S.%fZ',
             '%Y-%m-%dT%H:%M:%SZ',
@@ -342,15 +342,15 @@ class ClaudeDataLoader:
             except ValueError:
                 continue
 
-        # [CN] # 如果都失败了，返回当前时间
+        # 如果都失败了,返回当前时间
         return datetime.now()
 
     def get_projects(self) -> List[str]:
         """
-        获取所有项目列表
+        # 获取所有项目列表
 
         Returns:
-            项目名称列表
+            # 项目名称列表
         """
         if not self.projects_dir.exists():
             return []
@@ -364,16 +364,16 @@ class ClaudeDataLoader:
 
     def load_session_summaries(self, project: Optional[str] = None, source: Optional[str] = None) -> List[SessionSummary]:
         """
-        加载会话汇总数据
+        # 加载会话汇总数据
 
         Args:
-            project: 可选的项目名称，如果指定则只加载该项目的会话
-            source: 可选的数据源，如果指定则只加载该数据源的会话
+            # project: 可选的项目名称,如果指定则只加载该项目的会话
+            # source: 可选的数据源,如果指定则只加载该数据源的会话
 
         Returns:
-            会话汇总列表
+            # 会话汇总列表
         """
-        # [CN] # 加载所有使用记录
+        # 加载所有使用记录
         if project:
             entries = self.load_project_usage(project, source=source)
         else:
@@ -382,7 +382,7 @@ class ClaudeDataLoader:
         if not entries:
             return []
 
-        # [CN] # 按 (project, session_id) 分组
+        # 按 (project, session_id) 分组
         sessions_dict = {}
         for entry in entries:
             key = (entry.project, entry.session_id)
@@ -390,13 +390,13 @@ class ClaudeDataLoader:
                 sessions_dict[key] = []
             sessions_dict[key].append(entry)
 
-        # [CN] # 计算每个会话的汇总
+        # 计算每个会话的汇总
         summaries = []
         for (proj, sess_id), sess_entries in sessions_dict.items():
             if not sess_entries:
                 continue
 
-            # [CN] # 按时间排序
+            # 按时间排序
             sess_entries.sort(key=lambda x: x.timestamp)
 
             start_time = sess_entries[0].timestamp
@@ -431,21 +431,21 @@ class ClaudeDataLoader:
                 models_used=models_used,
             ))
 
-        # [CN] # 按开始时间倒序排列（最新的在前）
+        # 按开始时间倒序排列(最新的在前)
         summaries.sort(key=lambda x: x.start_time, reverse=True)
 
         return summaries
 
 
 class CodexDataLoader:
-    # [CN] """加载 Codex 的使用数据"""
+    """加载 Codex 的使用数据"""
 
     def __init__(self, codex_dir: Optional[str] = None):
         """
-        # [CN] 初始化 Codex 数据加载器
+        # 初始化 Codex 数据加载器
 
         Args:
-            # [CN] codex_dir: Codex 数据目录，默认为 ~/.codex
+            # codex_dir: Codex 数据目录,默认为 ~/.codex
         """
         if codex_dir is None:
             codex_dir = os.path.expanduser("~/.codex")
@@ -454,17 +454,17 @@ class CodexDataLoader:
 
     def load_all_usage(self) -> List[UsageEntry]:
         """
-        # [CN] 加载所有 Codex 会话的使用数据
+        # 加载所有 Codex 会话的使用数据
 
         Returns:
-            # [CN] 所有使用记录的列表
+            # 所有使用记录的列表
         """
         all_entries = []
 
         if not self.sessions_dir.exists():
             return all_entries
 
-        # [CN] 遍历所有 JSONL 文件
+        # 遍历所有 JSONL 文件
         for jsonl_file in self.sessions_dir.rglob("rollout-*.jsonl"):
             entries = self._load_session_file(jsonl_file)
             all_entries.extend(entries)
@@ -479,7 +479,7 @@ class CodexDataLoader:
             jsonl_file: JSONL FilePath
 
         Returns:
-            # [CN] 使用记录列表
+            # 使用记录列表
         """
         entries = []
         session_id = None
@@ -493,18 +493,18 @@ class CodexDataLoader:
                         data = json.loads(line)
                         event_type = data.get('type')
 
-                        # [CN] 从 session_meta 获取会话信息
+                        # 从 session_meta 获取会话信息
                         if event_type == 'session_meta':
                             payload = data.get('payload', {})
                             session_id = payload.get('id')
                             cwd = payload.get('cwd', '')
 
-                        # [CN] 从 turn_context 获取模型信息
+                        # 从 turn_context 获取模型信息
                         elif event_type == 'turn_context':
                             payload = data.get('payload', {})
                             model = payload.get('model', 'unknown')
 
-                        # [CN] 从 event_msg 的 token_count 获取 token 数据
+                        # 从 event_msg 的 token_count 获取 token 数据
                         elif event_type == 'event_msg':
                             payload = data.get('payload', {})
                             if payload.get('type') == 'token_count':
@@ -536,19 +536,19 @@ class CodexDataLoader:
         Parsing token_count Event
 
         Args:
-            # [CN] data: 完整的事件数据
-            # [CN] info: token_count 的 info 字段
+            # data: 完整的事件数据
+            # info: token_count 的 info 字段
             session_id: Session ID
             model: ModelName
-            # [CN] cwd: 工作目录
+            # cwd: 工作目录
 
         Returns:
-            # [CN] UsageEntry 或 None
+            # UsageEntry 或 None
         """
         try:
             timestamp_str = data.get('timestamp')
             timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-            # [CN] 转换为 naive datetime（与 Claude Code 保持一致）
+            # 转换为 naive datetime(与 Claude Code 保持一致)
             timestamp = timestamp.replace(tzinfo=None)
 
             usage = info.get('total_token_usage', {})
@@ -557,10 +557,10 @@ class CodexDataLoader:
             output_tokens = usage.get('output_tokens', 0)
             reasoning_output_tokens = usage.get('reasoning_output_tokens', 0)
 
-            # [CN] Codex 的 reasoning tokens 计入 output tokens
+            # Codex 的 reasoning tokens 计入 output tokens
             total_output = output_tokens + reasoning_output_tokens
 
-            # [CN] 项目名称从 cwd 提取
+            # 项目名称从 cwd 提取
             project = self._extract_project_name(cwd) if cwd else 'unknown'
 
             return UsageEntry(
@@ -568,9 +568,9 @@ class CodexDataLoader:
                 model=model or 'unknown',
                 input_tokens=input_tokens,
                 output_tokens=total_output,
-                cache_creation_tokens=0,  # [CN] Codex 不区分 cache_creation
+                # cache_creation_tokens=0,  # [CN] Codex 不区分 cache_creation
                 cache_read_tokens=cached_input_tokens,
-                cost=0.0,  # [CN] 由 calculator 计算
+                # cost=0.0,  # [CN] 由 calculator 计算
                 project=project,
                 session_id=session_id or 'unknown',
                 source='codex'
@@ -581,20 +581,20 @@ class CodexDataLoader:
 
     def _extract_project_name(self, cwd: str) -> str:
         """
-        # [CN] 从工作目录提取项目名称
+        # 从工作目录提取项目名称
 
         Args:
-            # [CN] cwd: 工作目录路径
+            # cwd: 工作目录路径
 
         Returns:
-            # [CN] 项目名称
+            # 项目名称
         """
         if not cwd:
             return 'unknown'
 
-        # [CN] 转换为标准化路径格式（类似 Claude Code 的项目名）
+        # 转换为标准化路径格式(类似 Claude Code 的项目名)
         path = Path(cwd)
-        # [CN] 使用完整路径，替换 / 为 -
+        # 使用完整路径,替换 / 为 -
         normalized = str(path).replace('/', '-').lstrip('-')
         return normalized if normalized else 'unknown'
 

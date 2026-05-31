@@ -77,7 +77,7 @@ def get_bookmarks(browser: str):
     if bookmarks is None and browser == "safari":
         raise HTTPException(
             status_code=403,
-            detail="Safari 书签需要「完全磁盘访问权限」。请前往：系统设置 → 隐私与安全性 → 完全磁盘访问权限，勾选 AI Guard。"
+            detail="Safari 书签需要「完全磁盘访问权限」。请前往:系统设置 → 隐私与安全性 → 完全磁盘访问权限,勾选 AI Guard。"
         )
 
     if bookmarks is None:
@@ -93,9 +93,9 @@ def get_bookmarks(browser: str):
 # [CN] ── 书签统计 ──────────────────────────────────────────────────
 @router.get("/{browser}/stats")
 def get_bookmark_stats(browser: str):
-    # [CN] """获取书签统计信息"""
+    """获取书签统计信息"""
     if browser not in bookmark_manager.detected_browsers:
-        # [CN] raise HTTPException(status_code=404, detail=f"浏览器 {browser} 未检测到")
+        raise HTTPException(status_code=404, detail=f"Browser {browser} not detected")
 
     stats = bookmark_manager.get_bookmark_stats(browser)
     return {
@@ -107,7 +107,7 @@ def get_bookmark_stats(browser: str):
 # [CN] # ── 书签分析 ──────────────────────────────────────────────────
 @router.post("/analyze")
 def analyze_bookmarks(req: AnalyzeRequest):
-    # [CN] """分析书签，识别问题"""
+    # [CN] """分析书签,识别问题"""
     if req.browser not in bookmark_manager.detected_browsers:
         raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
 
@@ -125,18 +125,18 @@ def analyze_bookmarks(req: AnalyzeRequest):
 # [CN] ── AI 分类建议 ───────────────────────────────────────────────
 @router.post("/categorize")
 async def categorize_bookmarks(req: CategorizeRequest):
-    # [CN] """使用 AI 对书签进行分类建议"""
+    """使用 AI 对书签进行分类建议"""
     if req.browser not in bookmark_manager.detected_browsers:
-        # [CN] raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
 
     bookmarks = bookmark_manager.extract_all_bookmarks(req.browser)
     if not bookmarks:
-        # [CN] raise HTTPException(status_code=500, detail=f"读取 {req.browser} 书签失败")
+        raise HTTPException(status_code=500, detail=f"读取 {req.browser} 书签失败")
 
     result = await bookmark_analyzer.ai_categorize_bookmarks(bookmarks, req.max_bookmarks)
 
     if "error" in result:
-        # [CN] raise HTTPException(status_code=500, detail=result.get("message", "AI 分类失败"))
+        raise HTTPException(status_code=500, detail=result.get("message", "AI 分类失败"))
 
     return {
         "browser": req.browser,
@@ -165,10 +165,10 @@ def search_bookmarks(req: SearchRequest):
 def export_bookmarks(req: ExportRequest):
     # [CN] """导出书签"""
     if req.browser not in bookmark_manager.detected_browsers:
-        # [CN] raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
 
     if req.format not in ["json", "html", "csv"]:
-        # [CN] raise HTTPException(status_code=400, detail="不支持的导出格式")
+        raise HTTPException(status_code=400, detail="不支持的导出格式")
 
     # [CN] # 导出到临时文件
     import tempfile
@@ -203,7 +203,7 @@ async def suggest_bookmark_name(req: SuggestNameRequest):
 
 @router.post("/ai/clean-url")
 def clean_bookmark_url(req: CleanUrlRequest):
-    # [CN] """清理 URL（移除追踪参数）"""
+    # [CN] """清理 URL(移除追踪参数)"""
     cleaned_url = bookmark_analyzer.clean_url(req.url)
     return {
         "original_url": req.url,
@@ -231,7 +231,7 @@ def reload_ai_config_endpoint():
     }
 
 
-# [CN] # ── 新功能：浏览器状态检测 ────────────────────────────────────
+# [CN] # ── 新功能:浏览器状态检测 ────────────────────────────────────
 class BrowserStateRequest(BaseModel):
     browser: str
 
@@ -255,7 +255,7 @@ def get_all_browsers_state():
     }
 
 
-# [CN] # ── 新功能：智能修复 ──────────────────────────────────────────
+# [CN] # ── 新功能:智能修复 ──────────────────────────────────────────
 class SmartFixRequest(BaseModel):
     browser: str
 
@@ -300,14 +300,14 @@ class ExecuteFixRequest(BaseModel):
 def execute_fix(req: ExecuteFixRequest):
     # [CN] """执行修复操作"""
     if req.browser not in bookmark_manager.detected_browsers:
-        # [CN] raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
 
     # [CN] # 再次检查浏览器状态
     strategy = state_detector.get_modification_strategy(req.browser)
     if not strategy['safe']:
         raise HTTPException(
             status_code=400,
-            # [CN] detail=f"浏览器正在运行，无法安全修改。{strategy['recommendation']}"
+            # [CN] detail=f"浏览器正在运行,无法安全修改。{strategy['recommendation']}"
         )
 
     # ExecuteModify
@@ -319,7 +319,7 @@ def execute_fix(req: ExecuteFixRequest):
     }
 
 
-# [CN] # ── 新功能：备份管理 ──────────────────────────────────────────
+# [CN] # ── 新功能:备份管理 ──────────────────────────────────────────
 @router.get("/backups")
 def list_backups(browser: Optional[str] = None, limit: int = 20):
     # [CN] """列出备份"""
@@ -341,14 +341,14 @@ def restore_backup(req: RestoreBackupRequest):
     from pathlib import Path
 
     if req.browser not in bookmark_manager.detected_browsers:
-        # [CN] raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
+        raise HTTPException(status_code=404, detail=f"浏览器 {req.browser} 未检测到")
 
     # [CN] # 检查浏览器状态
     strategy = state_detector.get_modification_strategy(req.browser)
     if not strategy['safe']:
         raise HTTPException(
             status_code=400,
-            # [CN] detail=f"浏览器正在运行，无法恢复备份。{strategy['recommendation']}"
+            # [CN] detail=f"浏览器正在运行,无法恢复备份。{strategy['recommendation']}"
         )
 
     # RestoreBackup
@@ -361,11 +361,11 @@ def restore_backup(req: RestoreBackupRequest):
     return {
         "browser": req.browser,
         "backup_id": req.backup_id,
-        # [CN] "message": "备份已恢复，请重启浏览器查看效果"
+        # [CN] "message": "备份已恢复,请重启浏览器查看效果"
     }
 
 
-# [CN] # ── 新功能：操作历史 ──────────────────────────────────────────
+# [CN] # ── 新功能:操作历史 ──────────────────────────────────────────
 @router.get("/history")
 def get_operation_history(browser: Optional[str] = None, limit: int = 20):
     # [CN] """获取操作历史"""

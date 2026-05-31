@@ -10,9 +10,9 @@ from datetime import datetime
 
 
 class BookmarkManager:
-    # [CN] """浏览器书签管理器"""
+    """浏览器书签管理器"""
 
-    # [CN] # 支持的浏览器及其书签文件路径
+    # 支持的浏览器及其书签文件路径
     BROWSER_PATHS = {
         "chrome": "~/Library/Application Support/Google/Chrome/Default/Bookmarks",
         "edge": "~/Library/Application Support/Microsoft Edge/Default/Bookmarks",
@@ -27,14 +27,14 @@ class BookmarkManager:
         self._detect_browsers()
 
     def _detect_browsers(self):
-        # [CN] """检测系统中已安装的浏览器"""
+        """检测系统中已安装的浏览器"""
         for browser, path_str in self.BROWSER_PATHS.items():
             path = Path(path_str).expanduser()
             if path.exists():
                 self.detected_browsers.append(browser)
 
     def get_detected_browsers(self) -> List[Dict[str, Any]]:
-        # [CN] """获取检测到的浏览器列表"""
+        """获取检测到的浏览器列表"""
         result = []
         for browser in self.detected_browsers:
             path = Path(self.BROWSER_PATHS[browser]).expanduser()
@@ -47,7 +47,7 @@ class BookmarkManager:
         return result
 
     def _get_browser_display_name(self, browser: str) -> str:
-        # [CN] """获取浏览器显示名称"""
+        """获取浏览器显示名称"""
         names = {
             "chrome": "Google Chrome",
             "edge": "Microsoft Edge",
@@ -59,19 +59,19 @@ class BookmarkManager:
 
     def read_bookmarks(self, browser: str, force_reload: bool = False) -> Optional[Dict[str, Any]]:
         """
-        # [CN] 读取指定浏览器的书签
+        读取指定浏览器的书签
 
         Args:
-            # [CN] browser: 浏览器名称 (chrome, edge, dia, quark, safari)
-            # [CN] force_reload: 是否强制重新加载
+            browser: 浏览器名称 (chrome, edge, dia, quark, safari)
+            force_reload: 是否强制重新加载
 
         Returns:
-            # [CN] 书签数据字典，如果失败返回 None
+            书签数据字典,如果失败返回 None
         """
         if browser not in self.detected_browsers:
             return None
 
-        # [CN] 使用缓存
+        # 使用缓存
         if not force_reload and browser in self.bookmarks_cache:
             return self.bookmarks_cache[browser]
 
@@ -79,12 +79,12 @@ class BookmarkManager:
 
         try:
             if browser == "safari":
-                # [CN] Safari 使用 plist 格式
+                # Safari 使用 plist 格式
                 from .safari import SafariBookmarkReader
                 reader = SafariBookmarkReader()
                 data = reader.read(path)
             else:
-                # [CN] Chromium 内核浏览器使用 JSON 格式
+                # Chromium 内核浏览器使用 JSON 格式
                 with open(path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
 
@@ -92,19 +92,18 @@ class BookmarkManager:
             return data
 
         except Exception as e:
-            # [CN] print(f"读取 {browser} 书签失败: {e}")
-            # TODO: Translate this log message
+            print(f"读取 {browser} 书签失败: {e}")
             return None
 
     def extract_all_bookmarks(self, browser: str) -> List[Dict[str, Any]]:
         """
-        # [CN] 提取所有书签为扁平列表
+        提取所有书签为扁平列表
 
         Args:
-            # [CN] browser: 浏览器名称
+            browser: 浏览器名称
 
         Returns:
-            # [CN] 书签列表，每个书签包含 name, url, folder, date_added 等字段
+            书签列表,每个书签包含 name, url, folder, date_added 等字段
         """
         data = self.read_bookmarks(browser)
         if not data:
@@ -116,7 +115,7 @@ class BookmarkManager:
             return self._extract_chromium_bookmarks(data)
 
     def _extract_chromium_bookmarks(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        # [CN] """提取 Chromium 内核浏览器的书签"""
+        """提取 Chromium 内核浏览器的书签"""
         bookmarks = []
 
         def traverse(node, folder_path=""):
@@ -135,7 +134,7 @@ class BookmarkManager:
                 for child in node.get("children", []):
                     traverse(child, new_path)
 
-        # [CN] # 遍历所有根节点
+        # 遍历所有根节点
         roots = data.get("roots", {})
         for root_name, root_node in roots.items():
             if isinstance(root_node, dict) and "children" in root_node:
@@ -146,18 +145,18 @@ class BookmarkManager:
         return bookmarks
 
     def _extract_safari_bookmarks(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        # [CN] """提取 Safari 书签"""
-        # [CN] Safari 书签提取逻辑由 SafariBookmarkReader 处理
+        """提取 Safari 书签"""
+        # Safari 书签提取逻辑由 SafariBookmarkReader 处理
         from .safari import SafariBookmarkReader
         reader = SafariBookmarkReader()
         return reader.extract_bookmarks(data)
 
     def _get_root_display_name(self, root_name: str) -> str:
-        # [CN] """获取根节点的显示名称"""
+        """获取根节点的显示名称"""
         names = {
-            # [CN] "bookmark_bar": "书签栏",
-            # [CN] "other": "其他书签",
-            # [CN] "synced": "移动设备书签"
+            "bookmark_bar": "书签栏",
+            "other": "其他书签",
+            "synced": "移动设备书签"
         }
         return names.get(root_name, root_name)
 
@@ -180,16 +179,16 @@ class BookmarkManager:
                 "domains": {}
             }
 
-        # [CN] # 统计文件夹
+        # 统计文件夹
         folders = {}
         domains = {}
 
         for bm in bookmarks:
-            # [CN] # 统计文件夹
-            # [CN] folder = bm.get("folder", "未分类")
+            # 统计文件夹
+            folder = bm.get("folder", "未分类")
             folders[folder] = folders.get(folder, 0) + 1
 
-            # [CN] # 统计域名
+            # 统计域名
             url = bm.get("url", "")
             if url:
                 try:
@@ -255,14 +254,14 @@ class BookmarkManager:
             self._export_csv(bookmarks, output_path)
 
     def _export_html(self, bookmarks: List[Dict[str, Any]], output_path: str):
-        # [CN] """导出为 HTML 格式"""
+        """导出为 HTML 格式"""
         html = ['<!DOCTYPE NETSCAPE-Bookmark-file-1>']
         html.append('<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">')
         html.append('<TITLE>Bookmarks</TITLE>')
         html.append('<H1>Bookmarks</H1>')
         html.append('<DL><p>')
 
-        # [CN] 按文件夹分组
+        # 按文件夹分组
         folders = {}
         for bm in bookmarks:
             folder = bm.get("folder", "未分类")
@@ -285,7 +284,7 @@ class BookmarkManager:
             f.write('\n'.join(html))
 
     def _export_csv(self, bookmarks: List[Dict[str, Any]], output_path: str):
-        # [CN] """导出为 CSV 格式"""
+        """导出为 CSV 格式"""
         import csv
 
         with open(output_path, 'w', encoding='utf-8', newline='') as f:

@@ -118,9 +118,9 @@ def _format_gb(used, total):
 
 
 def build_popover_ui(container, controller):
-    # [CN] """构建 Popover 原生 UI - 仿 iStat Menus 风格
+    """构建 Popover 原生 UI - 仿 iStat Menus 风格
 
-    # [CN] 尺寸: 360×550px (增加高度以容纳折线图)
+    尺寸: 360×550px (增加高度以容纳折线图)
     """
     from AppKit import NSVisualEffectView, NSVisualEffectMaterialPopover, NSVisualEffectBlendingModeBehindWindow
 

@@ -1,7 +1,7 @@
 """
 书签管理模块
 支持 Chrome, Edge, DIA, Quark, Safari 等浏览器的书签管理
-新增：OneNav 风格的书签数据库管理
+新增:OneNav 风格的书签数据库管理
 """
 
 from .manager import BookmarkManager

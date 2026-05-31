@@ -1,6 +1,6 @@
 """
 书签数据模型
-参考 OneNav 的数据库设计，使用 SQLite 存储
+参考 OneNav 的数据库设计,使用 SQLite 存储
 """
 
 from datetime import datetime
@@ -172,14 +172,14 @@ class Folder:
         conn.close()
 
     def delete(self, folder_id: int):
-        """删除文件夹（级联删除子文件夹，书签移到根目录）"""
+        """删除文件夹(级联删除子文件夹,书签移到根目录)"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
         # 将该文件夹下的书签移到根目录
         cursor.execute("UPDATE bookmarks SET folder_id = NULL WHERE folder_id = ?", (folder_id,))
 
-        # 删除文件夹（子文件夹会被级联删除）
+        # 删除文件夹(子文件夹会被级联删除)
         cursor.execute("DELETE FROM folders WHERE id = ?", (folder_id,))
 
         conn.commit()
@@ -203,7 +203,7 @@ class Tag:
             conn.commit()
             return tag_id
         except sqlite3.IntegrityError:
-            # 标签已存在，返回现有 ID
+            # 标签已存在,返回现有 ID
             cursor.execute("SELECT id FROM tags WHERE name = ?", (name,))
             row = cursor.fetchone()
             return row[0] if row else None
@@ -255,7 +255,7 @@ class Tag:
         conn.close()
 
     def delete(self, tag_id: int):
-        """删除标签（级联删除关联关系）"""
+        """删除标签(级联删除关联关系)"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
 
@@ -288,7 +288,7 @@ class Bookmark:
         return bookmark_id
 
     def get(self, bookmark_id: int) -> Optional[dict]:
-        """获取书签（包含标签）"""
+        """获取书签(包含标签)"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
 

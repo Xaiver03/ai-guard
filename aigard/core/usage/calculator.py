@@ -1,5 +1,5 @@
 """
-# [CN] 使用计算器 - 计算 Token 和费用
+使用计算器 - 计算 Token 和费用
 """
 from typing import List, Dict, Set
 from .models import UsageEntry, ModelBreakdown
@@ -7,7 +7,7 @@ from .pricing import PricingManager, normalize_model_name
 
 
 class UsageCalculator:
-    # [CN] """计算使用统计"""
+    """计算使用统计"""
 
     def __init__(self, pricing_manager: PricingManager):
         self.pricing_manager = pricing_manager
@@ -38,7 +38,7 @@ class UsageCalculator:
 
     def calculate_coverage(self, entries: List[UsageEntry]) -> dict:
         """
-        计算 Token 覆盖率（有定价的 token 占比）
+        计算 Token 覆盖率(有定价的 token 占比)
 
         Returns:
             {
@@ -79,14 +79,14 @@ class UsageCalculator:
         model_stats: Dict[str, dict] = {}
 
         for entry in entries:
-            # [CN] # 用归一化名作 key，保留原始名展示
+            # 用归一化名作 key,保留原始名展示
             model = entry.model
             norm = normalize_model_name(model)
-            # [CN] key = norm  # 相同归一化名的不同原始名合并
+            key = norm  # 相同归一化名的不同原始名合并
 
             if key not in model_stats:
                 model_stats[key] = {
-                    # [CN] 'display_name': model,  # 第一个遇到的原始名
+                    'display_name': model,  # 第一个遇到的原始名
                     'input_tokens': 0,
                     'output_tokens': 0,
                     'cache_creation_tokens': 0,

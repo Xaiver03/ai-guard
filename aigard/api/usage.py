@@ -35,7 +35,7 @@ _usage_cfg = _get_usage_config()
 _claude_dir = os.path.expanduser(_usage_cfg.get("claude_data_dir", "~/.claude"))
 _cache_ttl = _usage_cfg.get("cache_ttl", 300)
 
-# [CN] # 全局实例（使用 config.toml 配置）
+# [CN] # 全局实例(使用 config.toml 配置)
 pricing_repository = PricingRepository()
 pricing_manager = PricingManager(repository=pricing_repository)
 calculator = UsageCalculator(pricing_manager)
@@ -43,19 +43,19 @@ aggregator = UsageAggregator(calculator)
 loader = MultiToolDataLoader()
 cache = UsageCache()
 
-# [CN] # 缓存重建锁（防止并发刷新导致数据不一致）
+# [CN] # 缓存重建锁(防止并发刷新导致数据不一致)
 _rebuild_lock = threading.Lock()
 
 
 def _ensure_cache():
-    # [CN] """确保缓存中有数据且完整（含 model_breakdowns），否则重建"""
+    # [CN] """确保缓存中有数据且完整(含 model_breakdowns),否则重建"""
     if cache.has_data():
-        # [CN] 检查缓存是否包含 model_breakdowns（旧缓存可能缺失）
+        # [CN] 检查缓存是否包含 model_breakdowns(旧缓存可能缺失)
         sample = cache.get_hourly()
         if sample and isinstance(sample[0], dict) and sample[0].get('model_breakdowns'):
             return
-        # [CN] 缓存不完整，重建
-        # [CN] logger.info("缓存数据不完整（缺少 model_breakdowns），正在重建...")
+        # [CN] 缓存不完整,重建
+        # [CN] logger.info("缓存数据不完整(缺少 model_breakdowns),正在重建...")
         # TODO: Translate this log message
         cache.clear()
 
@@ -65,7 +65,7 @@ def _ensure_cache():
 
 
 def _rebuild_cache(project: Optional[str] = None, source: Optional[str] = None):
-    # [CN] """重建缓存（支持按项目筛选），线程安全"""
+    # [CN] """重建缓存(支持按项目筛选),线程安全"""
     with _rebuild_lock:
         if project:
             entries = loader.load_project_usage(project, source=source)
@@ -144,13 +144,13 @@ def _rebuild_cache(project: Optional[str] = None, source: Optional[str] = None):
 async def get_summary(
     start_date: Optional[str] = Query(None, description="StartDate (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="EndDate (YYYY-MM-DD)"),
-    # [CN] preset: Optional[str] = Query(None, description="预设范围: today, yesterday, last_3_days, this_week, this_month"),
-    # [CN] project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
-    # [CN] source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
+    preset: Optional[str] = Query(None, description="预设范围: today, yesterday, last_3_days, this_week, this_month"),
+    project: Optional[str] = Query(None, description="项目名称(筛选特定项目)"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
 ):
     # [CN] """获取使用统计总览"""
     try:
-        # [CN] 项目筛选：实时计算（不使用缓存）
+        # [CN] 项目筛选:实时计算(不使用缓存)
         if project:
             entries = loader.load_project_usage(project, source=source)
             if not entries:
@@ -174,7 +174,7 @@ async def get_summary(
             cache_creation_tokens = sum(e.cache_creation_tokens for e in entries)
             cache_read_tokens = sum(e.cache_read_tokens for e in entries)
 
-            # [CN] 模型统计（含定价计算，cost 从此处求和才准确）
+            # [CN] 模型统计(含定价计算,cost 从此处求和才准确)
             model_breakdown = calculator.calculate_model_breakdown(entries)
             total_cost = sum(mb.cost for mb in model_breakdown)
             models_used = list(set(e.model for e in entries))
@@ -206,7 +206,7 @@ async def get_summary(
                 'coverage': coverage,
             }
 
-        # [CN] 全量数据：使用缓存
+        # [CN] 全量数据:使用缓存
         _ensure_cache()
         start, end = _resolve_date_range(start_date, end_date, preset)
         return cache.get_summary(start, end)
@@ -221,12 +221,12 @@ async def get_daily_usage(
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
     preset: Optional[str] = Query(None, description="预设范围"),
-    project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
-    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
+    project: Optional[str] = Query(None, description="项目名称(筛选特定项目)"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
 ):
     # [CN] """获取每日使用统计"""
     try:
-        # [CN] # 项目筛选：实时计算
+        # [CN] # 项目筛选:实时计算
         if project:
             entries = loader.load_project_usage(project, source=source)
             if not entries:
@@ -268,26 +268,26 @@ async def get_daily_usage(
                 for s in daily_summaries
             ]
 
-        # [CN] # 全量数据：使用缓存
+        # [CN] # 全量数据:使用缓存
         _ensure_cache()
         start, end = _resolve_date_range(start_date, end_date, preset)
         return cache.get_daily(start, end)
     except Exception as e:
-        # [CN] logger.error(f"获取每日统计失败: {e}")
-        # [CN] raise HTTPException(status_code=500, detail="获取每日统计失败")
+        logger.error(f"获取每日统计失败: {e}")
+        raise HTTPException(status_code=500, detail="获取每日统计失败")
 
 
 @router.get("/hourly")
 async def get_hourly_usage(
     start_date: Optional[str] = Query(None, description="StartDate (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="EndDate (YYYY-MM-DD)"),
-    # [CN] preset: Optional[str] = Query(None, description="预设范围"),
-    # [CN] project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
-    # [CN] source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
+    preset: Optional[str] = Query(None, description="预设范围"),
+    project: Optional[str] = Query(None, description="项目名称(筛选特定项目)"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
 ):
     # [CN] """获取每小时使用统计"""
     try:
-        # [CN] 项目筛选：实时计算
+        # [CN] 项目筛选:实时计算
         if project:
             entries = loader.load_project_usage(project, source=source)
             if not entries:
@@ -334,10 +334,10 @@ async def get_hourly_usage(
                 for s in hourly_summaries
             ]
 
-        # [CN] 全量数据：使用缓存
+        # [CN] 全量数据:使用缓存
         _ensure_cache()
 
-        # [CN] 24H 滚动窗口：精确到小时粒度
+        # [CN] 24H 滚动窗口:精确到小时粒度
         if preset == '24h':
             now = datetime.now()
             start_dt = now - timedelta(hours=24)
@@ -395,16 +395,16 @@ async def get_monthly_usage():
 
         return result
     except Exception as e:
-        # [CN] logger.error(f"获取每月统计失败: {e}")
-        # [CN] raise HTTPException(status_code=500, detail="获取每月统计失败")
+        logger.error(f"获取每月统计失败: {e}")
+        raise HTTPException(status_code=500, detail="获取每月统计失败")
 
 
 @router.get("/models")
 async def get_model_stats(
     start_date: Optional[str] = Query(None, description="StartDate (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="EndDate (YYYY-MM-DD)"),
-    # [CN] preset: Optional[str] = Query(None, description="预设范围"),
-    # [CN] source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
+    preset: Optional[str] = Query(None, description="预设范围"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
 ):
     # [CN] """获取模型使用统计"""
     try:
@@ -454,16 +454,16 @@ async def get_projects():
         projects = loader.get_projects()
         return {"projects": projects}
     except Exception as e:
-        # [CN] logger.error(f"获取项目列表失败: {e}")
-        # [CN] raise HTTPException(status_code=500, detail="获取项目列表失败")
+        logger.error(f"Failed to get project list: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get project list")
 
 
 @router.get("/sessions")
 async def get_sessions(
-    # [CN] project: Optional[str] = Query(None, description="项目名称（筛选特定项目）"),
+    project: Optional[str] = Query(None, description="项目名称(筛选特定项目)"),
     limit: Optional[int] = Query(50, description="ReturnCountConstraint"),
-    # [CN] offset: Optional[int] = Query(0, description="偏移量"),
-    # [CN] source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None（全部）")
+    offset: Optional[int] = Query(0, description="偏移量"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
 ):
     """GetSessionList"""
     try:
@@ -507,7 +507,7 @@ async def get_pricing():
 
 @router.post("/pricing")
 async def update_pricing(pricing_data: dict):
-    # [CN] """更新定价配置（单个模型或批量），自动持久化并重建缓存"""
+    # [CN] """更新定价配置(单个模型或批量),自动持久化并重建缓存"""
     try:
         from aigard.core.usage.pricing import ModelPricing
 
@@ -536,7 +536,7 @@ async def update_pricing(pricing_data: dict):
         # [CN] 后台异步重建缓存
         threading.Thread(target=_rebuild_cache, daemon=True).start()
 
-        return {"status": "success", "message": "定价配置已更新，缓存正在重建"}
+        return {"status": "success", "message": "定价配置已更新,缓存正在重建"}
     except Exception as e:
         # [CN] logger.error(f"更新定价失败: {e}")
         # TODO: Translate this log message
@@ -545,7 +545,7 @@ async def update_pricing(pricing_data: dict):
 
 @router.delete("/pricing/{model:path}")
 async def delete_pricing(model: str):
-    # [CN] """删除单个模型的定价覆盖（恢复默认）"""
+    # [CN] """删除单个模型的定价覆盖(恢复默认)"""
     try:
         success = pricing_manager.delete_pricing(model, persist=True)
 
@@ -562,13 +562,13 @@ async def delete_pricing(model: str):
     except HTTPException:
         raise
     except Exception as e:
-        # [CN] logger.error(f"删除定价失败: {e}")
-        # [CN] raise HTTPException(status_code=500, detail="删除定价失败")
+        logger.error(f"删除定价失败: {e}")
+        raise HTTPException(status_code=500, detail="删除定价失败")
 
 
 @router.post("/pricing/reset")
 async def reset_all_pricing():
-    # [CN] """重置所有定价覆盖，恢复默认"""
+    # [CN] """重置所有定价覆盖,恢复默认"""
     try:
         pricing_manager.reset_all_overrides()
 
@@ -584,11 +584,11 @@ async def reset_all_pricing():
 
 @router.post("/refresh")
 async def refresh_data():
-    # [CN] """刷新数据（重新解析 JSONL 并更新缓存），线程安全"""
+    # [CN] """刷新数据(重新解析 JSONL 并更新缓存),线程安全"""
     try:
         with _rebuild_lock:
             cache.clear()
-            # [CN] # 直接在锁内重建，确保 clear + rebuild 是原子操作
+            # [CN] # 直接在锁内重建,确保 clear + rebuild 是原子操作
             entries = loader.load_all_usage()
             if entries:
                 daily_summaries = aggregator.aggregate_by_day(entries)
@@ -663,10 +663,10 @@ def _resolve_date_range(
 
     if preset:
         if preset == 'today':
-            # [CN] 今天：本地零点到现在（起点固定）
+            # [CN] 今天:本地零点到现在(起点固定)
             return today, today
         elif preset == '24h':
-            # [CN] 24H 滚动窗口：可能跨昨天和今天
+            # [CN] 24H 滚动窗口:可能跨昨天和今天
             yesterday = (now - timedelta(days=1)).strftime('%Y-%m-%d')
             return yesterday, today
         elif preset == 'yesterday':

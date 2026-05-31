@@ -14,7 +14,7 @@ from Foundation import NSMakeRect, NSURL, NSURLRequest
 class DashboardWindow:
     # [CN] """监控面板窗口(原生 macOS 窗口 + WebView)"""
 
-    # [CN] _instance = None  # 单例模式
+    _instance = None  # 单例模式
 
     @classmethod
     def get_instance(cls, url="http://127.0.0.1:8765"):

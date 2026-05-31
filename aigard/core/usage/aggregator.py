@@ -1,5 +1,5 @@
 """
-# [CN] 数据聚合器 - 按时间维度聚合数据
+数据聚合器 - 按时间维度聚合数据
 """
 from typing import List, Dict
 from datetime import datetime, timedelta
@@ -9,7 +9,7 @@ from .calculator import UsageCalculator
 
 
 class UsageAggregator:
-    # [CN] """聚合使用数据"""
+    """聚合使用数据"""
 
     def __init__(self, calculator: UsageCalculator):
         """
@@ -32,12 +32,12 @@ class UsageAggregator:
         """
         hourly_data = defaultdict(list)
 
-        # [CN] # 按小时分组
+        # 按小时分组
         for entry in entries:
             hour_key = entry.timestamp.strftime('%Y-%m-%dT%H')
             hourly_data[hour_key].append(entry)
 
-        # [CN] # 生成汇总
+        # 生成汇总
         summaries = []
         for hour_key in sorted(hourly_data.keys()):
             hour_entries = hourly_data[hour_key]
@@ -58,12 +58,12 @@ class UsageAggregator:
         """
         daily_data = defaultdict(list)
 
-        # [CN] # 按日分组
+        # 按日分组
         for entry in entries:
             date_key = entry.timestamp.strftime('%Y-%m-%d')
             daily_data[date_key].append(entry)
 
-        # [CN] # 生成汇总
+        # 生成汇总
         summaries = []
         for date_key in sorted(daily_data.keys()):
             day_entries = daily_data[date_key]
@@ -84,12 +84,12 @@ class UsageAggregator:
         """
         monthly_data = defaultdict(list)
 
-        # [CN] # 按月分组
+        # 按月分组
         for entry in entries:
             month_key = entry.timestamp.strftime('%Y-%m')
             monthly_data[month_key].append(entry)
 
-        # [CN] # 生成汇总
+        # 生成汇总
         summaries = []
         for month_key in sorted(monthly_data.keys()):
             month_entries = monthly_data[month_key]
@@ -99,7 +99,7 @@ class UsageAggregator:
         return summaries
 
     def _create_hourly_summary(self, hour: str, entries: List[UsageEntry]) -> HourlySummary:
-        # [CN] """创建小时汇总"""
+        """创建小时汇总"""
         token_breakdown = self.calculator.calculate_token_breakdown(entries)
         model_breakdowns = self.calculator.calculate_model_breakdown(entries)
         total_tokens = self.calculator.calculate_total_tokens(entries)
@@ -121,7 +121,7 @@ class UsageAggregator:
         )
 
     def _create_daily_summary(self, date: str, entries: List[UsageEntry]) -> DailySummary:
-        # [CN] """创建日汇总"""
+        """创建日汇总"""
         token_breakdown = self.calculator.calculate_token_breakdown(entries)
         model_breakdowns = self.calculator.calculate_model_breakdown(entries)
         total_tokens = self.calculator.calculate_total_tokens(entries)
@@ -143,7 +143,7 @@ class UsageAggregator:
         )
 
     def _create_monthly_summary(self, month: str, entries: List[UsageEntry]) -> MonthlySummary:
-        # [CN] """创建月汇总"""
+        """创建月汇总"""
         token_breakdown = self.calculator.calculate_token_breakdown(entries)
         model_breakdowns = self.calculator.calculate_model_breakdown(entries)
         total_tokens = self.calculator.calculate_total_tokens(entries)
@@ -151,7 +151,7 @@ class UsageAggregator:
         models_used = list(set(entry.model for entry in entries))
         request_count = sum(mb.request_count for mb in model_breakdowns)
 
-        # [CN] 生成该月的每日数据
+        # 生成该月的每日数据
         daily_summaries = self.aggregate_by_day(entries)
 
         return MonthlySummary(
@@ -175,15 +175,15 @@ class UsageAggregator:
         end_date: datetime
     ) -> List[UsageEntry]:
         """
-        # [CN] 按日期范围筛选
+        按日期范围筛选
 
         Args:
-            # [CN] entries: 使用记录列表
+            entries: 使用记录列表
             start_date: StartDate
             end_date: EndDate
 
         Returns:
-            # [CN] 筛选后的记录列表
+            筛选后的记录列表
         """
         return [
             entry for entry in entries
@@ -192,7 +192,7 @@ class UsageAggregator:
 
     def get_date_range_presets(self) -> Dict[str, tuple]:
         """
-        # [CN] 获取预设的日期范围
+        获取预设的日期范围
 
         Returns:
             DateRangeDictionary {Name: (StartDate, EndDate)}

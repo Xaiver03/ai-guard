@@ -288,7 +288,7 @@ def ai_analyze():
     """AI 分析所有书签"""
     bookmarks = store.list_bookmarks()
 
-    # 转换为旧格式（兼容 BookmarkAnalyzer）
+    # 转换为旧格式(兼容 BookmarkAnalyzer)
     legacy_bookmarks = [
         {
             "name": bm['name'],

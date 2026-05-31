@@ -12,7 +12,7 @@ import sqlite3
 
 
 class BackupManager:
-    # [CN] """书签备份管理器"""
+    """书签备份管理器"""
 
     def __init__(self, backup_dir: str = "~/.aigard/bookmark_backups"):
         self.backup_dir = Path(backup_dir).expanduser()
@@ -21,7 +21,7 @@ class BackupManager:
         self._init_db()
 
     def _init_db(self):
-        # [CN] """初始化备份索引数据库"""
+        """初始化备份索引数据库"""
         conn = sqlite3.connect(self.db_path)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS backups (
@@ -87,7 +87,7 @@ class BackupManager:
             return False
 
     def list_backups(self, browser: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
-        # [CN] """列出备份"""
+        """列出备份"""
         conn = sqlite3.connect(self.db_path)
 
         if browser:
@@ -121,7 +121,7 @@ class BackupManager:
 
 
 class OperationLog:
-    # [CN] """操作日志记录器"""
+    """操作日志记录器"""
 
     def __init__(self, log_dir: str = "~/.aigard/bookmark_logs"):
         self.log_dir = Path(log_dir).expanduser()
@@ -130,7 +130,7 @@ class OperationLog:
         self._init_db()
 
     def _init_db(self):
-        # [CN] """初始化操作日志数据库"""
+        """初始化操作日志数据库"""
         conn = sqlite3.connect(self.db_path)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS operations (
@@ -149,7 +149,7 @@ class OperationLog:
 
     def add(self, browser: str, operation_type: str, details: Dict[str, Any],
             backup_id: str, success: bool, error_message: str = ""):
-        # [CN] """添加操作记录"""
+        """添加操作记录"""
         conn = sqlite3.connect(self.db_path)
         conn.execute('''
             INSERT INTO operations
@@ -167,7 +167,7 @@ class OperationLog:
         conn.close()
 
     def get_history(self, browser: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
-        # [CN] """获取操作历史"""
+        """获取操作历史"""
         conn = sqlite3.connect(self.db_path)
 
         if browser:
@@ -206,7 +206,7 @@ class OperationLog:
 
 
 class BookmarkModifier:
-    # [CN] """书签修改器"""
+    """书签修改器"""
 
     BROWSER_PATHS = {
         "chrome": "~/Library/Application Support/Google/Chrome/Default/Bookmarks",
@@ -225,7 +225,7 @@ class BookmarkModifier:
 
         Args:
             browser: 浏览器名称
-            operations: 操作列表，每个操作包含 type 和相关参数
+            operations: 操作列表,每个操作包含 type 和相关参数
 
         Returns:
             结果字典
@@ -233,7 +233,7 @@ class BookmarkModifier:
         if browser not in self.BROWSER_PATHS:
             return {
                 'success': False,
-                # [CN] 'error': f'不支持的浏览器: {browser}'
+                'error': f'不支持的浏览器: {browser}'
             }
 
         path = Path(self.BROWSER_PATHS[browser]).expanduser()
@@ -241,36 +241,36 @@ class BookmarkModifier:
         if not path.exists():
             return {
                 'success': False,
-                # [CN] 'error': f'书签文件不存在: {path}'
+                'error': f'书签文件不存在: {path}'
             }
 
         # 1. CreateBackup
         backup_id = self.backup_manager.create_backup(
             browser,
             path,
-            # [CN] f"修改前备份 - {len(operations)} 个操作"
+            f"修改前备份 - {len(operations)} 个操作"
         )
 
         try:
-            # [CN] # 2. 加载书签
+            # 2. 加载书签
             with open(path, 'r', encoding='utf-8') as f:
                 bookmarks = json.load(f)
 
-            # [CN] # 3. 执行操作
+            # 3. 执行操作
             results = []
             for op in operations:
                 result = self._execute_operation(bookmarks, op)
                 results.append(result)
 
-            # [CN] # 4. 保存书签
+            # 4. 保存书签
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(bookmarks, f, ensure_ascii=False, indent=2)
 
             # 5. ValidateModify
             if not self._verify_bookmarks(path):
-                # [CN] raise Exception("书签文件验证失败")
+                raise Exception("书签文件验证失败")
 
-            # [CN] # 6. 记录操作
+            # 6. 记录操作
             self.operation_log.add(
                 browser,
                 'batch_modify',
@@ -287,7 +287,7 @@ class BookmarkModifier:
             }
 
         except Exception as e:
-            # [CN] # 回滚到备份
+            # 回滚到备份
             self.backup_manager.restore_backup(backup_id, path)
 
             # RecordFailure
@@ -307,7 +307,7 @@ class BookmarkModifier:
             }
 
     def _execute_operation(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """执行单个操作"""
+        """执行单个操作"""
         op_type = operation.get('type')
 
         if op_type == 'delete':
@@ -324,7 +324,7 @@ class BookmarkModifier:
             return {'success': False, 'error': f'未知操作类型: {op_type}'}
 
     def _delete_bookmark(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """删除书签"""
+        """删除书签"""
         bookmark_id = operation.get('bookmark_id')
 
         def delete_recursive(node):
@@ -346,7 +346,7 @@ class BookmarkModifier:
         return {'success': True, 'operation': 'delete', 'bookmark_id': bookmark_id}
 
     def _rename_bookmark(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """重命名书签"""
+        """重命名书签"""
         bookmark_id = operation.get('bookmark_id')
         new_name = operation.get('new_name')
 
@@ -369,10 +369,10 @@ class BookmarkModifier:
         return {'success': True, 'operation': 'rename', 'bookmark_id': bookmark_id, 'new_name': new_name}
 
     def _clean_url(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """清理 URL 追踪参数"""
+        """清理 URL 追踪参数"""
         bookmark_id = operation.get('bookmark_id')
 
-        # [CN] # 常见追踪参数
+        # 常见追踪参数
         tracking_params = [
             'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
             'fbclid', 'gclid', 'msclkid',
@@ -408,7 +408,7 @@ class BookmarkModifier:
         return {'success': True, 'operation': 'clean_url', 'bookmark_id': bookmark_id}
 
     def _create_folder(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """创建文件夹"""
+        """创建文件夹"""
         folder_name = operation.get('folder_name')
         parent_id = operation.get('parent_id', 'bookmark_bar')
 
@@ -446,11 +446,11 @@ class BookmarkModifier:
         return {'success': True, 'operation': 'create_folder', 'folder_name': folder_name}
 
     def _move_bookmark(self, bookmarks: Dict[str, Any], operation: Dict[str, Any]) -> Dict[str, Any]:
-        # [CN] """移动书签"""
+        """移动书签"""
         bookmark_id = operation.get('bookmark_id')
         target_folder_id = operation.get('target_folder_id')
 
-        # [CN] # 先找到并移除书签
+        # 先找到并移除书签
         bookmark_node = None
 
         def find_and_remove(node):
@@ -465,7 +465,7 @@ class BookmarkModifier:
                         return True
             return False
 
-        # [CN] # 然后添加到目标文件夹
+        # 然后添加到目标文件夹
         def add_to_target(node):
             if node.get('id') == target_folder_id:
                 node.get('children', []).append(bookmark_node)
@@ -490,12 +490,12 @@ class BookmarkModifier:
         return {'success': True, 'operation': 'move', 'bookmark_id': bookmark_id}
 
     def _verify_bookmarks(self, path: Path) -> bool:
-        # [CN] """验证书签文件格式正确"""
+        """验证书签文件格式正确"""
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # [CN] 基本结构验证
+            # 基本结构验证
             if 'roots' not in data:
                 return False
 

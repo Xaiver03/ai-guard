@@ -7,11 +7,17 @@ Usage:
 
 import os
 import sys
+import io
 
 # Set UTF-8 encoding BEFORE any other imports to prevent UnicodeEncodeError
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 os.environ['LC_ALL'] = 'en_US.UTF-8'
 os.environ['LANG'] = 'en_US.UTF-8'
+
+# Redirect stdout/stderr to log file with UTF-8 encoding IMMEDIATELY
+log_file = open('/tmp/aigard_native.log', 'wb', buffering=0)
+sys.stdout = io.TextIOWrapper(log_file, encoding='utf-8', line_buffering=True, write_through=True, errors='replace')
+sys.stderr = sys.stdout
 
 import threading
 import webbrowser
@@ -33,37 +39,29 @@ os.environ["AIGARD_NO_BROWSER"] = "1"
 # Ensure we can import main.py from the same directory
 # After packaging, main.py is in the Resources directory
 if getattr(sys, 'frozen', False):
-    # Path after packaging
-    bundle_dir = Path(sys._MEIPASS if hasattr(sys, '_MEIPASS') else sys.executable).parent
-    if (bundle_dir / 'Resources').exists():
-        sys.path.insert(0, str(bundle_dir / 'Resources'))
+    # Path after packaging: sys.executable is .../MacOS/AI Guard
+    # We need to go up to Contents, then into Resources
+    bundle_dir = Path(sys.executable).parent.parent  # MacOS -> Contents
+    resources_dir = bundle_dir / 'Resources'
+    if resources_dir.exists():
+        sys.path.insert(0, str(resources_dir))
+        print(f"[DEBUG] Added to sys.path: {resources_dir}", flush=True)
     else:
+        print(f"[ERROR] Resources directory not found: {resources_dir}", flush=True)
         sys.path.insert(0, str(bundle_dir))
+    print(f"[DEBUG] sys.path: {sys.path}", flush=True)
 else:
     # Development mode
     sys.path.insert(0, str(Path(__file__).parent))
 
-import main as _main_mod
+import importlib
+_main_mod = importlib.import_module('main')
 
 
 class AIGuardDelegate(NSObject):
     """Application delegate"""
 
     def init(self):
-        import sys
-        import io
-        import os
-
-        # Set environment variables for UTF-8 encoding
-        os.environ['PYTHONIOENCODING'] = 'utf-8'
-        os.environ['LC_ALL'] = 'en_US.UTF-8'
-        os.environ['LANG'] = 'en_US.UTF-8'
-
-        # Use io.TextIOWrapper with explicit UTF-8 encoding
-        log_file = open('/tmp/aigard_native.log', 'wb', buffering=0)
-        sys.stdout = io.TextIOWrapper(log_file, encoding='utf-8', line_buffering=True, write_through=True)
-        sys.stderr = sys.stdout
-
         print("=== AIGuardDelegate.init() started ===")
         self = objc.super(AIGuardDelegate, self).init()
         if self is None:

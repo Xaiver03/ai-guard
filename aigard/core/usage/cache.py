@@ -1,5 +1,5 @@
 """
-# [CN] SQLite 缓存 - 持久化聚合后的使用数据，减少内存占用
+SQLite 缓存 - 持久化聚合后的使用数据,减少内存占用
 """
 import json
 import os
@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any
 
 
 class UsageCache:
-    # [CN] """SQLite 缓存，存储聚合后的使用统计"""
+    """SQLite 缓存,存储聚合后的使用统计"""
 
     def __init__(self, db_dir: Optional[str] = None):
         if db_dir is None:
@@ -20,7 +20,7 @@ class UsageCache:
         self._init_db()
 
     def _init_db(self):
-        # [CN] """初始化数据库表"""
+        """初始化数据库表"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS daily_usage (
@@ -61,7 +61,7 @@ class UsageCache:
             conn.commit()
 
     def get_last_update_time(self) -> Optional[str]:
-        # [CN] """获取上次更新时间"""
+        """获取上次更新时间"""
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
                 "SELECT value FROM cache_meta WHERE key = 'last_update'"
@@ -69,7 +69,7 @@ class UsageCache:
             return row[0] if row else None
 
     def set_last_update_time(self, timestamp: str):
-        # [CN] """设置上次更新时间"""
+        """设置上次更新时间"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cache_meta (key, value) VALUES (?, ?)",
@@ -78,7 +78,7 @@ class UsageCache:
             conn.commit()
 
     def save_daily(self, data: List[Dict[str, Any]]):
-        # [CN] """保存日报数据"""
+        """保存日报数据"""
         with sqlite3.connect(self.db_path) as conn:
             for item in data:
                 conn.execute("""
@@ -103,7 +103,7 @@ class UsageCache:
             conn.commit()
 
     def save_hourly(self, data: List[Dict[str, Any]]):
-        # [CN] """保存小时报数据"""
+        """保存小时报数据"""
         with sqlite3.connect(self.db_path) as conn:
             for item in data:
                 conn.execute("""
@@ -128,7 +128,7 @@ class UsageCache:
             conn.commit()
 
     def get_daily(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict]:
-        # [CN] """获取日报数据"""
+        """获取日报数据"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             if start_date and end_date:
@@ -149,7 +149,7 @@ class UsageCache:
             return [self._row_to_daily_dict(row) for row in rows]
 
     def get_hourly(self, start_hour: Optional[str] = None, end_hour: Optional[str] = None) -> List[Dict]:
-        # [CN] """获取小时报数据"""
+        """获取小时报数据"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             if start_hour and end_hour:
@@ -170,7 +170,7 @@ class UsageCache:
             return [self._row_to_hourly_dict(row) for row in rows]
 
     def get_summary(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict:
-        # [CN] """获取汇总数据"""
+        """获取汇总数据"""
         with sqlite3.connect(self.db_path) as conn:
             if start_date and end_date:
                 row = conn.execute("""
@@ -212,7 +212,7 @@ class UsageCache:
                     FROM daily_usage
                 """).fetchone()
 
-            # [CN] # 获取模型数
+            # 获取模型数
             models_count = self._count_unique_models(conn, start_date, end_date)
 
             # Get coverage Data
@@ -227,13 +227,13 @@ class UsageCache:
                 'total_cost': round(row[5], 4),
                 'active_days': row[6],
                 'models_count': models_count,
-                # [CN] 'total_requests': row[7],  # 使用查询结果中的 request_count
-                # [CN] 'request_count': row[7],   # 同时提供 request_count 字段
+                'total_requests': row[7],  # 使用查询结果中的 request_count
+                'request_count': row[7],   # 同时提供 request_count 字段
                 'coverage': coverage,
             }
 
     def _count_unique_models(self, conn, start_date=None, end_date=None) -> int:
-        # [CN] """统计唯一模型数"""
+        """统计唯一模型数"""
         if start_date and end_date:
             rows = conn.execute(
                 "SELECT models_used FROM daily_usage WHERE date >= ? AND date <= ?",
@@ -254,7 +254,7 @@ class UsageCache:
         return len(all_models)
 
     def _row_to_daily_dict(self, row) -> Dict:
-        # [CN] """将数据库行转为字典"""
+        """将数据库行转为字典"""
         return {
             'date': row['date'],
             'input_tokens': row['input_tokens'],
@@ -269,7 +269,7 @@ class UsageCache:
         }
 
     def _row_to_hourly_dict(self, row) -> Dict:
-        # [CN] """将数据库行转为字典"""
+        """将数据库行转为字典"""
         result = {
             'hour': row['hour'],
             'input_tokens': row['input_tokens'],
@@ -312,13 +312,13 @@ class UsageCache:
             }
 
     def has_data(self) -> bool:
-        # [CN] """检查是否有缓存数据"""
+        """检查是否有缓存数据"""
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute("SELECT COUNT(*) FROM daily_usage").fetchone()
             return row[0] > 0
 
     def clear(self):
-        # [CN] """清空缓存"""
+        """清空缓存"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM daily_usage")
             conn.execute("DELETE FROM hourly_usage")
