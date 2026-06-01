@@ -24,9 +24,9 @@ print("main loaded")
 
 import threading
 
-from AppKit import NSApplication, NSStatusBar, NSVariableStatusItemLength, NSMenu, NSMenuItem, NSApp, NSPopover
+from AppKit import NSApplication, NSStatusBar, NSVariableStatusItemLength, NSMenu, NSMenuItem, NSApp, NSPopover, NSImage, NSColor, NSBezierPath
 from WebKit import WKWebView
-from Foundation import NSMakeSize, NSTimer
+from Foundation import NSMakeSize, NSTimer, NSMakeRect
 
 from aigard.popover import PopoverViewController
 from aigard.window_manager import DashboardWindow
@@ -34,6 +34,27 @@ print("All imports done")
 
 import objc
 from Foundation import NSObject
+
+
+def create_status_icon(color_name="white"):
+    """创建菜单栏图标（圆点）"""
+    size = 18
+    img = NSImage.alloc().initWithSize_((size, size))
+    img.lockFocus()
+
+    if color_name == "red":
+        NSColor.redColor().setFill()
+    elif color_name == "yellow":
+        NSColor.yellowColor().setFill()
+    else:
+        NSColor.whiteColor().setFill()
+
+    path = NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(2, 2, size-4, size-4))
+    path.fill()
+
+    img.unlockFocus()
+    img.setTemplate_(True)  # 使用模板模式，自动适配亮/暗色主题
+    return img
 
 
 class AIGuardDelegate(NSObject):
@@ -59,6 +80,13 @@ class AIGuardDelegate(NSObject):
         print(f"Status item: {self.statusItem}")
         self.statusItem.setVisible_(True)
         print(f"Status item visible: {self.statusItem.isVisible()}")
+
+        # 创建默认图标
+        self.icon_normal = create_status_icon("white")
+        self.icon_warn = create_status_icon("yellow")
+        self.icon_crit = create_status_icon("red")
+        print("Icons created")
+
         print("=== AIGuardDelegate.init() completed ===")
         return self
 
@@ -68,9 +96,9 @@ class AIGuardDelegate(NSObject):
         button = self.statusItem.button()
         print(f"Button: {button}")
         if button:
-            button.setTitle_("AG")
+            button.setImage_(self.icon_normal)
             button.setEnabled_(True)
-            print("Button title set to AG")
+            print("Button icon set")
 
         # Full menu
         menu = NSMenu.alloc().init()
@@ -151,12 +179,15 @@ class AIGuardDelegate(NSObject):
         cpu = latest.get("cpu_percent", 0)
         swap = latest.get("swap_percent", 0)
         level = latest.get("alert_level", "normal")
+
+        # 根据告警等级切换图标颜色
         if level == "crit":
-            self.statusItem.button().setTitle_(f"!{mem:.0f}%")
+            self.statusItem.button().setImage_(self.icon_crit)
         elif level == "warn":
-            self.statusItem.button().setTitle_(f"^{mem:.0f}%")
+            self.statusItem.button().setImage_(self.icon_warn)
         else:
-            self.statusItem.button().setTitle_(f"{mem:.0f}%")
+            self.statusItem.button().setImage_(self.icon_normal)
+
         self.statusMenuItem.setTitle_(f"CPU {cpu:.0f}% · Mem {mem:.0f}% · Swap {swap:.0f}%")
         state = _main_mod.threads.autokill_enabled
         self.autoKillMenuItem.setTitle_(f"Auto Kill: {'On' if state else 'Off'}")
