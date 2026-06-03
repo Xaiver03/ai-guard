@@ -338,12 +338,31 @@ class AIGuardDelegate(NSObject):
         my_ppid = os.getppid()
         with threads.lock:
             safe_procs = [p for p in threads.latest_processes if p.get("risk") == "safe"]
+
+        killed_count = 0
         for proc in safe_procs:
             pid = proc["pid"]
             # Self-protection: never kill AI Guard itself or its parent
             if pid == my_pid or pid == my_ppid:
                 continue
-            kill_process(pid)
+            try:
+                kill_process(pid)
+                killed_count += 1
+            except Exception as e:
+                print(f"终止进程 {pid} 失败: {e}")
+
+        # 显示通知
+        texts = self.MENU_TEXTS.get(self.current_lang, self.MENU_TEXTS['en'])
+        if self.current_lang == 'zh':
+            msg = f"已终止 {killed_count} 个安全进程"
+        else:
+            msg = f"Killed {killed_count} safe processes"
+
+        import subprocess
+        subprocess.run([
+            'osascript', '-e',
+            f'display notification "{msg}" with title "AI Guard"'
+        ])
 
     def toggleAutoKill_(self, sender):
         threads = _main_mod.threads
