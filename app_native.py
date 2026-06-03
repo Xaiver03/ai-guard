@@ -48,7 +48,7 @@ def create_status_icon(color_name="white"):
         # 开发模式
         base_path = Path(__file__).parent
 
-    icon_path = str(base_path / 'assets' / 'icon_template.png')
+    icon_path = str(base_path / 'assets' / 'menubar_icon.png')
 
     # 加载图标
     img = NSImage.alloc().initWithContentsOfFile_(icon_path)
