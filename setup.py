@@ -15,7 +15,6 @@ DATA_FILES = [
                       "aigard/ui/usage.html",
                       "aigard/ui/tools.html",
                       "aigard/ui/practices.html",
-                      "aigard/ui/settings.html",
                       "aigard/ui/about.html"]),
     ("aigard/ui/css", ["aigard/ui/css/design-system.css",
                        "aigard/ui/css/components.css",

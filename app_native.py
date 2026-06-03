@@ -365,9 +365,15 @@ class AIGuardDelegate(NSObject):
             pass
 
     def openConfig_(self, sender):
-        """打开设置面板（Dashboard 窗口）"""
-        self.dashboard_window.load_url(f"{self.url}/settings.html")
+        """打开监控面板并显示设置侧边栏"""
+        self.dashboard_window.load_url(self.url)
         self.dashboard_window.show()
+        # 等待页面加载后触发设置侧边栏
+        import time
+        time.sleep(0.5)
+        # 通过 JavaScript 打开设置
+        js_code = "openSettings()"
+        self.dashboard_window.webview.evaluateJavaScript_completionHandler_(js_code, None)
 
 
 def main():
