@@ -43,7 +43,7 @@ OPTIONS = {
         # App 身份
         "CFBundleName":               "AI Guard",
         "CFBundleDisplayName":        "AI Guard",
-        "CFBundleIdentifier":         "com.xaiver.aiguard",
+        "CFBundleIdentifier":         "com.rocalight.aiguard",
         "CFBundleVersion":            "1.1.3",
         "CFBundleShortVersionString": "1.1.3",
         "NSHighResolutionCapable":    True,
