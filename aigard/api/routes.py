@@ -387,6 +387,56 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         return {"enabled": state}
 
     # [CN] # ── 设置管理 ──────────────────────────────────────────────
+    @app.get("/api/config")
+    def get_config():
+        """获取完整配置（包括 UI 语言设置）"""
+        with threads_manager.settings_lock:
+            return dict(threads_manager.config)
+
+    class LanguageUpdate(BaseModel):
+        language: str
+
+    @app.post("/api/config/language")
+    def update_language(payload: LanguageUpdate):
+        """更新界面语言"""
+        import tomli_w
+
+        language = payload.language
+        if language not in ("zh", "en"):
+            raise HTTPException(status_code=400, detail="Invalid language. Must be 'zh' or 'en'.")
+
+        with threads_manager.settings_lock:
+            # 更新内存中的配置
+            if "ui" not in threads_manager.config:
+                threads_manager.config["ui"] = {}
+            threads_manager.config["ui"]["language"] = language
+
+            # 写回 config.toml
+            merged = dict(threads_manager.config)
+
+        # 保存到文件
+        dev_path = base_dir / "config.toml"
+        pkg_path = base_dir.parent / "config.toml"
+        if not dev_path.exists() and not pkg_path.exists():
+            import sys
+            exe = Path(sys.executable)
+            if "Contents/MacOS" in str(exe):
+                resources = exe.parent.parent / "Resources"
+                res_path = resources / "config.toml"
+                if res_path.exists():
+                    config_path = res_path
+                else:
+                    config_path = dev_path
+            else:
+                config_path = dev_path
+        else:
+            config_path = dev_path if dev_path.exists() else pkg_path
+
+        with open(config_path, "wb") as f:
+            tomli_w.dump(merged, f)
+
+        return {"ok": True, "language": language}
+
     @app.get("/api/settings")
     def get_settings():
         with threads_manager.settings_lock:

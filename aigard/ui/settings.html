@@ -68,7 +68,8 @@
             gap: var(--space-2);
         }
 
-        input[type="number"] {
+        input[type="number"],
+        select {
             width: 80px;
             padding: var(--space-2);
             background: var(--bg-tertiary);
@@ -76,6 +77,12 @@
             border-radius: var(--radius-md);
             color: var(--text-primary);
             font-size: var(--text-sm);
+        }
+
+        select {
+            width: auto;
+            min-width: 120px;
+            cursor: pointer;
         }
 
         .btn {
@@ -180,6 +187,23 @@
         </div>
 
         <div class="section">
+            <div class="section-title">界面设置</div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">界面语言</div>
+                    <div class="setting-description">切换界面显示语言</div>
+                </div>
+                <div class="setting-control">
+                    <select id="language-select" onchange="changeLanguage()">
+                        <option value="zh">中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <div class="section-title">配置文件</div>
 
             <div class="setting-item">
@@ -201,8 +225,17 @@
     <script>
         // 加载当前设置
         async function loadSettings() {
-            // TODO: 从后端加载配置
-            // 暂时使用默认值
+            // 加载语言设置
+            try {
+                const resp = await fetch('/api/config');
+                const data = await resp.json();
+                const langSelect = document.getElementById('language-select');
+                if (data.ui && data.ui.language) {
+                    langSelect.value = data.ui.language;
+                }
+            } catch (e) {
+                console.error('加载语言设置失败:', e);
+            }
 
             // 加载自动终止状态
             try {
@@ -213,6 +246,29 @@
                 btn.onclick = toggleAutokill;
             } catch (e) {
                 console.error('加载自动终止状态失败:', e);
+            }
+        }
+
+        async function changeLanguage() {
+            const langSelect = document.getElementById('language-select');
+            const language = langSelect.value;
+
+            try {
+                const resp = await fetch('/api/config/language', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language })
+                });
+
+                if (resp.ok) {
+                    showToast(language === 'zh' ? '语言已切换，刷新页面生效' : 'Language changed, refresh to apply');
+                    // 1秒后刷新页面
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('保存失败');
+                }
+            } catch (e) {
+                showToast('操作失败: ' + e.message);
             }
         }
 

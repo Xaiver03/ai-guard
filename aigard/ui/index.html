@@ -424,6 +424,20 @@ const translations = {
 
 let _lang = localStorage.getItem('ai-guard-lang') || 'zh';
 
+// 从后端加载语言配置
+async function loadLanguage() {
+  try {
+    const resp = await fetch('/api/config');
+    const data = await resp.json();
+    if (data.ui && data.ui.language) {
+      _lang = data.ui.language;
+      localStorage.setItem('ai-guard-lang', _lang);
+    }
+  } catch (e) {
+    console.warn('加载语言配置失败，使用默认语言:', e);
+  }
+}
+
 function t(key, vars) {
   const str = (translations[_lang] || translations.zh)[key] || key;
   if (!vars) return str;
@@ -449,6 +463,13 @@ function setLang(lang) {
   if (title) title.textContent = _currentView === 'ai'
     ? t('monitor.aiProcesses')
     : t('monitor.allProcesses');
+
+  // 保存到后端
+  fetch('/api/config/language', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language: lang })
+  }).catch(err => console.warn('保存语言配置失败:', err));
 }
 
 function updateAllText() {
@@ -1203,9 +1224,15 @@ function initButtons() {
 
 // ── 页面启动 ─────────────────────────────────────────────
 (function init() {
-  // 恢复语言
-  document.getElementById('lang-zh').classList.toggle('active', _lang === 'zh');
-  document.getElementById('lang-en').classList.toggle('active', _lang === 'en');
+  // 加载语言配置
+  loadLanguage().then(() => {
+    // 恢复语言
+    document.getElementById('lang-zh').classList.toggle('active', _lang === 'zh');
+    document.getElementById('lang-en').classList.toggle('active', _lang === 'en');
+    // 更新所有文本
+    updateAllText();
+  });
+
   // 恢复主题
   const savedTheme = localStorage.getItem('ai-guard-theme') || 'dark';
   _applyTheme(savedTheme);

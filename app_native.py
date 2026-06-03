@@ -37,22 +37,41 @@ from Foundation import NSObject
 
 
 def create_status_icon(color_name="white"):
-    """创建菜单栏图标（圆点）"""
-    size = 18
-    img = NSImage.alloc().initWithSize_((size, size))
-    img.lockFocus()
+    """加载菜单栏图标"""
+    from pathlib import Path
 
-    if color_name == "red":
-        NSColor.redColor().setFill()
-    elif color_name == "yellow":
-        NSColor.yellowColor().setFill()
+    # 获取图标路径（支持开发模式和打包模式）
+    if getattr(sys, 'frozen', False):
+        # 打包模式
+        base_path = Path(sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)).parent / 'Resources'
     else:
-        NSColor.whiteColor().setFill()
+        # 开发模式
+        base_path = Path(__file__).parent
 
-    path = NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(2, 2, size-4, size-4))
-    path.fill()
+    icon_path = str(base_path / 'assets' / 'icon_template.png')
 
-    img.unlockFocus()
+    # 加载图标
+    img = NSImage.alloc().initWithContentsOfFile_(icon_path)
+    if img is None:
+        print(f"警告：无法加载图标 {icon_path}，使用备用圆点")
+        # 备用方案：创建圆点
+        size = 18
+        img = NSImage.alloc().initWithSize_((size, size))
+        img.lockFocus()
+        if color_name == "red":
+            NSColor.redColor().setFill()
+        elif color_name == "yellow":
+            NSColor.yellowColor().setFill()
+        else:
+            NSColor.whiteColor().setFill()
+        path = NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(2, 2, size-4, size-4))
+        path.fill()
+        img.unlockFocus()
+    else:
+        # 调整图标大小为菜单栏标准尺寸
+        img.setSize_((18, 18))
+        print(f"✅ 已加载图标：{icon_path}")
+
     img.setTemplate_(True)  # 使用模板模式，自动适配亮/暗色主题
     return img
 
@@ -259,8 +278,9 @@ class AIGuardDelegate(NSObject):
 
 def main():
     app = NSApplication.sharedApplication()
-    # NSApplicationActivationPolicyAccessory = 2 (menu bar only, no dock icon)
-    app.setActivationPolicy_(2)
+    # macOS Tahoe 兼容：使用 NSApplicationActivationPolicyRegular (0)
+    # setActivationPolicy_(2) 在 Tahoe 上会导致状态栏项不显示
+    app.setActivationPolicy_(0)
     delegate = AIGuardDelegate.alloc().init()
     if delegate is None:
         return
