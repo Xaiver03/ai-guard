@@ -77,6 +77,66 @@ def create_status_icon(color_name="white"):
 
 
 class AIGuardDelegate(NSObject):
+    # 菜单项翻译
+    MENU_TEXTS = {
+        'zh': {
+            'about': '关于',
+            'monitor': '监控面板',
+            'usage': '使用统计',
+            'kill_safe': '终止安全进程',
+            'auto_kill_on': '自动终止: 开',
+            'auto_kill_off': '自动终止: 关',
+            'check_updates': '检查更新...',
+            'preferences': '偏好设置...',
+            'quit': '退出 AI Guard'
+        },
+        'en': {
+            'about': 'About',
+            'monitor': 'Monitor Panel',
+            'usage': 'Usage Stats',
+            'kill_safe': 'Kill Safe',
+            'auto_kill_on': 'Auto Kill: On',
+            'auto_kill_off': 'Auto Kill: Off',
+            'check_updates': 'Check Updates...',
+            'preferences': 'Preferences...',
+            'quit': 'Quit AI Guard'
+        }
+    }
+
+    def _load_language(self):
+        """从 config.toml 读取语言配置"""
+        try:
+            # 使用 Python 3.11+ 标准库的 tomllib
+            import tomllib
+            from pathlib import Path
+
+            # 优先读取用户配置目录的 config.toml（与后端 API 保持一致）
+            user_config = Path.home() / '.aigard' / 'config.toml'
+
+            # 如果用户配置不存在，使用应用内置配置
+            if not user_config.exists():
+                if getattr(sys, 'frozen', False):
+                    # 打包模式
+                    if hasattr(sys, '_MEIPASS'):
+                        base_path = Path(sys._MEIPASS)
+                    else:
+                        base_path = Path(sys.executable).parent.parent / 'Resources'
+                else:
+                    # 开发模式
+                    base_path = Path(__file__).parent
+                config_path = base_path / 'config.toml'
+            else:
+                config_path = user_config
+
+            if config_path.exists():
+                with open(config_path, 'rb') as f:
+                    config = tomllib.load(f)
+                return config.get('ui', {}).get('language', 'en')
+        except Exception as e:
+            print(f"加载语言配置失败: {e}")
+            import traceback
+            traceback.print_exc()
+        return 'en'
 
     def init(self):
         print("=== AIGuardDelegate.init() started ===")
@@ -91,6 +151,10 @@ class AIGuardDelegate(NSObject):
         port = _main_mod.SERVER_CFG.get("port", 8765)
         self.url = f"http://{host}:{port}"
         print(f"Service URL: {self.url}")
+
+        # 读取语言配置
+        self.current_lang = self._load_language()
+        print(f"Language: {self.current_lang}")
 
         print("=== Creating status bar item ===")
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(
@@ -121,41 +185,44 @@ class AIGuardDelegate(NSObject):
 
         # Full menu
         menu = NSMenu.alloc().init()
-        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("About", "showAbout:", "")
-        item.setTarget_(self)
-        menu.addItem_(item)
+        self.aboutMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("About", "showAbout:", "")
+        self.aboutMenuItem.setTarget_(self)
+        menu.addItem_(self.aboutMenuItem)
         menu.addItem_(NSMenuItem.separatorItem())
-        item2 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Monitor Panel", "openPanel:", "")
-        item2.setTarget_(self)
-        menu.addItem_(item2)
-        item3 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Usage Stats", "openUsage:", "")
-        item3.setTarget_(self)
-        menu.addItem_(item3)
+        self.monitorMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Monitor Panel", "openPanel:", "")
+        self.monitorMenuItem.setTarget_(self)
+        menu.addItem_(self.monitorMenuItem)
+        self.usageMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Usage Stats", "openUsage:", "")
+        self.usageMenuItem.setTarget_(self)
+        menu.addItem_(self.usageMenuItem)
         menu.addItem_(NSMenuItem.separatorItem())
         self.statusMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             "CPU 0% · Mem 0% · Swap 0%", None, ""
         )
         menu.addItem_(self.statusMenuItem)
         menu.addItem_(NSMenuItem.separatorItem())
-        item4 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Kill Safe", "killSafe:", "")
-        item4.setTarget_(self)
-        menu.addItem_(item4)
+        self.killSafeMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Kill Safe", "killSafe:", "")
+        self.killSafeMenuItem.setTarget_(self)
+        menu.addItem_(self.killSafeMenuItem)
         self.autoKillMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Auto Kill: Off", "toggleAutoKill:", "")
         self.autoKillMenuItem.setTarget_(self)
         menu.addItem_(self.autoKillMenuItem)
         menu.addItem_(NSMenuItem.separatorItem())
-        item5 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Check Updates...", "checkUpdate:", "")
-        item5.setTarget_(self)
-        menu.addItem_(item5)
-        item6 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Preferences...", "openConfig:", ",")
-        item6.setTarget_(self)
-        menu.addItem_(item6)
+        self.checkUpdatesMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Check Updates...", "checkUpdate:", "")
+        self.checkUpdatesMenuItem.setTarget_(self)
+        menu.addItem_(self.checkUpdatesMenuItem)
+        self.preferencesMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Preferences...", "openConfig:", ",")
+        self.preferencesMenuItem.setTarget_(self)
+        menu.addItem_(self.preferencesMenuItem)
         menu.addItem_(NSMenuItem.separatorItem())
-        item7 = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Quit AI Guard", "terminate:", "q")
-        item7.setTarget_(NSApp)
-        menu.addItem_(item7)
+        self.quitMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Quit AI Guard", "terminate:", "q")
+        self.quitMenuItem.setTarget_(NSApp)
+        menu.addItem_(self.quitMenuItem)
         self.statusItem.setMenu_(menu)
         print("Menu set")
+
+        # 初始化菜单语言
+        self.updateMenuLanguage()
 
         try:
             self.popover_controller = PopoverViewController.alloc().initWithThreadsManager_serverUrl_(
@@ -188,7 +255,33 @@ class AIGuardDelegate(NSObject):
         )
         print("Timer started")
 
+        # 启动语言配置检查定时器（每5秒检查一次）
+        self.lang_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            5.0, self, "checkLanguageChange:", None, True
+        )
+        print("Language check timer started")
+
         print("=== applicationDidFinishLaunching_ completed ===")
+
+    def updateMenuLanguage(self):
+        """更新菜单项语言"""
+        texts = self.MENU_TEXTS.get(self.current_lang, self.MENU_TEXTS['en'])
+        self.aboutMenuItem.setTitle_(texts['about'])
+        self.monitorMenuItem.setTitle_(texts['monitor'])
+        self.usageMenuItem.setTitle_(texts['usage'])
+        self.killSafeMenuItem.setTitle_(texts['kill_safe'])
+        self.checkUpdatesMenuItem.setTitle_(texts['check_updates'])
+        self.preferencesMenuItem.setTitle_(texts['preferences'])
+        self.quitMenuItem.setTitle_(texts['quit'])
+        # autoKillMenuItem 的标题在 refreshStatus_ 中动态更新
+
+    def checkLanguageChange_(self, timer):
+        """检查语言配置是否变化"""
+        new_lang = self._load_language()
+        if new_lang != self.current_lang:
+            print(f"Language changed: {self.current_lang} -> {new_lang}")
+            self.current_lang = new_lang
+            self.updateMenuLanguage()
 
     def refreshStatus_(self, timer):
         latest = _main_mod.history.latest
@@ -209,7 +302,9 @@ class AIGuardDelegate(NSObject):
 
         self.statusMenuItem.setTitle_(f"CPU {cpu:.0f}% · Mem {mem:.0f}% · Swap {swap:.0f}%")
         state = _main_mod.threads.autokill_enabled
-        self.autoKillMenuItem.setTitle_(f"Auto Kill: {'On' if state else 'Off'}")
+        # 根据当前语言更新自动终止菜单项
+        texts = self.MENU_TEXTS.get(self.current_lang, self.MENU_TEXTS['en'])
+        self.autoKillMenuItem.setTitle_(texts['auto_kill_on'] if state else texts['auto_kill_off'])
 
     def showAbout_(self, sender):
         from AppKit import NSAlert, NSAlertStyleInformational
@@ -270,10 +365,9 @@ class AIGuardDelegate(NSObject):
             pass
 
     def openConfig_(self, sender):
-        import subprocess
-        from pathlib import Path
-        config_path = Path(__file__).parent / "config.toml"
-        subprocess.run(["open", "-t", str(config_path)], check=False)
+        """打开设置面板（Dashboard 窗口）"""
+        self.dashboard_window.load_url(f"{self.url}/settings.html")
+        self.dashboard_window.show()
 
 
 def main():

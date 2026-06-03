@@ -90,17 +90,18 @@ threads.settings = {
 # Used to locate static resources like index.html
 def _resolve_base_dir() -> Path:
     """Parse correct base_dir, support dev mode and py2app packaging mode"""
+    # py2app packaging mode - 优先检查
+    if getattr(sys, 'frozen', False):
+        exe = Path(sys.executable)
+        if "Contents/MacOS" in str(exe):
+            resources = exe.parent.parent / "Resources"
+            if (resources / "config.toml").exists():
+                return resources
+
     # Dev mode
     dev_path = Path(__file__).parent
     if (dev_path / "config.toml").exists():
         return dev_path
-
-    # py2app packaging mode
-    exe = Path(sys.executable)
-    if "Contents/MacOS" in str(exe):
-        resources = exe.parent.parent / "Resources"
-        if (resources / "config.toml").exists():
-            return resources
 
     return dev_path
 

@@ -417,6 +417,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         # 保存到文件
         dev_path = base_dir / "config.toml"
         pkg_path = base_dir.parent / "config.toml"
+
         if not dev_path.exists() and not pkg_path.exists():
             import sys
             exe = Path(sys.executable)
