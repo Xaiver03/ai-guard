@@ -15,8 +15,15 @@ echo "📦 步骤 3: py2app 打包..."
 source venv/bin/activate
 python setup.py py2app
 
-echo "🔏 步骤 4: 自签名（避免 Gatekeeper 拦截）..."
-codesign --force --deep --sign - "dist/AI Guard.app"
+echo "🔏 步骤 4: 开发者签名（解决权限重置问题）..."
+SIGNING_IDENTITY="Developer ID Application: Xiaoli Creativity Culture Industry Development (beijing) Co., Ltd. (V5S2LT9YV8)"
+codesign --force --deep --sign "$SIGNING_IDENTITY" \
+  --options runtime \
+  --entitlements entitlements.plist \
+  "dist/AI Guard.app"
+
+echo "✅ 验证签名..."
+codesign -dv --verbose=4 "dist/AI Guard.app" 2>&1 | grep -E "(Signature|Identifier|TeamIdentifier)"
 
 echo ""
 echo "✅ 构建完成！"

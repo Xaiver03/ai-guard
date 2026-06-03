@@ -48,6 +48,7 @@ OPTIONS = {
         "CFBundleShortVersionString": "1.1.3",
         "NSHighResolutionCapable":    True,
         "NSMainNibFile":               "",
+        # 暂时不用 LSUIElement，通过代码 setActivationPolicy 控制
         # 权限声明（macOS Ventura+ 需要）
         "NSUserNotificationUsageDescription":
             "AI Guard 在内存/Swap/磁盘超过告警阈值时发送通知提醒。",
