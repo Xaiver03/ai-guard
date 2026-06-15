@@ -1,8 +1,8 @@
 """
 数据模型定义
 """
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict
 from datetime import datetime
 
 
@@ -19,6 +19,7 @@ class UsageEntry:
     project: str
     session_id: str
     source: str = "claude-code"  # DataSource:claude-code, codex, cursor
+    tool_uses: Dict[str, int] = field(default_factory=dict)  # 工具名 -> 调用次数
 
 
 @dataclass(slots=True)

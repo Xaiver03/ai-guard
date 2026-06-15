@@ -270,6 +270,7 @@ class ClaudeDataLoader:
         # Claude Code 的 JSONL 格式:
         - type: "assistant" 的记录包含 message.usage 和 message.model
         # - usage 字段包含 input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens
+        # - message.content 包含 tool_use 块
 
         Args:
             # data: JSON 数据
@@ -301,6 +302,15 @@ class ClaudeDataLoader:
             # 费用(JSONL 中通常没有预计算的费用)
             cost = data.get('costUSD', 0.0)
 
+            # 统计工具调用次数
+            tool_uses = {}
+            content = message.get('content', [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get('type') == 'tool_use':
+                        name = block.get('name', 'unknown')
+                        tool_uses[name] = tool_uses.get(name, 0) + 1
+
             return UsageEntry(
                 timestamp=timestamp,
                 model=model,
@@ -310,7 +320,8 @@ class ClaudeDataLoader:
                 cache_read_tokens=cache_read_tokens,
                 cost=cost,
                 project=project_name,
-                session_id=session_id
+                session_id=session_id,
+                tool_uses=tool_uses,
             )
         except Exception:
             return None

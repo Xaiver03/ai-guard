@@ -98,6 +98,12 @@ class PricingManager:
             cache_creation_price=18.75,
             cache_read_price=1.50,
         ),
+        'claude-opus-4-8': ModelPricing(
+            input_price=15.0,
+            output_price=75.0,
+            cache_creation_price=18.75,
+            cache_read_price=1.50,
+        ),
         'claude-sonnet-4': ModelPricing(
             input_price=3.0,
             output_price=15.0,
@@ -268,6 +274,12 @@ class PricingManager:
         ),
 
         # ===== MiniMax 系列 =====
+        'minimax-m3': ModelPricing(
+            input_price=0.30,
+            output_price=1.30,
+            cache_creation_price=0.30,
+            cache_read_price=0.075,
+        ),
         'minimax-m2.7': ModelPricing(
             input_price=0.28,
             output_price=1.20,
@@ -406,6 +418,12 @@ class PricingManager:
         ),
 
         # ===== 零价/特殊模型 =====
+        'claude': ModelPricing(
+            input_price=3.0,
+            output_price=15.0,
+            cache_creation_price=3.75,
+            cache_read_price=0.30,
+        ),
         '<synthetic>': ModelPricing(
             input_price=0.0,
             output_price=0.0,
@@ -424,6 +442,7 @@ class PricingManager:
     # 优先级:越具体的前缀越靠前
     _PREFIX_FALLBACK = [
         # Claude 4 系列
+        ('claude-opus-4-8',   'claude-opus-4-8'),
         ('claude-opus-4-7',   'claude-opus-4-7'),
         ('claude-opus-4-6',   'claude-opus-4-6'),
         ('claude-opus-4-5',   'claude-opus-4-5'),
@@ -463,9 +482,10 @@ class PricingManager:
         ('kimi',              'kimi-k2'),
         ('moonshot',          'kimi-k2'),
         # MiniMax
+        ('minimax-m3',        'minimax-m3'),
         ('minimax-m2.7',      'minimax-m2.7'),
         ('minimax-m2',        'minimax-m2'),
-        ('minimax',           'minimax-m2.7'),
+        ('minimax',           'minimax-m3'),
         # GLM
         ('glm-5.1',           'glm-5.1'),
         ('glm-4.5',           'glm-4.5'),

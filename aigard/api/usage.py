@@ -46,6 +46,35 @@ cache = UsageCache()
 # [CN] # 缓存重建锁(防止并发刷新导致数据不一致)
 _rebuild_lock = threading.Lock()
 
+# [CN] # 内存缓存：缓存所有原始 entries，避免重复解析 JSONL
+_entries_cache = None
+_entries_cache_time = None
+_ENTRIES_CACHE_TTL = 1800  # 30分钟 TTL（历史数据不变，可以缓存更久）
+
+
+def _get_cached_entries(source: Optional[str] = None):
+    # [CN] """获取缓存的原始 entries，避免重复解析 JSONL"""
+    global _entries_cache, _entries_cache_time
+    import time
+
+    now = time.time()
+    # [CN] 检查缓存是否有效
+    if _entries_cache is not None and _entries_cache_time is not None:
+        if now - _entries_cache_time < _ENTRIES_CACHE_TTL:
+            # [CN] 缓存有效，按 source 筛选返回
+            if source:
+                return [e for e in _entries_cache if e.source == source]
+            return _entries_cache
+
+    # [CN] 缓存失效或不存在，重新加载
+    _entries_cache = loader.load_all_usage(source=None)  # 加载全部
+    _entries_cache_time = now
+
+    # [CN] 按 source 筛选返回
+    if source:
+        return [e for e in _entries_cache if e.source == source]
+    return _entries_cache
+
 
 def _ensure_cache():
     # [CN] """确保缓存中有数据且完整(含 model_breakdowns),否则重建"""
@@ -150,9 +179,14 @@ async def get_summary(
 ):
     # [CN] """获取使用统计总览"""
     try:
-        # [CN] 项目筛选:实时计算(不使用缓存)
-        if project:
-            entries = loader.load_project_usage(project, source=source)
+        # [CN] 项目筛选:使用缓存的 entries 进行筛选，避免重复解析 JSONL
+        if project or source:
+            entries = _get_cached_entries(source=source)
+
+            # [CN] 项目筛选
+            if project:
+                entries = [e for e in entries if e.project == project]
+
             if not entries:
                 return {
                     'total_cost': 0, 'total_tokens': 0, 'input_tokens': 0, 'output_tokens': 0,
@@ -226,9 +260,14 @@ async def get_daily_usage(
 ):
     # [CN] """获取每日使用统计"""
     try:
-        # [CN] # 项目筛选:实时计算
-        if project:
-            entries = loader.load_project_usage(project, source=source)
+        # [CN] # 项目筛选:使用缓存的 entries
+        if project or source:
+            entries = _get_cached_entries(source=source)
+
+            # [CN] 项目筛选
+            if project:
+                entries = [e for e in entries if e.project == project]
+
             if not entries:
                 return []
 
@@ -287,9 +326,14 @@ async def get_hourly_usage(
 ):
     # [CN] """获取每小时使用统计"""
     try:
-        # [CN] 项目筛选:实时计算
-        if project:
-            entries = loader.load_project_usage(project, source=source)
+        # [CN] 项目筛选:使用缓存的 entries
+        if project or source:
+            entries = _get_cached_entries(source=source)
+
+            # [CN] 项目筛选
+            if project:
+                entries = [e for e in entries if e.project == project]
+
             if not entries:
                 return []
 
@@ -447,6 +491,53 @@ async def get_model_stats(
         raise HTTPException(status_code=500, detail="获取模型统计失败")
 
 
+@router.get("/tools")
+async def get_tool_usage(
+    start_date: Optional[str] = Query(None, description="StartDate (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="EndDate (YYYY-MM-DD)"),
+    preset: Optional[str] = Query(None, description="预设范围"),
+    project: Optional[str] = Query(None, description="项目名称(筛选特定项目)"),
+    source: Optional[str] = Query(None, description="数据源: claude-code, codex, 或 None(全部)")
+):
+    """获取工具调用统计"""
+    try:
+        # 使用缓存的 entries
+        entries = _get_cached_entries(source=source)
+
+        # 项目筛选
+        if project:
+            entries = [e for e in entries if e.project == project]
+
+        if not entries:
+            return {"tools": [], "total_tool_calls": 0}
+
+        # TimeRangeFilter
+        start, end = _resolve_date_range(start_date, end_date, preset)
+        if start:
+            entries = [e for e in entries if e.timestamp.strftime('%Y-%m-%d') >= start]
+        if end:
+            entries = [e for e in entries if e.timestamp.strftime('%Y-%m-%d') <= end]
+
+        # 聚合工具调用次数
+        tool_counts: Dict[str, int] = {}
+        total_tool_calls = 0
+        for entry in entries:
+            for tool_name, count in entry.tool_uses.items():
+                tool_counts[tool_name] = tool_counts.get(tool_name, 0) + count
+                total_tool_calls += count
+
+        # 按调用次数降序排列
+        sorted_tools = sorted(tool_counts.items(), key=lambda x: x[1], reverse=True)
+
+        return {
+            "tools": [{"name": name, "count": count} for name, count in sorted_tools],
+            "total_tool_calls": total_tool_calls,
+        }
+    except Exception as e:
+        logger.error(f"GetToolUsageFailure: {e}")
+        raise HTTPException(status_code=500, detail="获取工具统计失败")
+
+
 @router.get("/projects")
 async def get_projects():
     # [CN] """获取所有项目列表"""
@@ -467,33 +558,74 @@ async def get_sessions(
 ):
     """GetSessionList"""
     try:
-        summaries = loader.load_session_summaries(project=project, source=source)
+        # 使用缓存的 entries
+        entries = _get_cached_entries(source=source)
 
-        # [CN] 分页
+        # 项目筛选
+        if project:
+            entries = [e for e in entries if e.project == project]
+
+        if not entries:
+            return {"total": 0, "sessions": []}
+
+        # 按 (project, session_id) 分组
+        sessions_dict: Dict[tuple, List] = {}
+        for entry in entries:
+            key = (entry.project, entry.session_id)
+            if key not in sessions_dict:
+                sessions_dict[key] = []
+            sessions_dict[key].append(entry)
+
+        # 计算每个会话的汇总
+        summaries = []
+        for (proj, sess_id), sess_entries in sessions_dict.items():
+            if not sess_entries:
+                continue
+
+            sess_entries.sort(key=lambda x: x.timestamp)
+            start_time = sess_entries[0].timestamp
+            end_time = sess_entries[-1].timestamp
+            duration_seconds = int((end_time - start_time).total_seconds())
+            message_count = len(sess_entries)
+
+            total_tokens = sum(
+                e.input_tokens + e.output_tokens + e.cache_creation_tokens + e.cache_read_tokens
+                for e in sess_entries
+            )
+            input_tokens = sum(e.input_tokens for e in sess_entries)
+            output_tokens = sum(e.output_tokens for e in sess_entries)
+            cache_creation_tokens = sum(e.cache_creation_tokens for e in sess_entries)
+            cache_read_tokens = sum(e.cache_read_tokens for e in sess_entries)
+
+            # 计算费用
+            model_breakdown = calculator.calculate_model_breakdown(sess_entries)
+            total_cost = sum(mb.cost for mb in model_breakdown)
+            models_used = list(set(e.model for e in sess_entries))
+
+            summaries.append({
+                "session_id": sess_id,
+                "project": proj,
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_seconds": duration_seconds,
+                "message_count": message_count,
+                "total_tokens": total_tokens,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_creation_tokens": cache_creation_tokens,
+                "cache_read_tokens": cache_read_tokens,
+                "total_cost": round(total_cost, 4),
+                "models_used": models_used,
+            })
+
+        # 按开始时间倒序排列
+        summaries.sort(key=lambda x: x["start_time"], reverse=True)
+
+        # 分页
         total = len(summaries)
         paginated = summaries[(offset or 0):(offset or 0) + (limit or 50)]
 
-        return {
-            "total": total,
-            "sessions": [
-                {
-                    "session_id": s.session_id,
-                    "project": s.project,
-                    "start_time": s.start_time.isoformat(),
-                    "end_time": s.end_time.isoformat(),
-                    "duration_seconds": s.duration_seconds,
-                    "message_count": s.message_count,
-                    "total_tokens": s.total_tokens,
-                    "input_tokens": s.input_tokens,
-                    "output_tokens": s.output_tokens,
-                    "cache_creation_tokens": s.cache_creation_tokens,
-                    "cache_read_tokens": s.cache_read_tokens,
-                    "total_cost": round(s.total_cost, 4),
-                    "models_used": s.models_used,
-                }
-                for s in paginated
-            ]
-        }
+        return {"total": total, "sessions": paginated}
     except Exception as e:
         logger.error(f"GetSessionListFailure: {e}")
         raise HTTPException(status_code=500, detail="获取会话列表失败")

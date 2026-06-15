@@ -206,6 +206,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
 }
+.stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .stats-grid-5 { grid-template-columns: repeat(5, 1fr); }
 
 .stat-card {
