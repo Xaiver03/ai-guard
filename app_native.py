@@ -16,7 +16,19 @@ sys.stderr = sys.stdout
 
 print("=== app_native started ===")
 
-sys.path.insert(0, '/Users/rocalight/Desktop/All in one Data/01_PROJECTS/AI Guard')
+# [CN] 支持打包模式和开发模式
+if getattr(sys, 'frozen', False):
+    # [CN] 打包模式：使用 Resources 目录
+    base_path = os.path.dirname(sys.executable)
+    if "Contents/MacOS" in base_path:
+        resources_path = os.path.join(base_path, "..", "Resources")
+        sys.path.insert(0, os.path.abspath(resources_path))
+    else:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+else:
+    # [CN] 开发模式
+    sys.path.insert(0, '/Users/rocalight/Desktop/All in one Data/01_PROJECTS/AI Guard')
+
 os.environ["AIGARD_NO_BROWSER"] = "1"
 import importlib
 _main_mod = importlib.import_module('main')
