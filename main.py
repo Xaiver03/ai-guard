@@ -124,7 +124,9 @@ def on_startup():
 
 # ── Startup Function ──────────────────────────────────────────
 def start_server(host: str | None = None, port: int | None = None):
-    """Startup function for external calls"""
+    """Startup function for external calls."""
+    import time
+
     _host = host or SERVER_CFG.get("host", "127.0.0.1")
     _port = port or SERVER_CFG.get("port", 8765)
     print(f"AI Guard service starting → http://{_host}:{_port}")
@@ -134,17 +136,29 @@ def start_server(host: str | None = None, port: int | None = None):
     config.bind = [f"{_host}:{_port}"]
     config.loglevel = "WARNING"
 
-    # Disable signal handlers when running in subthread (avoid RuntimeError)
-    import threading
-    if threading.current_thread() is not threading.main_thread():
+    # Check if running in subthread (from app_native.py)
+    is_subthread = threading.current_thread() is not threading.main_thread()
+
+    if is_subthread:
         config.use_reloader = False
+        # Run in a dedicated event loop in subthread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
             shutdown_event = asyncio.Event()
             loop.run_until_complete(serve(app, config, shutdown_trigger=shutdown_event.wait))  # type: ignore[arg-type]
+        except OSError as e:
+            if e.errno == 48:  # Address already in use
+                print(f"[ERROR] Port {_port} is already in use. Another instance may be running.")
+                print(f"[ERROR] Please quit the other AI Guard instance or wait a few seconds.")
+            else:
+                print(f"[ERROR] Server failed to start: {e}")
+            raise
         finally:
-            loop.close()
+            try:
+                loop.close()
+            except Exception:
+                pass
     else:
         asyncio.run(serve(app, config))  # type: ignore[arg-type]
 

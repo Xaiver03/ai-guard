@@ -246,9 +246,15 @@ class AIGuardDelegate(NSObject):
             import traceback
             traceback.print_exc()
 
-        self.server_thread = threading.Thread(target=_main_mod.start_server, daemon=True)
+        self.server_thread = threading.Thread(target=self._run_server_with_retry, daemon=True)
         self.server_thread.start()
         print("server started")
+
+        # 启动服务健康检查定时器（每10秒检查一次）
+        self.health_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+            10.0, self, "checkServerHealth:", None, True
+        )
+        print("Health check timer started")
 
         self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             5.0, self, "refreshStatus:", None, True
@@ -283,7 +289,49 @@ class AIGuardDelegate(NSObject):
             self.current_lang = new_lang
             self.updateMenuLanguage()
 
-    def refreshStatus_(self, timer):
+    def _run_server_with_retry(self):
+        """运行服务器，端口冲突时自动重试"""
+        import time
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                _main_mod.start_server()
+                # 如果 start_server 正常返回（不应该），等待后重试
+                print("[server] Server exited unexpectedly, restarting...")
+                time.sleep(2)
+            except OSError as e:
+                if e.errno == 48 and attempt < max_retries - 1:
+                    print(f"[server] Port in use, retrying in 3s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(3)
+                else:
+                    print(f"[server] Failed to start after {attempt + 1} attempts: {e}")
+                    break
+            except Exception as e:
+                print(f"[server] Unexpected error: {e}")
+                import traceback
+                traceback.print_exc()
+                time.sleep(5)
+
+    def checkServerHealth_(self, timer):
+        """检查服务器健康状态，崩溃时自动重启"""
+        import urllib.request
+        try:
+            req = urllib.request.Request(f"{self.url}/api/metrics", method='HEAD')
+            req.timeout = 3
+            with urllib.request.urlopen(req) as resp:
+                if resp.status == 200:
+                    return  # 服务正常
+        except Exception:
+            pass  # 服务可能已崩溃
+
+        # 检查线程是否还在运行
+        if self.server_thread and self.server_thread.is_alive():
+            return  # 线程还在，可能只是暂时无响应
+
+        print("[health] Server thread dead, restarting...")
+        self.server_thread = threading.Thread(target=self._run_server_with_retry, daemon=True)
+        self.server_thread.start()
+
         latest = _main_mod.history.latest
         if not latest:
             return
