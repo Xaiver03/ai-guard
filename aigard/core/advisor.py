@@ -8,7 +8,7 @@ import psutil
 
 # ── 评分规则可配置参数(可由 main.py 运行时动态修改)──────────
 CPU_CAUTION_PCT = 20      # CPU > 此值 → caution
-IDLE_MIN_MINUTES = 10     # 运行 > 此值(分钟)且 CPU<1% → safe
+IDLE_MIN_MINUTES = 120    # 运行 > 此值(分钟)且 CPU<1% → safe (2小时空转判定)
 
 
 @dataclass(slots=True)
@@ -24,23 +24,8 @@ class ProcessAdvice:
 # 已知进程规则(详细说明见 SCORING.md)
 #
 # 高危:终止会直接丢失工作或损坏数据
-# 注意:这里必须包含终端窗口本身,因为 claude/codex 运行在终端里,
-# 一旦终端被关,整个 AI 会话和工作目录上下文全部丢失.
+# 注意:这里只包含真正危险的进程,普通应用(微信、浏览器等)不应在此列表
 _DANGER_PATTERNS = [
-    # AI Agent 本体(会话窗口主进程)
-    ("claude",              "Claude Code 会话窗口,终止会中断 AI 任务并丢失工作上下文"),
-    ("codex",               "Codex Agent 进程,终止会中断任务"),
-    # 终端宿主(AI Agent 运行在其中)
-    ("terminal",            "系统终端窗口,关闭会终止其中所有正在运行的 AI/命令"),
-    ("iterm",               "iTerm2 终端窗口,关闭会终止其中所有进程"),
-    ("ghostty",             "Ghostty 终端,关闭会终止其中所有进程"),
-    ("warp",                "Warp 终端,关闭会终止其中所有进程"),
-    ("hyper",               "Hyper 终端,关闭会终止其中所有进程"),
-    ("tmux",                "tmux 会话管理器,终止会关闭所有托管的终端会话"),
-    ("screen",              "screen 会话,终止会丢失会话内容"),
-    # 编辑器主进程
-    ("cursor",              "Cursor 编辑器主进程,终止会关闭编辑器"),
-    ("code helper",         "VS Code 核心辅助进程,终止会影响编辑器"),
     # 数据库(终止可能损坏数据)
     ("mysql",               "数据库进程,强制终止可能损坏数据"),
     ("postgres",            "数据库进程,强制终止可能损坏数据"),
@@ -49,6 +34,43 @@ _DANGER_PATTERNS = [
     # 容器
     ("docker",              "Docker 守护进程,终止会停止所有容器"),
     ("containerd",          "容器运行时,终止会影响所有容器"),
+]
+
+# 重要应用:终止会中断工作但可手动重启,标记为 caution 而非 danger
+# 这些进程在"所有进程"视图中显示,允许用户手动终止
+_CAUTION_PATTERNS = [
+    # AI Agent 本体
+    ("claude",              "Claude Code 会话窗口,终止会中断 AI 任务"),
+    ("codex",               "Codex Agent 进程,终止会中断任务"),
+    # 终端宿主
+    ("terminal",            "系统终端窗口,关闭会终止其中所有进程"),
+    ("iterm",               "iTerm2 终端窗口,关闭会终止其中所有进程"),
+    ("ghostty",             "Ghostty 终端,关闭会终止其中所有进程"),
+    ("warp",                "Warp 终端,关闭会终止其中所有进程"),
+    ("hyper",               "Hyper 终端,关闭会终止其中所有进程"),
+    ("tmux",                "tmux 会话管理器,终止会关闭所有托管的终端会话"),
+    ("screen",              "screen 会话,终止会丢失会话内容"),
+    # 编辑器
+    ("cursor",              "Cursor 编辑器主进程,终止会关闭编辑器"),
+    ("code helper",         "VS Code 核心辅助进程,终止会影响编辑器"),
+    # 浏览器主进程
+    ("dia",                 "Dia 浏览器主进程,终止会关闭所有标签页"),
+    ("safari",              "Safari 浏览器主进程,终止会关闭所有标签页"),
+    ("chrome",              "Chrome 浏览器主进程,终止会关闭所有标签页"),
+    ("edge",                "Edge 浏览器主进程,终止会关闭所有标签页"),
+    ("firefox",             "Firefox 浏览器主进程,终止会关闭所有标签页"),
+    # 通讯应用主进程
+    ("wechat",              "微信主进程,终止会关闭微信"),
+    ("lark",                "飞书主进程,终止会关闭飞书"),
+    ("feishu",              "飞书主进程,终止会关闭飞书"),
+    ("qq",                  "QQ 主进程,终止会关闭 QQ"),
+    ("dingtalk",            "钉钉主进程,终止会关闭钉钉"),
+    # 其他重要应用
+    ("figma",               "Figma 设计工具,终止会关闭未保存的设计"),
+    ("wpsoffice",           "WPS 办公套件,终止会关闭未保存的文档"),
+    ("quark",               "夸克浏览器,终止会关闭所有标签页"),
+    ("baidunetdisk",        "百度网盘,终止会中断下载/上传"),
+    ("cmux",                "cmux 终端复用器,终止会关闭所有会话"),
 ]
 
 # MCP 进程特征(Claude Code 的子进程,可以按正常规则评分)
@@ -181,13 +203,13 @@ def advise(proc_info: dict, name_counts: dict | None = None) -> ProcessAdvice:
     risk = "caution"  # [CN] 默认谨慎,需要满足条件才能变为 safe
     action = "pause"
 
-    # 规则 MCP: MCP 子进程优先按正常规则评分(不受 danger 保护)
+    # 规则 MCP: MCP 子进程优先按正常规则评分(不受 danger/caution 保护)
     is_mcp = _match_any(haystack, _MCP_PATTERNS)
     if is_mcp:
         reasons.append("Claude Code MCP 子进程")
-        # 跳过 danger 检查,继续后续规则
+        # 跳过 danger/caution 检查,继续后续规则
     else:
-        # 规则 D: 高危进程(立即返回,不被后续规则覆盖)
+        # 规则 D: 高危进程(数据库、容器等,终止会损坏数据)
         danger_reason = _match_any(haystack, _DANGER_PATTERNS)
         if danger_reason:
             reasons.append(danger_reason)
@@ -197,6 +219,20 @@ def advise(proc_info: dict, name_counts: dict | None = None) -> ProcessAdvice:
             else:
                 reasons.append("CPU 当前较低,可暂停后观察,但仍需谨慎")
                 return ProcessAdvice(pid, "danger", "❌ 不建议操作", reasons, "leave")
+
+        # 规则 C2: 重要应用(微信、浏览器、编辑器等,终止会中断工作但可重启)
+        # 注意:Claude Code 的 node 进程(cmdline 含 claude)属于 AI 会话,应受保护
+        caution_reason = _match_any(haystack, _CAUTION_PATTERNS)
+        if caution_reason:
+            reasons.append(caution_reason)
+            # AI Agent 进程(claude/codex)不能被空转规则降级为 safe
+            if "claude" in haystack or "codex" in haystack:
+                risk = "caution"
+                action = "pause"
+            else:
+                # 其他应用(微信、浏览器等)空转时可降级为 safe
+                risk = "caution"
+                action = "pause"
 
     # 规则 C1:CPU 正在忙
     if cpu > CPU_CAUTION_PCT:
@@ -231,7 +267,10 @@ def advise(proc_info: dict, name_counts: dict | None = None) -> ProcessAdvice:
 
         if same_count >= 3:
             reasons.append(f"同名进程共 {same_count} 个,存在冗余实例,关闭部分通常不影响主流程")
-            if risk != "danger":
+            # AI Agent 进程不能被同名规则降级为 safe
+            if "claude" in haystack or "codex" in haystack:
+                pass  # 保持当前风险等级
+            elif risk != "danger":
                 risk = "safe"
                 action = "kill"
 
@@ -239,7 +278,12 @@ def advise(proc_info: dict, name_counts: dict | None = None) -> ProcessAdvice:
     uptime_minutes = (time.time() - create_time) / 60
     if uptime_minutes > IDLE_MIN_MINUTES and cpu < 1:
         reasons.append(f"运行 {uptime_minutes:.0f} 分钟,CPU ≈ 0,判定为空转进程")
-        if risk != "danger":
+        # AI Agent 进程不能被降级为 safe
+        if "claude" in haystack or "codex" in haystack:
+            pass  # 保持当前风险等级(caution),不降级
+        elif risk == "danger":
+            pass  # danger 保持不动
+        else:
             risk = "safe"
             action = "kill"
 

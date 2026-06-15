@@ -42,7 +42,7 @@ safe_keywords = [
 
 [processes.scoring]
 cpu_caution_pct = 20
-idle_min_minutes = 10
+idle_min_minutes = 120
 
 [whitelist]
 process_names = []
@@ -55,4 +55,4 @@ cache_ttl = 300
 auto_refresh_interval = 1800
 
 [ui]
-language = "en"
+language = "zh"
