@@ -171,6 +171,7 @@ class PopoverViewController(NSViewController):
 
             # [CN] # 获取当前进程 PID (自我保护)
             current_pid = os.getpid()
+            parent_pid = os.getppid()
             # [CN] print(f"当前应用 PID: {current_pid}")
 
             print(f"threads: {self.threads}")
@@ -184,10 +185,10 @@ class PopoverViewController(NSViewController):
             print(f"threads.latest_processes: {hasattr(self.threads, 'latest_processes')}")
 
             with self.threads.lock:
-                # [CN] # 过滤掉当前进程 (自我保护)
+                # [CN] # 过滤掉当前进程和父进程 (自我保护)
                 safe_procs = [
                     p for p in self.threads.latest_processes
-                    if p.get("risk") == "safe" and p.get("pid") != current_pid
+                    if p.get("risk") == "safe" and p.get("pid") not in (current_pid, parent_pid)
                 ]
 
             # [CN] print(f"找到 {len(safe_procs)} 个安全进程 (已排除当前进程)")

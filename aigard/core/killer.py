@@ -23,6 +23,14 @@ def _get_proc(pid: int) -> Optional[psutil.Process]:
 
 def pause_process(pid: int) -> ActionResult:
     """SIGSTOP 暂停进程,保留状态可恢复"""
+    # 自我保护:禁止暂停当前进程或父进程
+    current_pid = os.getpid()
+    parent_pid = os.getppid()
+    if pid == current_pid:
+        return ActionResult(False, f"拒绝暂停:PID {pid} 是 AI Guard 自身进程")
+    if pid == parent_pid:
+        return ActionResult(False, f"拒绝暂停:PID {pid} 是 AI Guard 父进程")
+
     proc = _get_proc(pid)
     if not proc:
         return ActionResult(False, f"进程 {pid} 不存在")
@@ -38,6 +46,14 @@ def pause_process(pid: int) -> ActionResult:
 
 def resume_process(pid: int) -> ActionResult:
     """SIGCONT 恢复被暂停的进程"""
+    # 自我保护:禁止恢复当前进程或父进程(虽然通常不会暂停自己,但做兜底保护)
+    current_pid = os.getpid()
+    parent_pid = os.getppid()
+    if pid == current_pid:
+        return ActionResult(False, f"拒绝恢复:PID {pid} 是 AI Guard 自身进程")
+    if pid == parent_pid:
+        return ActionResult(False, f"拒绝恢复:PID {pid} 是 AI Guard 父进程")
+
     proc = _get_proc(pid)
     if not proc:
         return ActionResult(False, f"进程 {pid} 不存在")

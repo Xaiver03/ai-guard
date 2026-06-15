@@ -160,8 +160,11 @@ class AIGuardApp(rumps.App):
     def _kill_safe(self, _):
         """一键终止所有评分为 safe 的进程"""
         from aigard.core import kill_process
+        import os
 
         threads = _main_mod.threads
+        my_pid = os.getpid()
+        my_ppid = os.getppid()
         with threads.lock:
             safe_procs = [p for p in threads.latest_processes if p.get("risk") == "safe"]
 
@@ -172,7 +175,11 @@ class AIGuardApp(rumps.App):
         killed = 0
         total_freed = 0.0
         for proc in safe_procs:
-            r = kill_process(proc["pid"])
+            pid = proc["pid"]
+            # Self-protection: never kill AI Guard itself or its parent
+            if pid == my_pid or pid == my_ppid:
+                continue
+            r = kill_process(pid)
             if r.success:
                 killed += 1
                 total_freed += r.mem_freed_mb

@@ -277,7 +277,7 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.get("/api/processes/all")
     def get_all_processes():
-        # [CN] """获取所有进程(类似活动监视器,60秒缓存)"""
+        # [CN] """获取所有进程(只返回内存>50MB的进程,60秒缓存)"""
         # [CN] # 尝试从缓存获取
         cached = _data_cache.get("all_processes")
         if cached is not None:
@@ -288,8 +288,12 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
         import main as _main_mod
 
         all_procs = collect_all_processes()
+
+        # [CN] 只保留内存 > 50MB 的进程
+        filtered_procs = [p for p in all_procs if p.mem_mb > 50]
+
         result = []
-        for proc in all_procs:
+        for proc in filtered_procs:
             proc_dict = {
                 "pid": proc.pid,
                 "name": proc.name,
@@ -568,10 +572,16 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/processes/batch/kill")
     def batch_kill(req: BatchRequest):
-        # [CN] """批量终止指定 PID 列表"""
+        # [CN] """批量终止指定 PID 列表(排除当前进程和父进程)"""
+        import os
+        current_pid = os.getpid()
+        parent_pid = os.getppid()
         results = []
         total_freed = 0.0
         for pid in req.pids:
+            if pid == current_pid or pid == parent_pid:
+                results.append({"pid": pid, "success": False, "message": "拒绝终止: AI Guard 自身进程"})
+                continue
             r = kill_process(pid)
             results.append({"pid": pid, "success": r.success, "message": r.message})
             if r.success:
@@ -580,25 +590,55 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
 
     @app.post("/api/processes/batch/pause")
     def batch_pause(req: BatchRequest):
-        # [CN] """批量暂停指定 PID 列表"""
+        # [CN] """批量暂停指定 PID 列表(排除当前进程和父进程)"""
+        import os
+        current_pid = os.getpid()
+        parent_pid = os.getppid()
         results = []
         for pid in req.pids:
+            if pid == current_pid or pid == parent_pid:
+                results.append({"pid": pid, "success": False, "message": "拒绝暂停: AI Guard 自身进程"})
+                continue
             r = pause_process(pid)
             results.append({"pid": pid, "success": r.success, "message": r.message})
         return {"results": results}
 
     @app.post("/api/processes/batch/kill-safe")
     def batch_kill_safe():
-        # [CN] """一键终止所有评分为 safe 的进程(排除当前进程)"""
+        # [CN] """一键终止所有评分为 safe 的进程(从所有进程中查找,排除当前进程)"""
         import os
-        current_pid = os.getpid()
+        from aigard.core import collect_all_processes
+        import aigard.core.advisor as _advisor_mod
 
-        with threads_manager.lock:
-            # [CN] 排除当前进程
-            safe_procs = [
-                p for p in threads_manager.latest_processes
-                if p.get("risk") == "safe" and p["pid"] != current_pid
-            ]
+        current_pid = os.getpid()
+        parent_pid = os.getppid()
+
+        # [CN] 从所有进程中查找(而不是只从 AI 进程缓存)
+        all_procs = collect_all_processes()
+
+        # [CN] 过滤：只保留内存 > 50MB 的进程
+        filtered_procs = [p for p in all_procs if p.mem_mb > 50]
+
+        # [CN] 重新评分
+        name_counts = _advisor_mod._build_name_counts()
+        safe_procs = []
+        for proc in filtered_procs:
+            if proc.pid == current_pid or proc.pid == parent_pid:
+                continue
+            proc_dict = {
+                "pid": proc.pid,
+                "name": proc.name,
+                "cmdline": proc.cmdline,
+                "mem_mb": proc.mem_mb,
+                "cpu_percent": proc.cpu_percent,
+                "status": proc.status,
+                "create_time": proc.create_time,
+            }
+            advice = _advisor_mod.advise(proc_dict, name_counts=name_counts)
+            if advice.risk == "safe":
+                proc_dict["risk"] = advice.risk
+                safe_procs.append(proc_dict)
+
         results = []
         total_freed = 0.0
         for proc in safe_procs:
@@ -617,6 +657,139 @@ def create_app(base_dir: Path, threads_manager) -> FastAPI:
             "killed": len([r for r in results if r["success"]]),
             "killed_count": len([r for r in results if r["success"]]),  # [CN] 兼容前端
             "total_freed_mb": round(total_freed, 1),
+            "results": results,
+        }
+
+    # [CN] 系统进程保护列表（不应被终止）
+    _SYSTEM_PROTECTED_NAMES = {
+        'finder', 'dock', 'systemuiserver', 'windowserver', 'loginwindow',
+        'kernel_task', 'launchd', 'mds_stores', 'spotlight', 'coreservicesuiagent',
+        'doubaoime', 'sogouime', 'baiduime', 'inputmethod',
+    }
+
+    @app.post("/api/processes/batch/kill-idle")
+    def batch_kill_idle():
+        # [CN] """一键终止空转进程：从所有进程中查找运行超过2小时且CPU<1%的safe进程"""
+        import os
+        import time
+        import psutil
+        from aigard.core import collect_all_processes
+        import aigard.core.advisor as _advisor_mod
+
+        current_pid = os.getpid()
+
+        # [CN] 获取当前终端前台进程组（保护活跃的 Claude Code 会话）
+        protected_pids = set()
+        try:
+            import subprocess
+            tty_result = subprocess.run(['tty'], capture_output=True, text=True, timeout=2)
+            if tty_result.returncode == 0:
+                tty = tty_result.stdout.strip()
+                pgid_result = subprocess.run(
+                    ['ps', '-o', 'pgid=', '-t', tty],
+                    capture_output=True, text=True, timeout=2
+                )
+                if pgid_result.returncode == 0:
+                    for line in pgid_result.stdout.strip().split('\n'):
+                        try:
+                            pgid = int(line.strip())
+                            for p in psutil.process_iter(['pid', 'pgid']):
+                                try:
+                                    if p.info.get('pgid') == pgid:
+                                        protected_pids.add(p.info['pid'])
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    continue
+                        except ValueError:
+                            continue
+        except Exception:
+            pass
+
+        # [CN] 保护当前 AI Guard 进程及其父进程
+        protected_pids.add(current_pid)
+        try:
+            protected_pids.add(os.getppid())
+        except Exception:
+            pass
+
+        # [CN] 从所有进程中重新评分（不依赖缓存的 AI 进程列表）
+        all_procs = collect_all_processes()
+        name_counts = _advisor_mod._build_name_counts()
+
+        idle_procs = []
+        for proc in all_procs:
+            pid = proc.pid
+            if pid in protected_pids:
+                continue
+
+            # [CN] 排除系统进程
+            name_lower = (proc.name or "").lower()
+            if any(sys_name in name_lower for sys_name in _SYSTEM_PROTECTED_NAMES):
+                continue
+
+            proc_dict = {
+                "pid": proc.pid,
+                "name": proc.name,
+                "cmdline": proc.cmdline,
+                "mem_mb": proc.mem_mb,
+                "cpu_percent": proc.cpu_percent,
+                "status": proc.status,
+                "create_time": proc.create_time,
+            }
+
+            # [CN] 评分
+            advice = _advisor_mod.advise(proc_dict, name_counts=name_counts)
+            if advice.risk != "safe":
+                continue
+
+            # [CN] 检查是否有空转标记
+            is_idle = any("空转" in r or "idle" in r.lower() for r in advice.reasons)
+            if not is_idle:
+                continue
+
+            # [CN] 额外验证：CPU < 1% 且运行时间 > 2小时
+            try:
+                ps_proc = psutil.Process(pid)
+                cpu = ps_proc.cpu_percent(interval=0.05)
+                uptime_hours = (time.time() - ps_proc.create_time()) / 3600
+                if cpu < 1.0 and uptime_hours >= 2:
+                    idle_procs.append(proc_dict)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        # [CN] 按内存占用排序，优先终止内存占用大的
+        idle_procs.sort(key=lambda p: p.get("mem_mb", 0), reverse=True)
+
+        results = []
+        total_freed = 0.0
+        for proc in idle_procs:
+            pid = proc["pid"]
+            r = kill_process(pid)
+            results.append({
+                "pid": pid,
+                "name": proc.get("name", ""),
+                "mem_mb": proc.get("mem_mb", 0),
+                "success": r.success,
+                "message": r.message,
+            })
+            if r.success:
+                total_freed += r.mem_freed_mb
+                log_entry = {
+                    "ts": time.time(),
+                    "pid": pid,
+                    "name": proc.get("name", ""),
+                    "mem_mb": proc.get("mem_mb", 0),
+                }
+                with threads_manager.lock:
+                    threads_manager.auto_kill_log.append(log_entry)
+                    if len(threads_manager.auto_kill_log) > 20:
+                        threads_manager.auto_kill_log.pop(0)
+                time.sleep(0.3)
+
+        return {
+            "killed": len([r for r in results if r["success"]]),
+            "killed_count": len([r for r in results if r["success"]]),
+            "total_freed_mb": round(total_freed, 1),
+            "protected_count": len(protected_pids),
             "results": results,
         }
 
