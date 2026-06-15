@@ -100,6 +100,7 @@
       <button class="btn btn-danger" id="btn-batch-kill" disabled onclick="batchKill()" data-i18n="monitor.killSelected">终止选中</button>
       <button class="btn btn-warning" id="btn-batch-pause" disabled onclick="batchPause()" data-i18n="monitor.pauseSelected">暂停选中</button>
       <span class="flex-1"></span>
+      <button class="btn btn-orange" id="btn-kill-idle" onclick="killIdle()" title="终止运行超过2小时且CPU<1%的空转进程"></button>
       <button class="btn btn-primary" id="btn-kill-all-safe" onclick="killAllSafe()"></button>
       <span class="batch-count" id="batch-count"></span>
     </div>
@@ -305,6 +306,11 @@ const translations = {
     'toast.paused': '已暂停 {ok}/{total} 个进程',
     'toast.noSafe': '没有可安全终止的进程',
     'toast.killedAll': '已终止 {n} 个安全进程，释放约 {mb} MB',
+    'monitor.killIdle': '终止空转进程',
+    'toast.killedIdle': '已终止 {n} 个空转进程，释放约 {mb} MB',
+    'toast.noIdle': '没有空转进程',
+    'toast.noIdleKilled': '没有可终止的空转进程',
+    'confirm.killIdle': '确认终止 {n} 个空转进程？\n\n空转定义：运行超过2小时且 CPU≈0',
     'toast.settingsSaved': '设置已保存并立即生效',
     'toast.settingsLoadFailed': '加载设置失败: ',
     'toast.blacklistEmpty': '黑名单已为空',
@@ -408,6 +414,11 @@ const translations = {
     'toast.paused': 'Paused {ok}/{total} processes',
     'toast.noSafe': 'No safe processes to kill',
     'toast.killedAll': 'Killed {n} safe processes, freed ~{mb} MB',
+    'monitor.killIdle': 'Kill Idle',
+    'toast.killedIdle': 'Killed {n} idle processes, freed ~{mb} MB',
+    'toast.noIdle': 'No idle processes',
+    'toast.noIdleKilled': 'No idle processes to kill',
+    'confirm.killIdle': 'Kill {n} idle processes?\n\nIdle: running >2h with CPU≈0',
     'toast.settingsSaved': 'Settings saved and applied',
     'toast.settingsLoadFailed': 'Failed to load settings: ',
     'toast.blacklistEmpty': 'Blocklist is already empty',
@@ -514,6 +525,7 @@ let _currentView = 'ai';
 
 // ── 视图切换 ──────────────────────────────────────────────
 async function switchView(view) {
+  console.log('[switchView] Switching to view:', view);
   _currentView = view;
 
   document.querySelectorAll('.btn-view').forEach(btn => {
@@ -526,10 +538,14 @@ async function switchView(view) {
   try {
     if (view === 'ai') {
       stopAllProcessesPolling();
+      console.log('[switchView] Fetching AI processes...');
       const data = await fetch('/api/processes').then(r => r.json());
+      console.log('[switchView] AI processes received:', data.length);
       updateProcesses(Array.isArray(data) ? data : []);
     } else {
+      console.log('[switchView] Fetching all processes...');
       const data = await fetch('/api/processes/all').then(r => r.json());
+      console.log('[switchView] All processes received:', data.length);
       updateProcesses(Array.isArray(data) ? data : []);
       startAllProcessesPolling();
     }
@@ -682,11 +698,13 @@ function updateMetrics(m) {
 
 // ── 更新进程表 ────────────────────────────────────────────
 function updateProcesses(procs) {
+  console.log('[updateProcesses] Received procs:', procs ? procs.length : 0, 'processes');
   _lastProcs = procs || [];
   renderTable(_lastProcs);
 }
 
 function renderTable(procs) {
+  console.log('[renderTable] Rendering', procs.length, 'processes, currentView:', _currentView);
   const tbody = document.getElementById('proc-tbody');
 
   if (!procs.length) {
@@ -868,6 +886,26 @@ async function killAllSafe() {
     const res  = await fetch('/api/processes/batch/kill-safe', { method: 'POST' });
     const data = await res.json();
     showToast('bolt', t('toast.killedAll', { n: data.killed, mb: data.total_freed_mb }));
+  } catch (e) { showToast('cross', e.message, true); }
+}
+
+async function killIdle() {
+  // [CN] 统计当前可见的空转进程数量
+  const idleCount = _lastProcs.filter(p => {
+    if (p.risk !== 'safe') return false;
+    const reasons = p.risk_reasons || [];
+    return reasons.some(r => r.includes('空转') || r.toLowerCase().includes('idle'));
+  }).length;
+  if (!idleCount) { showToast('warn', t('toast.noIdle') || '没有空转进程'); return; }
+  if (!confirm(t('confirm.killIdle') || `确认终止 ${idleCount} 个空转进程？\n\n空转定义：运行超过2小时且 CPU≈0`)) return;
+  try {
+    const res  = await fetch('/api/processes/batch/kill-idle', { method: 'POST' });
+    const data = await res.json();
+    if (data.killed > 0) {
+      showToast('bolt', t('toast.killedIdle') || `已终止 ${data.killed} 个空转进程，释放约 ${data.total_freed_mb} MB`);
+    } else {
+      showToast('warn', t('toast.noIdleKilled') || '没有可终止的空转进程');
+    }
   } catch (e) { showToast('cross', e.message, true); }
 }
 
@@ -1210,6 +1248,9 @@ async function saveSettings() {
 function initButtons() {
   const selectSafeBtn = document.getElementById('btn-select-safe');
   if (selectSafeBtn) selectSafeBtn.innerHTML = `${t('monitor.selectSafe')} ${icon('check','icon-green')}`;
+
+  const killIdleBtn = document.getElementById('btn-kill-idle');
+  if (killIdleBtn) killIdleBtn.innerHTML = `${icon('moon')} ${t('monitor.killIdle') || '终止空转'}`;
 
   const killAllSafeBtn = document.getElementById('btn-kill-all-safe');
   if (killAllSafeBtn) killAllSafeBtn.innerHTML = `${icon('bolt')} ${t('monitor.killAllSafe')}`;

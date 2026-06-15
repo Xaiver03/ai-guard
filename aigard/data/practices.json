@@ -3,7 +3,7 @@
     {
       "id": "prompt-engineering",
       "name": "Prompt 工程",
-      "icon": "",
+      "icon": "💡",
       "description": "如何写出高质量的 AI 提示词，让 AI 更好地理解你的需求",
       "practices": [
         {
@@ -36,7 +36,7 @@
         },
         {
           "title": "常见 Prompt 错误",
-          "content": "**避免这些常见错误：**\n\n1. **过于简短**：\"写个函数\" → 缺少上下文和需求\n2. **过于模糊**：\"优化这段代码\" → 没说优化什么（性能？可读性？）\n3. **假设 AI 知道上下文**：\"继续\" → AI 不知道继续什么\n4. **一次要求太多**：一个 Prompt 包含 10 个功能 → 拆分成多个\n5. **没有验证标准**：\"让代码更好\" → 什么叫\"更好\"？",
+          "content": "**避免这些常见错误：**\n\n1. **过于简短**：「写个函数」→ 缺少上下文和需求\n2. **过于模糊**：「优化这段代码」→ 没说优化什么（性能？可读性？）\n3. **假设 AI 知道上下文**：「继续」→ AI 不知道继续什么\n4. **一次要求太多**：一个 Prompt 包含 10 个功能 → 拆分成多个\n5. **没有验证标准**：「让代码更好」→ 什么叫「更好」？",
           "examples": []
         }
       ]
@@ -44,7 +44,7 @@
     {
       "id": "workflow",
       "name": "工作流优化",
-      "icon": "",
+      "icon": "⚙️",
       "description": "如何高效地使用 AI 编程工具，提升开发效率",
       "practices": [
         {
@@ -85,7 +85,7 @@
     {
       "id": "cost-optimization",
       "name": "成本优化",
-      "icon": "",
+      "icon": "💰",
       "description": "如何减少 Token 消耗，降低 AI 使用成本",
       "practices": [
         {
@@ -115,9 +115,103 @@
       ]
     },
     {
+      "id": "claude-md-guide",
+      "name": "CLAUDE.md 编写指南",
+      "icon": "📝",
+      "description": "如何写好项目说明书，让 AI 真正理解你的项目",
+      "practices": [
+        {
+          "title": "CLAUDE.md 黄金法则",
+          "content": "如果某个信息可以用 **1 行文字或 1 个链接** 表达 —— 放在 CLAUDE.md。\n如果需要 **3 个以上要点或代码片段** —— 放在 `docs/` 单独文件，CLAUDE.md 里只放链接。\n\n**三层文档加载策略：**\n\n- **核心层（必读）**：CLAUDE.md + Memory 系统\n- **按需层（任务相关时读取）**：认证功能→docs/jwt-pattern.md、数据库→docs/database-conventions.md\n- **归档层（回溯时读取）**：历史决策、审计报告",
+          "examples": []
+        },
+        {
+          "title": "CLAUDE.md 推荐结构（200-400行）",
+          "content": "经过 20 个项目的实践，最佳 CLAUDE.md 结构如下：\n\n1. **项目概览（5-10行）**：一句话描述 + 技术栈一行 + 生产环境 URL\n2. **目录结构（10-20行）**：只列顶层目录，标注用途\n3. **常用命令（10-15行）**：dev/build/test/deploy，每个一行\n4. **核心架构（15-25行）**：数据流概述 + 关键模块职责\n5. **规则与约束（10-20行）**：代码风格、命名规范、禁止事项、数据库铁律\n6. **上下文管理（15-25行）**：文档加载策略、Session 管理策略\n7. **部署信息（5-10行）**：服务器别名、路径、部署命令\n\nCLAUDE.md 是「地图」，`docs/` 是「细节」。AI 先看地图，需要时再查细节。",
+          "examples": [
+            {
+              "label": "✅ 好的目录结构描述",
+              "code": "## 目录结构\n\nsrc/\n├── lib/        # 工具库（API客户端、JWT）\n├── db/schema/  # 数据库表定义（Drizzle ORM）\n├── routes/     # API 路由处理器\n├── middleware/  # 认证、日志中间件\n└── services/   # 业务逻辑层\n\ndocs/           # 项目文档（架构、API、部署）"
+            },
+            {
+              "label": "❌ 太啰嗦",
+              "code": "## 目录结构\n\nsrc/\n├── lib/\n│   ├── api.ts           # API 客户端，封装了 fetch...\n│   ├── jwt.ts            # JWT 工具，使用 jose 库...\n│   ├── utils.ts          # 通用工具函数...\n│   └── ...（50+ 行展开）"
+            }
+          ]
+        },
+        {
+          "title": "什么应该放在 CLAUDE.md",
+          "content": "**✅ 应该放：**\n\n- 项目的一句话定位\n- 技术栈概要（一行）\n- 顶层目录结构\n- 数据库连接信息（服务器地址，不含密码）\n- 部署命令（一行）\n- 核心约束（如 UUID 铁律）\n- 文档索引（指向 `docs/` 的链接列表）\n\n**❌ 不应该放：**\n\n- 完整 API 文档 → 放 `docs/api.md`\n- 设计系统（颜色、字体、组件） → 放 `docs/design-system.md`\n- 数据库完整 schema → 放 `docs/database-schema.md`\n- CI/CD 配置 → 放 `.github/workflows/`\n- 超过 20 行的代码示例 → 放独立文档",
+          "examples": []
+        },
+        {
+          "title": "多项目间的一致性",
+          "content": "当你维护 5+ 个项目时，CLAUDE.md 的一致性比单个文件的「完美」更重要：\n\n- **相同的章节顺序**：AI 在项目间切换时知道去哪里找信息\n- **相同的术语**：都用「部署」而不是有的叫「发布」有的叫「上线」\n- **共享规则源**：数据库铁律、安全规范从 `docs/standards/` 引用，不在每个项目里重复写\n\nccusage monorepo 是最好的例子——9 个子包使用完全相同的 CLAUDE.md 模板，AI 可以在任意子包间无缝切换。",
+          "examples": []
+        },
+        {
+          "title": "保持更新：什么时候改 CLAUDE.md",
+          "content": "| 触发条件 | 改动内容 |\n|----------|----------|\n| 换了 ORM/框架 | 更新技术栈描述 |\n| 新增/删除部署脚本 | 更新命令列表 |\n| 改了数据库地址 | 更新连接信息 |\n| 发现 AI 频繁犯同一个错误 | 加一条规则 |\n| 模块文档新增/删除 | 更新文档索引 |\n| 不重要的小改动 | 不必更新 |\n\n**原则**：能让 AI 少犯错的信息，优先级最高。",
+          "examples": []
+        },
+        {
+          "title": "新建项目模板速查",
+          "content": "新建项目时，复制这个骨架，填 5 分钟即可：\n\n```\n# [项目名称]\n\n## 项目概览\n一句话描述。技术栈：[前端] + [后端] + [数据库]。\n生产环境：[URL]\n\n## 目录结构\n[顶层目录树，10-15 行]\n\n## 常用命令\n- dev: [命令]\n- build: [命令]\n- deploy: [命令]\n\n## 核心架构\n[数据流概述，引用 docs/ 详细文档]\n\n## 规则与约束\n- [关键规则 1]\n- [关键规则 2]\n\n## 上下文管理\n- 核心层：本文件\n- 按需层：docs/ 下的文档\n- 参考资源：_shared/docs/standards/\n\n## 部署\n服务器：[alias] | 路径：[path] | 进程：[pm2 name]\n```",
+          "examples": []
+        }
+      ]
+    },
+    {
+      "id": "ai-toolchain",
+      "name": "AI 工具链",
+      "icon": "🔧",
+      "description": "MCP、Skills、Hooks、Graphify — 构建高效的 AI 开发工作流",
+      "practices": [
+        {
+          "title": "Graphify 知识图谱 — 理解任何代码库",
+          "content": "Graphify 是基于 tree-sitter 的代码知识图谱工具，自动分析代码结构和依赖关系。\n\n**对比传统工具：**\n\n| 任务 | grep/ripgrep | Graphify |\n|------|-------------|----------|\n| 查找函数定义 | ✅ | ✅ 语义搜索 |\n| 查找调用关系 | ❌ 手动追踪 | ✅ 自动生成调用图 |\n| 理解模块依赖 | ❌ 人工分析 | ✅ 可视化依赖图 |\n| 查找「孤岛代码」 | ❌ | ✅ 自动识别 |\n| 跨文件追踪数据流 | ❌ | ✅ 一键查询路径 |\n\n**安装：**\n```\nuv tool install \"graphifyy[all]\"\n```\n\n**在 Claude Code 中使用：**\n```\n/graphify .                          # 生成知识图谱\n/graphify query \"认证如何实现？\"     # 语义查询\n/graphify path \"Auth\" \"Database\"     # 查找路径\n/graphify explain \"UserService\"      # 解释概念\n```\n\n**输出文件：**\n- `graph.html` — 交互式可视化（可拖拽、搜索、过滤）\n- `GRAPH_REPORT.md` — 分析报告（架构洞察、核心节点、意外连接）\n- `graph.json` — 原始数据（供 AI 读取）",
+          "examples": [
+            {
+              "label": "实战案例：理解新项目",
+              "code": "# 新接手一个 2 万行的项目\n/graphify .\nopen graphify-out/graph.html\n# 查看 GRAPH_REPORT.md 的核心节点\n# 从核心节点开始阅读代码\n# 结果：30 分钟理解核心架构，而不是盲目从 main.ts 开始读"
+            },
+            {
+              "label": "实战案例：重构前影响分析",
+              "code": "# 要重构认证模块\n/graphify query \"哪些模块依赖了 auth 模块？\"\n# 发现 8 个模块依赖了 auth\n# 逐个检查并准备测试计划"
+            }
+          ]
+        },
+        {
+          "title": "Skills 系统 — 82 个全局能力",
+          "content": "Skills 是 Claude Code 的能力扩展，分为以下几类：\n\n**飞书集成（26 个 Skills）：**\n- `lark-calendar` — 日历管理\n- `lark-task` — 任务清单\n- `lark-doc` — 文档操作\n- `lark-sheets` — 电子表格\n- `lark-minutes` — 会议纪要\n\n在对话框中直接说：「查看我今天的日程」「创建一个待办：准备周会演示」\n\n**设计 Skills（17 个）：**\n- `taste-skill` — 反 AI 风格的前端设计\n- `impeccable` — 高级 UI/UX 设计智能\n- `image-to-code-skill` — 图片转代码\n- `ui-ux-pro-max` — 50+ 风格的设计智能\n\n**开发工作流 Skills（13 个）：**\n- `test-driven-development` — TDD 开发流程\n- `systematic-debugging` — 系统化调试\n- `subagent-driven-development` — 子 Agent 驱动开发\n- `dispatching-parallel-agents` — 并行 Agent 分发",
+          "examples": []
+        },
+        {
+          "title": "Hooks 系统 — 7 个自动化守卫",
+          "content": "**Hooks 是「纪律」，Skills 是「能力」**。Hooks 在特定事件自动触发，不需要 Claude 判断。\n\n**已配置的 Hooks：**\n\n| Hook | 触发时机 | 功能 |\n|------|---------|------|\n| `security-check.py` | git commit 前 | 拦截危险命令、禁止访问 .env |\n| `type-check-on-edit.py` | 编辑 .ts 文件后 | TypeScript 类型检查（3行输出）|\n| `graphify-update-on-push.py` | git push 后 | 自动更新知识图谱 |\n| `commit-grouping.py` | git commit 前 | 检查提交是否按逻辑分组 |\n| `auto-format.py` | 编辑代码后 | Prettier 自动格式化 |\n| `translate-error.py` | Bash 命令后 | 英文错误自动翻译成中文 |\n| `auto-commit-on-stop.py` | 对话完成时 | 自动按逻辑分组提交并推送 |\n\n**设计原则：**\n- ✅ 极简输出（不挤占上下文）\n- ✅ 异步执行（不影响性能）\n- ✅ 静默失败（错误不影响流程）",
+          "examples": [
+            {
+              "label": "类型检查 Hook 示例",
+              "code": "# 编辑 TypeScript 文件后自动触发\nClaude: [Edit src/index.ts]\nHook: [30 秒内只检查一次]\n      ├─> ✅ 类型正确 → 静默通过\n      └─> ❌ 类型错误 → 显示第一个错误（3 行输出）"
+            }
+          ]
+        },
+        {
+          "title": "MCP Servers — 外部工具集成",
+          "content": "**已启用的 MCP：**\n\n- **Figma** — 读取设计稿、生成设计系统、设计稿转组件\n- **Pencil** — 快速绘制草图和原型\n- **Backend Development** — API 设计、数据库操作\n- **Debugging Toolkit** — 日志分析、错误追踪\n\n**Figma MCP 使用示例：**\n```\n「读取 Figma 文件 xxx 的设计规范」\n「根据这个 Figma 设计生成 React 组件」\n「把这个设计转换成 Tailwind CSS」\n```\n\nMCP 让 Claude Code 直接与外部工具交互，无需切换窗口。",
+          "examples": []
+        },
+        {
+          "title": "AI 驱动的完整开发流程",
+          "content": "**场景：重构认证模块**\n\n1. **理解现有代码**\n   - `/graphify .` + `/graphify query \"认证流程\"`\n2. **查阅相关文档**\n   - 「读取 docs/standards/jwt-pattern.md」\n3. **编辑代码**\n   - Hook 自动类型检查 → ✅ 通过\n   - Hook Prettier 格式化 → 完成\n4. **对话完成时**\n   - Hook 自动提交分组推送 → 无需手动 git 操作\n\n**整个流程：**\n- ✅ 全程在 Claude Code 对话框完成\n- ✅ 不切换窗口（Graphify、飞书、类型检查都在对话框）\n- ✅ 自动格式化、类型检查、图谱更新、提交推送\n- ✅ 实时反馈（类型错误立即提示）",
+          "examples": []
+        }
+      ]
+    },
+    {
       "id": "security",
       "name": "安全与隐私",
-      "icon": "",
+      "icon": "🔒",
       "description": "如何保护敏感数据，避免代码泄露",
       "practices": [
         {
